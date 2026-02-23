@@ -107,6 +107,24 @@ npm run prisma:seed
 - Login as seeded admin, create agents at `/admin/agents`.
 - Verify audit logs at `/admin/audit`.
 
+## GitHub Actions: Migrate Before Production Deploy
+
+Workflow file:
+- `.github/workflows/prod-migrate-and-deploy.yml`
+
+What it does on push to `main` (or manual run):
+1. Installs dependencies
+2. Runs `prisma migrate deploy` against production DB
+3. Applies `prisma/sql/landlord_constraints.sql`
+4. Triggers Vercel production deployment via Deploy Hook
+
+Required GitHub repository secrets:
+- `PRODUCTION_DATABASE_URL` (production PostgreSQL URL)
+- `VERCEL_DEPLOY_HOOK_URL` (from Vercel Project -> Settings -> Git -> Deploy Hooks)
+
+Recommended for strict ordering:
+- Disable automatic production deploys from direct Git pushes in Vercel (or avoid relying on them), and use this workflow + deploy hook path as the production release path.
+
 ## Local Setup
 
 1. Install dependencies:
