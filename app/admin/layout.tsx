@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
+import { AdminShell } from "./admin-shell";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({
   children,
@@ -16,6 +19,7 @@ export default async function AdminLayout({
       id: true,
       role: true,
       isActive: true,
+      agentDisplayName: true,
     },
   });
 
@@ -27,5 +31,9 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
-  return <>{children}</>;
+  return (
+    <AdminShell user={{ name: user.agentDisplayName, email: session.email }}>
+      {children}
+    </AdminShell>
+  );
 }

@@ -10,7 +10,9 @@ export default function HomePage() {
           alt="More Homes Group"
           className="landing-logo"
         />
-        <h1 className="landing-title">Landlord Registry Portal</h1>
+        <h1 className="landing-title">
+          Landlord Registry <span>Portal</span>
+        </h1>
         <p className="landing-subtitle">
           The secure, all-in-one platform for More Homes Group agents to manage
           landlords, properties, and compliance records.
