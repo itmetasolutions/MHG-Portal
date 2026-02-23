@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { formatDate } from "@/lib/format";
@@ -12,8 +12,12 @@ export default async function DashboardPage() {
 
   const isAdmin = session.role === UserRole.ADMIN;
 
-  const landlordWhere = isAdmin ? {} : { ownerAgentId: session.userId as string };
-  const propertyWhere = isAdmin ? {} : { ownerAgentId: session.userId as string };
+  const landlordWhere: Prisma.LandlordWhereInput = isAdmin ? {} : { ownerAgentId: session.userId };
+  const propertyWhere: Prisma.PropertyWhereInput = isAdmin ? {} : { ownerAgentId: session.userId };
+  const activeLandlordWhere: Prisma.LandlordWhereInput = {
+    ...landlordWhere,
+    properties: { some: {} },
+  };
 
   const [user, landlordsTotal, landlordsActive, propertiesTotal, agentsTotal, recentLandlords] =
     await Promise.all([
@@ -22,7 +26,7 @@ export default async function DashboardPage() {
         select: { agentDisplayName: true },
       }),
       db.landlord.count({ where: landlordWhere }),
-      db.landlord.count({ where: { ...landlordWhere, status: "ACTIVE" } }),
+      db.landlord.count({ where: activeLandlordWhere }),
       db.property.count({ where: propertyWhere }),
       isAdmin ? db.user.count({ where: { role: "AGENT" } }) : Promise.resolve(0),
       db.landlord.findMany({
@@ -33,7 +37,6 @@ export default async function DashboardPage() {
           id: true,
           landlordName: true,
           landlordNumber: true,
-          status: true,
           createdAt: true,
           ownerAgent: { select: { agentDisplayName: true } },
           _count: { select: { properties: true } },
@@ -217,10 +220,10 @@ export default async function DashboardPage() {
                     <td>
                       <span
                         className={`badge ${
-                          landlord.status === "ACTIVE" ? "badge-active" : "badge-passive"
+                          landlord._count.properties > 0 ? "badge-active" : "badge-passive"
                         }`}
                       >
-                        {landlord.status}
+                        {landlord._count.properties > 0 ? "ACTIVE" : "PASSIVE"}
                       </span>
                     </td>
                     {isAdmin && (

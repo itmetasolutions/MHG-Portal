@@ -138,7 +138,7 @@ export default function NewLandlordPage() {
         addressLine1: addressLine1.trim() || undefined,
         city: city.trim() || undefined,
         postcode: postcode.trim() || undefined,
-        landlordDemand: landlordDemand.trim() ? Number(landlordDemand) : undefined,
+        landlordDemand: landlordDemand.trim() || undefined,
         status,
       },
     });

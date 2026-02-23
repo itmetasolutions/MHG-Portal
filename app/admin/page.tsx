@@ -42,7 +42,7 @@ export default async function AdminPage() {
     db.user.count({ where: { role: UserRole.AGENT, isActive: true } }),
     db.landlord.count(),
     db.property.count(),
-    db.landlord.count({ where: { status: "ACTIVE" } }),
+    db.landlord.count({ where: { properties: { some: {} } } }),
     db.user.findMany({
       where: { role: UserRole.AGENT },
       orderBy: { createdAt: "desc" },
