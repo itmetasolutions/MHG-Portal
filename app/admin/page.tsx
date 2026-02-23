@@ -26,6 +26,7 @@ export default async function AdminPage() {
     activeLandlordCount,
     propertyCount,
     salesAgg,
+    tenantCount,
     propByStatus,
     agentPerformanceRaw,
     recentSales,
@@ -44,13 +45,16 @@ export default async function AdminPage() {
       _count: { id: true },
     }),
 
+    // Platform-wide tenant count
+    db.tenant.count(),
+
     // Properties by status
     db.property.groupBy({
       by: ["status"],
       _count: { id: true },
     }),
 
-    // Agent performance: with sold property count & commission
+    // Agent performance: with sold property count, commission & tenant count
     db.user.findMany({
       where: { role: UserRole.AGENT },
       select: {
@@ -65,11 +69,17 @@ export default async function AdminPage() {
             ownedProperties: true,
           },
         },
-        // Fetch sold properties with their sale commissions
+        // Fetch sold properties with their sale commissions and tenants
         ownedProperties: {
           where: { sale: { isNot: null } },
           select: {
-            sale: { select: { commissionAmount: true, finalAmount: true } },
+            sale: {
+              select: {
+                commissionAmount: true,
+                finalAmount: true,
+                tenant: { select: { id: true } },
+              },
+            },
           },
         },
       },
@@ -141,6 +151,7 @@ export default async function AdminPage() {
     .map((agent) => ({
       ...agent,
       salesCount:      agent.ownedProperties.length,
+      tenantsCount:    agent.ownedProperties.filter((p) => p.sale?.tenant != null).length,
       totalRevenue:    agent.ownedProperties.reduce((s, p) => s + Number(p.sale?.finalAmount    ?? 0), 0),
       totalCommission: agent.ownedProperties.reduce((s, p) => s + Number(p.sale?.commissionAmount ?? 0), 0),
     }))
@@ -222,6 +233,17 @@ export default async function AdminPage() {
             <p className="admin-stat-label">Sales Closed</p>
             <p className="admin-stat-value">{totalSales}</p>
             <p className="admin-stat-sub">{statusMap.SOLD ?? 0} properties sold</p>
+          </div>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-card-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Total Tenants</p>
+            <p className="admin-stat-value">{tenantCount}</p>
+            <p className="admin-stat-sub">Tenant records on file</p>
           </div>
 
           <div className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
@@ -346,6 +368,7 @@ export default async function AdminPage() {
                       <th>Landlords</th>
                       <th>Properties</th>
                       <th>Sales</th>
+                      <th>Tenants</th>
                       <th>Commission</th>
                     </tr>
                   </thead>
@@ -373,6 +396,11 @@ export default async function AdminPage() {
                         <td>
                           <span style={{ fontWeight: 700, color: agent.salesCount > 0 ? "#4ade80" : "var(--text-subtle)" }}>
                             {agent.salesCount}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: agent.tenantsCount > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>
+                            {agent.tenantsCount}
                           </span>
                         </td>
                         <td style={{ fontWeight: 700, color: agent.totalCommission > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>

@@ -17,6 +17,8 @@ type AgentRow = {
   createdAt: string;
   ownedLandlords: number;
   ownedProperties: number;
+  closedSales: number;
+  tenants: number;
 };
 
 type CreateMode = "TEMP_PASSWORD" | "AUTO_GENERATE";
@@ -121,6 +123,8 @@ export function AgentsAdminClient({ initialAgents }: Props) {
       createdAt: new Date(a.createdAt).toISOString(),
       ownedLandlords: a._count?.ownedLandlords ?? 0,
       ownedProperties: a._count?.ownedProperties ?? 0,
+      closedSales: 0,
+      tenants: 0,
     }));
     setAgents(mapped);
   }
@@ -382,6 +386,8 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                     <th>Status</th>
                     <th>Landlords</th>
                     <th>Properties</th>
+                    <th>Sales</th>
+                    <th>Tenants</th>
                     <th>Joined</th>
                     <th>Actions</th>
                   </tr>
@@ -420,6 +426,16 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                         </td>
                         <td style={{ color: "var(--text-muted)" }}>
                           {agent.ownedProperties}
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 700, color: agent.closedSales > 0 ? "#4ade80" : "var(--text-subtle)" }}>
+                            {agent.closedSales}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: agent.tenants > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>
+                            {agent.tenants}
+                          </span>
                         </td>
                         <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
                           {formatDate(agent.createdAt)}

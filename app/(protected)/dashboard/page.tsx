@@ -28,6 +28,10 @@ export default async function DashboardPage() {
     properties: { some: {} },
   };
 
+  const tenantWhere: Prisma.TenantWhereInput = isAdmin
+    ? {}
+    : { sale: { property: { ownerAgentId: session.userId } } };
+
   const [
     user,
     landlordsTotal,
@@ -35,10 +39,12 @@ export default async function DashboardPage() {
     propertiesTotal,
     agentsTotal,
     salesAgg,
+    tenantsTotal,
     propByStatus,
     recentLandlords,
     recentProperties,
     recentSales,
+    recentTenants,
   ] = await Promise.all([
     db.user.findUnique({
       where: { id: session.userId },
@@ -53,6 +59,7 @@ export default async function DashboardPage() {
       _sum: { finalAmount: true, commissionAmount: true, profit: true },
       _count: { id: true },
     }),
+    db.tenant.count({ where: tenantWhere }),
     db.property.groupBy({
       by: ["status"],
       where: propertyWhere,
@@ -106,6 +113,36 @@ export default async function DashboardPage() {
             addressLine1: true,
             city: true,
             landlord: { select: { id: true, landlordName: true } },
+          },
+        },
+      },
+    }),
+    db.tenant.findMany({
+      where: tenantWhere,
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        moveInDate: true,
+        rentAmount: true,
+        depositAmount: true,
+        createdAt: true,
+        sale: {
+          select: {
+            property: {
+              select: {
+                id: true,
+                propertyRef: true,
+                addressLine1: true,
+                city: true,
+                postcode: true,
+                landlord: { select: { id: true, landlordName: true } },
+                ownerAgent: { select: { agentDisplayName: true } },
+              },
+            },
           },
         },
       },
@@ -169,6 +206,11 @@ export default async function DashboardPage() {
             <p className="stat-label">Sales Closed</p>
             <p className="stat-value">{totalSales}</p>
             <p className="stat-sub">{statusMap.SOLD ?? 0} properties sold</p>
+          </div>
+          <div className="stat-card">
+            <p className="stat-label">Tenants</p>
+            <p className="stat-value">{tenantsTotal}</p>
+            <p className="stat-sub">Tenant records on file</p>
           </div>
           {isAdmin ? (
             <div className="stat-card">
@@ -445,6 +487,72 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Recent Tenants ──────────────────────────────────────────────── */}
+      {recentTenants.length > 0 && (
+        <div className="panel">
+          <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+              Recent Tenants
+            </h2>
+            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>{tenantsTotal} total</span>
+          </div>
+          <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Contact</th>
+                  <th>Property</th>
+                  <th>Move-In</th>
+                  <th>Rent / Deposit</th>
+                  {isAdmin && <th>Agent</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {recentTenants.map((tenant) => (
+                  <tr key={tenant.id}>
+                    <td style={{ fontWeight: 600, color: "var(--text)" }}>{tenant.fullName}</td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {tenant.email && <span style={{ display: "block" }}>{tenant.email}</span>}
+                      {tenant.phone && <span>{tenant.phone}</span>}
+                    </td>
+                    <td>
+                      <Link
+                        href={`/landlords/${tenant.sale.property.landlord.id}`}
+                        style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
+                      >
+                        {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
+                      </Link>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {tenant.moveInDate
+                        ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                        : "—"}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {tenant.rentAmount
+                        ? <span style={{ color: "#4ade80", fontWeight: 600 }}>£{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
+                        : <span className="muted">—</span>}
+                      {tenant.depositAmount
+                        ? <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>dep: £{Number(tenant.depositAmount).toLocaleString("en-GB")}</span>
+                        : null}
+                    </td>
+                    {isAdmin && (
+                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                        {tenant.sale.property.ownerAgent?.agentDisplayName ?? "—"}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── My Recent Landlords ─────────────────────────────────────────── */}
       {recentLandlords.length > 0 && (

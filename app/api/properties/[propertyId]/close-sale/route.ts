@@ -12,6 +12,18 @@ const closeSaleSchema = z
     finalAmount: z.coerce.number().positive("finalAmount must be > 0"),
     commissionPct: z.coerce.number().min(0, "commissionPct must be >= 0").max(100),
     otherCosts: z.coerce.number().min(0).optional(),
+    tenant: z
+      .object({
+        fullName: z.string().trim().min(1, "Tenant full name is required"),
+        email: z.string().trim().email().optional().or(z.literal("")),
+        phone: z.string().trim().optional(),
+        currentAddress: z.string().trim().optional(),
+        moveInDate: z.string().datetime({ offset: true }).optional().or(z.string().date().optional()),
+        rentAmount: z.coerce.number().min(0).optional(),
+        depositAmount: z.coerce.number().min(0).optional(),
+        notes: z.string().trim().optional(),
+      })
+      .strict(),
   })
   .strict();
 
@@ -152,6 +164,34 @@ export async function POST(request: NextRequest, { params }: Params) {
       },
     });
 
+    const tenant = await tx.tenant.create({
+      data: {
+        saleId: sale.id,
+        fullName: payload.tenant.fullName,
+        email: payload.tenant.email?.trim() || null,
+        phone: payload.tenant.phone?.trim() || null,
+        currentAddress: payload.tenant.currentAddress?.trim() || null,
+        moveInDate: payload.tenant.moveInDate ? new Date(payload.tenant.moveInDate) : null,
+        rentAmount: payload.tenant.rentAmount ?? null,
+        depositAmount: payload.tenant.depositAmount ?? null,
+        notes: payload.tenant.notes?.trim() || null,
+      },
+      select: {
+        id: true,
+        saleId: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        currentAddress: true,
+        moveInDate: true,
+        rentAmount: true,
+        depositAmount: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
     await tx.property.update({
       where: { id: property.id },
       data: {
@@ -173,6 +213,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           commissionAmount,
           otherCosts,
           profit,
+          tenantId: tenant.id,
+          tenantFullName: tenant.fullName,
         },
         beforeJson: {
           status: property.status,
@@ -181,12 +223,13 @@ export async function POST(request: NextRequest, { params }: Params) {
         afterJson: {
           status: "SOLD",
           sale,
+          tenant,
         },
       },
     });
 
-    return sale;
+    return { sale, tenant };
   });
 
-  return NextResponse.json({ sale: result }, { status: 201 });
+  return NextResponse.json({ sale: result.sale, tenant: result.tenant }, { status: 201 });
 }

@@ -28,6 +28,14 @@ type CloseSaleForm = {
   finalAmount: string;
   commissionPct: string;
   otherCosts: string;
+  tenantName: string;
+  tenantEmail: string;
+  tenantPhone: string;
+  tenantAddress: string;
+  tenantMoveInDate: string;
+  tenantRent: string;
+  tenantDeposit: string;
+  tenantNotes: string;
 };
 
 export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
@@ -143,11 +151,26 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       return;
     }
 
+    if (!closingSale.tenantName.trim()) {
+      setMessage({ type: "error", text: "Tenant full name is required." });
+      return;
+    }
+
     setCloseSaleBusy(true);
     const result = await closePropertySale(closingSale.propertyId, {
       finalAmount,
       commissionPct,
       otherCosts,
+      tenant: {
+        fullName: closingSale.tenantName.trim(),
+        email: closingSale.tenantEmail.trim() || undefined,
+        phone: closingSale.tenantPhone.trim() || undefined,
+        currentAddress: closingSale.tenantAddress.trim() || undefined,
+        moveInDate: closingSale.tenantMoveInDate || undefined,
+        rentAmount: closingSale.tenantRent.trim() ? Number(closingSale.tenantRent) : undefined,
+        depositAmount: closingSale.tenantDeposit.trim() ? Number(closingSale.tenantDeposit) : undefined,
+        notes: closingSale.tenantNotes.trim() || undefined,
+      },
     });
     setCloseSaleBusy(false);
 
@@ -157,7 +180,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     }
 
     setClosingSale(null);
-    setMessage({ type: "success", text: "Sale closed and property marked SOLD." });
+    setMessage({ type: "success", text: "Sale closed and property marked SOLD. Tenant details recorded." });
     await load();
   }
 
@@ -356,6 +379,14 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                   finalAmount: "",
                                   commissionPct: property.expectedCommissionPct ?? "",
                                   otherCosts: "",
+                                  tenantName: "",
+                                  tenantEmail: "",
+                                  tenantPhone: "",
+                                  tenantAddress: "",
+                                  tenantMoveInDate: "",
+                                  tenantRent: "",
+                                  tenantDeposit: "",
+                                  tenantNotes: "",
                                 })
                               }
                             >
@@ -384,43 +415,142 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       {closingSale ? (
         <UICard>
           <UICardBody>
-            <div className="field-grid">
-              <h3 style={{ margin: 0 }}>Close Sale</h3>
+            <div className="stack">
+              <h3 style={{ margin: 0, color: "var(--gold)" }}>Close Sale</h3>
+
+              <div className="form-section-divider">
+                <span className="form-section-label">Sale Details</span>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Final Sale Amount (£) *</span>
+                  <UIInput
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={closingSale.finalAmount}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, finalAmount: event.target.value } : prev))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Commission % *</span>
+                  <UIInput
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    value={closingSale.commissionPct}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, commissionPct: event.target.value } : prev))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Other Costs (£, optional)</span>
+                  <UIInput
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={closingSale.otherCosts}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, otherCosts: event.target.value } : prev))
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="form-section-divider">
+                <span className="form-section-label">Tenant Details</span>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Tenant Full Name *</span>
+                  <UIInput
+                    value={closingSale.tenantName}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantName: event.target.value } : prev))
+                    }
+                    placeholder="Required"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Tenant Email</span>
+                  <UIInput
+                    type="email"
+                    value={closingSale.tenantEmail}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantEmail: event.target.value } : prev))
+                    }
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Tenant Phone</span>
+                  <UIInput
+                    value={closingSale.tenantPhone}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantPhone: event.target.value } : prev))
+                    }
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Move-In Date</span>
+                  <UIInput
+                    type="date"
+                    value={closingSale.tenantMoveInDate}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantMoveInDate: event.target.value } : prev))
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Monthly Rent (£)</span>
+                  <UIInput
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={closingSale.tenantRent}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantRent: event.target.value } : prev))
+                    }
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Deposit (£)</span>
+                  <UIInput
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={closingSale.tenantDeposit}
+                    onChange={(event) =>
+                      setClosingSale((prev) => (prev ? { ...prev, tenantDeposit: event.target.value } : prev))
+                    }
+                    placeholder="Optional"
+                  />
+                </label>
+              </div>
               <label className="field">
-                <span className="label">Final Amount</span>
+                <span className="label">Current Address</span>
                 <UIInput
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={closingSale.finalAmount}
+                  value={closingSale.tenantAddress}
                   onChange={(event) =>
-                    setClosingSale((prev) => (prev ? { ...prev, finalAmount: event.target.value } : prev))
+                    setClosingSale((prev) => (prev ? { ...prev, tenantAddress: event.target.value } : prev))
                   }
+                  placeholder="Tenant's current address (optional)"
                 />
               </label>
               <label className="field">
-                <span className="label">Commission %</span>
+                <span className="label">Notes</span>
                 <UIInput
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.01"
-                  value={closingSale.commissionPct}
+                  value={closingSale.tenantNotes}
                   onChange={(event) =>
-                    setClosingSale((prev) => (prev ? { ...prev, commissionPct: event.target.value } : prev))
+                    setClosingSale((prev) => (prev ? { ...prev, tenantNotes: event.target.value } : prev))
                   }
-                />
-              </label>
-              <label className="field">
-                <span className="label">Other Costs (optional)</span>
-                <UIInput
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={closingSale.otherCosts}
-                  onChange={(event) =>
-                    setClosingSale((prev) => (prev ? { ...prev, otherCosts: event.target.value } : prev))
-                  }
+                  placeholder="Any notes about the tenant (optional)"
                 />
               </label>
 

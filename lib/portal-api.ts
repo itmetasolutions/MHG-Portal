@@ -4,6 +4,21 @@ export type SessionRole = "ADMIN" | "AGENT";
 
 export type PropertyStatus = "DRAFT" | "LIVE" | "UNDER_OFFER" | "SOLD" | "WITHDRAWN";
 
+export type TenantRow = {
+  id: string;
+  saleId: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  currentAddress: string | null;
+  moveInDate: string | null;
+  rentAmount: string | null;
+  depositAmount: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SaleRow = {
   id: string;
   propertyId: string;
@@ -14,6 +29,7 @@ export type SaleRow = {
   otherCosts: string | null;
   profit: string;
   closedAt: string;
+  tenant?: TenantRow | null;
 };
 
 export type LandlordRow = {
@@ -301,8 +317,18 @@ export function closePropertySale(
     finalAmount: number;
     commissionPct: number;
     otherCosts?: number;
+    tenant: {
+      fullName: string;
+      email?: string;
+      phone?: string;
+      currentAddress?: string;
+      moveInDate?: string;
+      rentAmount?: number;
+      depositAmount?: number;
+      notes?: string;
+    };
   },
-): Promise<ApiResult<{ sale: SaleRow }>> {
+): Promise<ApiResult<{ sale: SaleRow; tenant: TenantRow }>> {
   return apiPost(`/api/properties/${propertyId}/close-sale`, payload);
 }
 

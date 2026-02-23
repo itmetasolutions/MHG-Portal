@@ -43,6 +43,16 @@ export default async function AdminAgentsPage() {
           ownedProperties: true,
         },
       },
+      ownedProperties: {
+        where: { sale: { isNot: null } },
+        select: {
+          sale: {
+            select: {
+              tenant: { select: { id: true } },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -56,6 +66,8 @@ export default async function AdminAgentsPage() {
         createdAt: agent.createdAt.toISOString(),
         ownedLandlords: agent._count.ownedLandlords,
         ownedProperties: agent._count.ownedProperties,
+        closedSales: agent.ownedProperties.length,
+        tenants: agent.ownedProperties.filter((p) => p.sale?.tenant != null).length,
       }))}
     />
   );
