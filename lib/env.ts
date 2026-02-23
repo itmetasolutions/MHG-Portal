@@ -63,7 +63,7 @@ export const env = envSchema.parse({
     process.env.JWT_SECRET,
   AUTH_COOKIE_NAME: process.env.AUTH_COOKIE_NAME,
   AUTH_SESSION_TTL_HOURS: process.env.AUTH_SESSION_TTL_HOURS,
-  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,
+  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER ?? "console",
   OTP_EMAIL_FROM: process.env.OTP_EMAIL_FROM,
   OTP_TTL_MINUTES: process.env.OTP_TTL_MINUTES,
   OTP_MAX_SENDS_PER_WINDOW: process.env.OTP_MAX_SENDS_PER_WINDOW,

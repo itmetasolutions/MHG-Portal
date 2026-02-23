@@ -75,6 +75,7 @@ Use `.env.example` as the template.
 - `EMAIL_PROVIDER` (`resend`)
 - `OTP_EMAIL_FROM` (verified sender in Resend)
 - `RESEND_API_KEY`
+- Important: set `EMAIL_PROVIDER` explicitly in Vercel (recommended `resend`), otherwise it falls back to `console` mode.
 - Recommended:
 - `OTP_TTL_MINUTES=10`
 - `OTP_MAX_SENDS_PER_WINDOW=5`
@@ -124,6 +125,23 @@ Required GitHub repository secrets:
 
 Recommended for strict ordering:
 - Disable automatic production deploys from direct Git pushes in Vercel (or avoid relying on them), and use this workflow + deploy hook path as the production release path.
+
+## Vercel Build Troubleshooting
+
+If you see a build failure around `Collecting page data` (sometimes with a generic `TypeError`), check:
+
+1. `EMAIL_PROVIDER` is set in Vercel (`resend` recommended).
+2. Required env vars are present in Vercel Production:
+- `DATABASE_URL`
+- `APP_URL`
+- `AUTH_SESSION_SECRET` (or `SESSION_SECRET` / `JWT_SECRET`)
+- `OTP_EMAIL_FROM`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `RESEND_API_KEY` (if `EMAIL_PROVIDER=resend`)
+3. Redeploy after updating env vars (Vercel does not retroactively apply env vars to completed builds).
+
+This project pins Node to `20.x` in `package.json` for consistent Vercel builds.
 
 ## Local Setup
 
