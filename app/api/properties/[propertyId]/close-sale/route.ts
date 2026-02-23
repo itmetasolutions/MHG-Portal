@@ -1,4 +1,4 @@
-import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
+import { PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
