@@ -63,29 +63,30 @@ export default function LoginPage() {
       return;
     }
 
-    setMessage({ type: "success", text: "OTP sent. Continue verification." });
+    setMessage({ type: "success", text: "OTP sent — check your email." });
     router.push(`/verify-otp?email=${encodeURIComponent(email.trim().toLowerCase())}`);
   }
 
   return (
-    <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Sign In</h1>
-          <p className="page-subtitle">Use your account credentials to request a one-time login code.</p>
-        </div>
-      </header>
+    <div className="auth-page">
+      <div className="auth-brand">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
+        <h1 className="auth-title">Sign In</h1>
+        <p className="auth-subtitle">Enter your credentials to receive a one-time login code.</p>
+      </div>
 
-      <UICard style={{ maxWidth: 520 }}>
+      <UICard style={{ width: "100%", maxWidth: 420 }}>
         <UICardBody>
           <form className="field-grid" onSubmit={onSubmit}>
             <label className="field">
-              <span className="label">Email</span>
+              <span className="label">Email address</span>
               <UIInput
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@agency.com"
+                autoComplete="email"
               />
               {errors.email ? <span className="error-text">{errors.email}</span> : null}
             </label>
@@ -97,17 +98,16 @@ export default function LoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Your password"
+                autoComplete="current-password"
               />
               {errors.password ? <span className="error-text">{errors.password}</span> : null}
             </label>
 
             {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
 
-            <div className="inline-row">
-              <UIButton type="submit" disabled={busy}>
-                {busy ? "Signing In..." : "Continue"}
-              </UIButton>
-            </div>
+            <UIButton type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
+              {busy ? "Sending code…" : "Continue"}
+            </UIButton>
           </form>
         </UICardBody>
       </UICard>
