@@ -2,6 +2,18 @@
 
 Production-ready Next.js + Prisma portal for landlord registry, agent management, OTP login, and audit logging.
 
+## GitHub Repository
+
+This project is now in:
+- `https://github.com/itmetasolutions/MHG-Portal.git`
+
+If you need to push future local updates:
+```bash
+git add -A
+git commit -m "your message"
+git push origin main
+```
+
 ## Environment Variables
 
 Required:
@@ -41,6 +53,59 @@ Docker/Postgres convenience:
 - `RUN_SEED` (`true`/`false`, default `false`)
 
 Use `.env.example` as the template.
+
+## Deploy to Vercel (GitHub)
+
+1. Prepare production database (PostgreSQL)
+- Use Neon, Supabase, Railway Postgres, RDS, or your own Postgres.
+- Copy connection string as `DATABASE_URL`.
+
+2. Import repository into Vercel
+- Go to Vercel dashboard -> `Add New...` -> `Project`.
+- Import `itmetasolutions/MHG-Portal`.
+- Framework preset: `Next.js` (auto-detected).
+
+3. Configure Vercel environment variables
+- Required in Production:
+- `DATABASE_URL`
+- `APP_URL` (your Vercel production URL, e.g. `https://mhg-portal.vercel.app`)
+- `AUTH_SESSION_SECRET` (or `SESSION_SECRET` / `JWT_SECRET`)
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `EMAIL_PROVIDER` (`resend`)
+- `OTP_EMAIL_FROM` (verified sender in Resend)
+- `RESEND_API_KEY`
+- Recommended:
+- `OTP_TTL_MINUTES=10`
+- `OTP_MAX_SENDS_PER_WINDOW=5`
+- `OTP_SEND_WINDOW_MINUTES=10`
+- `OTP_MAX_VERIFY_ATTEMPTS_PER_CODE=5`
+- `OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW=10`
+- `OTP_VERIFY_WINDOW_MINUTES=10`
+- `ALLOW_ADMIN_PASSIVE_REVERT=false`
+
+4. Run DB migrations and SQL constraints (one-time per environment)
+- From your machine or CI with production env loaded:
+```bash
+npx prisma migrate deploy
+psql "$DATABASE_URL" -f prisma/sql/landlord_constraints.sql
+```
+
+5. Seed pre-built admin (one-time)
+- With production env vars set:
+```bash
+npm run prisma:seed
+```
+- Seed is idempotent for the admin bootstrap behavior.
+
+6. Deploy
+- Trigger deploy from Vercel UI (or push to `main` if auto-deploy is enabled).
+- Vercel will run `npm install` and `npm run build`.
+
+7. Post-deploy check
+- Open `/login`, test email+password+OTP flow.
+- Login as seeded admin, create agents at `/admin/agents`.
+- Verify audit logs at `/admin/audit`.
 
 ## Local Setup
 
