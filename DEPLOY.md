@@ -144,7 +144,7 @@ Run this in your terminal:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Copy the output and use it as `AUTH_SESSION_SECRET`.
+Copy the output and use it as `AUTH_SESSION_SECRET`.   
 
 ### 4.3 Deploy
 
