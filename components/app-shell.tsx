@@ -53,6 +53,9 @@ export function AppShell({ session, children }: Props) {
                     Admin
                   </Link>
                 )}
+                <Link className="nav-link nav-link-cta" href="/landlords/new">
+                  + Add Property
+                </Link>
                 <span className="nav-divider" />
                 <span className="nav-user">{session.email}</span>
                 <NavLogoutButton />
