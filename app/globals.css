@@ -829,7 +829,7 @@ a {
 }
 
 .admin-sidebar-brand {
-  padding: 1.5rem 1.25rem;
+  padding: 1.5rem 1.5rem 1.5rem 1.25rem;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -853,6 +853,9 @@ a {
   border-radius: 4px;
   padding: 0.15rem 0.45rem;
   margin-left: auto;
+  margin-right: 0.2rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-sidebar-nav {
