@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  AGENT
+}
+
+enum LandlordStatus {
+  ACTIVE
+  PASSIVE
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique
+  passwordHash     String
+  role             UserRole
+  agentDisplayName String
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  createdLandlords Landlord[] @relation("LandlordCreatedBy")
+  updatedLandlords Landlord[] @relation("LandlordUpdatedBy")
+  ownedLandlords   Landlord[] @relation("LandlordOwnerAgent")
+  ownedProperties  Property[] @relation("PropertyOwnerAgent")
+  otpCodes         OTPCode[]
+  auditLogs        AuditLog[]
+
+  @@index([agentDisplayName])
+  @@index([role, isActive])
+}
+
+model Landlord {
+  id              String         @id @default(uuid()) @db.Uuid
+  landlordName    String
+  landlordNumber  String
+  propertyId      String?
+  url             String?
+  status          LandlordStatus @default(ACTIVE)
+  lockedAt        DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdByUserId String         @db.Uuid
+  updatedByUserId String         @db.Uuid
+  ownerAgentId    String         @db.Uuid
+
+  createdBy  User       @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updatedBy  User       @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ownerAgent User       @relation("LandlordOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  properties Property[]
+
+  @@index([landlordName])
+  @@index([landlordNumber])
+  @@index([status])
+  @@index([propertyId])
+  @@index([url])
+  @@index([ownerAgentId])
+  @@index([ownerAgentId, status])
+  @@index([ownerAgentId, createdAt])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([landlordNumber, status])
+  @@unique([id, ownerAgentId])
+}
+
+model Property {
+  id           String   @id @default(uuid()) @db.Uuid
+  landlordId   String   @db.Uuid
+  ownerAgentId String   @db.Uuid
+  propertyRef  String
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  stateRegion  String?
+  postalCode   String?
+  country      String?
+  url          String?
+  status       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  landlord   Landlord @relation(fields: [landlordId, ownerAgentId], references: [id, ownerAgentId], onDelete: Cascade, onUpdate: Cascade)
+  ownerAgent User     @relation("PropertyOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([landlordId])
+  @@index([ownerAgentId])
+  @@index([propertyRef])
+  @@index([status])
+  @@index([url])
+  @@index([city])
+  @@index([postalCode])
+  @@index([landlordId, ownerAgentId])
+  @@index([createdAt])
+  @@index([ownerAgentId, createdAt])
+  @@index([landlordId, createdAt])
+}
+
+model OTPCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  entityType String
+  entityId   String
+  action     String
+  beforeJson Json?
+  afterJson  Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
