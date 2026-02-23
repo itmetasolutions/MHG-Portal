@@ -10,7 +10,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div>
+    <div className="landing-page">
       <section className="landing-hero">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -18,56 +18,68 @@ export default async function HomePage() {
           alt="More Homes Group"
           className="landing-logo"
         />
+        <p className="landing-kicker">More Homes Group</p>
         <h1 className="landing-title">
-          Landlord Registry <span>Portal</span>
+          Letting Agency <span>Portal</span>
         </h1>
         <p className="landing-subtitle">
-          The secure, all-in-one platform for More Homes Group agents to manage
-          landlords, properties, and compliance records.
+          A single platform for your lettings team to manage landlords,
+          tenancies, properties, and compliance without switching systems.
         </p>
         <div className="inline-row landing-cta">
           <Link className="btn btn-primary btn-lg" href="/login">
-            Sign In to Portal
+            Sign In
           </Link>
+          <Link className="btn btn-secondary btn-lg" href="/admin/login">
+            Admin Access
+          </Link>
+        </div>
+        <div className="landing-metrics">
+          <div className="landing-metric">
+            <p className="landing-metric-label">Portfolio Control</p>
+            <p className="landing-metric-value">Landlords + Tenants + Properties</p>
+          </div>
+          <div className="landing-metric">
+            <p className="landing-metric-label">Daily Operations</p>
+            <p className="landing-metric-value">Sales, status changes, and activity logs</p>
+          </div>
+          <div className="landing-metric">
+            <p className="landing-metric-label">Security</p>
+            <p className="landing-metric-value">Role-based access with OTP verification</p>
+          </div>
         </div>
       </section>
 
-      <hr className="landing-divider" />
-
-      <div className="landing-features-grid">
-        <div className="feature-card">
-          <span className="feature-icon">🏠</span>
-          <h3 className="feature-title">Landlord Registry</h3>
+      <section className="landing-features-grid">
+        <article className="feature-card">
+          <h3 className="feature-title">Landlord and Tenant Workflows</h3>
           <p className="feature-desc">
-            Maintain a complete, searchable registry of all landlords with
-            status tracking and compliance records.
+            Keep contacts, ownership details, notes, and tenancy records in one
+            connected workflow.
           </p>
-        </div>
-        <div className="feature-card">
-          <span className="feature-icon">🏘</span>
-          <h3 className="feature-title">Property Management</h3>
+        </article>
+        <article className="feature-card">
+          <h3 className="feature-title">Property Lifecycle Tracking</h3>
           <p className="feature-desc">
-            Track properties linked to each landlord, with full address details
-            and reference management.
+            Manage every property from intake to status updates with clear
+            visibility for each assigned agent.
           </p>
-        </div>
-        <div className="feature-card">
-          <span className="feature-icon">👥</span>
-          <h3 className="feature-title">Agent Accounts</h3>
+        </article>
+        <article className="feature-card">
+          <h3 className="feature-title">Agency Team Management</h3>
           <p className="feature-desc">
-            Role-based access for agents with isolated portfolio views and full
-            audit trail logging.
+            Give admins and agents the exact permissions they need with
+            structured oversight and accountability.
           </p>
-        </div>
-        <div className="feature-card">
-          <span className="feature-icon">🔒</span>
-          <h3 className="feature-title">Secure 2-Factor Login</h3>
+        </article>
+        <article className="feature-card">
+          <h3 className="feature-title">Compliance and Audit Trail</h3>
           <p className="feature-desc">
-            Email OTP verification on every login keeps your data protected at
-            all times.
+            Capture critical updates and operational events so reporting and
+            governance stay reliable.
           </p>
-        </div>
-      </div>
+        </article>
+      </section>
     </div>
   );
 }

@@ -73,8 +73,8 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Landlord Registry</h1>
-          <p className="page-subtitle">Phone-keyed landlords with owner-agent enforcement.</p>
+          <h1 className="page-title">Landlord Management</h1>
+          <p className="page-subtitle">Manage landlord records with owner-agent enforcement.</p>
         </div>
         <Link className="btn btn-primary" href="/landlords/new">
           Add Property

@@ -6,8 +6,13 @@ import { AppShell } from "@/components/app-shell";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "More Homes Group – Landlord Portal",
-  description: "The secure lettings management portal for More Homes Group agents.",
+  title: "More Homes Group - Letting Agency Portal",
+  description: "Secure lettings operations portal for More Homes Group agents and admins.",
+  icons: {
+    icon: [{ url: "/mhg%20favicon.png", type: "image/png" }],
+    shortcut: [{ url: "/mhg%20favicon.png", type: "image/png" }],
+    apple: [{ url: "/mhg%20favicon.png", type: "image/png" }],
+  },
 };
 
 export default async function RootLayout({

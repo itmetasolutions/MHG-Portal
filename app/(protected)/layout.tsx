@@ -1,6 +1,8 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
+import { db } from "@/server/db";
+import { AgentShell } from "./agent-shell";
 
 export default async function ProtectedLayout({
   children,
@@ -15,5 +17,26 @@ export default async function ProtectedLayout({
     redirect("/admin");
   }
 
-  return <>{children}</>;
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      agentDisplayName: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    redirect("/login");
+  }
+
+  return (
+    <AgentShell
+      user={{
+        name: user.agentDisplayName,
+        email: session.email,
+      }}
+    >
+      {children}
+    </AgentShell>
+  );
 }

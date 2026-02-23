@@ -30,6 +30,38 @@ function AgentsIcon() {
   );
 }
 
+function LandlordsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function PropertiesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function SalesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function TenantsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
+    </svg>
+  );
+}
+
 function AuditIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -39,9 +71,13 @@ function AuditIcon() {
 }
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: DashboardIcon, exact: true },
-  { href: "/admin/agents", label: "Agents", icon: AgentsIcon, exact: false },
-  { href: "/admin/audit", label: "Audit Logs", icon: AuditIcon, exact: false },
+  { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
+  { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
+  { href: "/admin/landlords",  label: "Landlords",   icon: LandlordsIcon,  exact: false },
+  { href: "/admin/properties", label: "Properties",  icon: PropertiesIcon, exact: false },
+  { href: "/admin/sales",      label: "Sales",       icon: SalesIcon,      exact: false },
+  { href: "/admin/tenants",    label: "Tenants",     icon: TenantsIcon,    exact: false },
+  { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
 ];
 
 export function AdminShell({ user, children }: Props) {
@@ -108,18 +144,40 @@ export function AdminShell({ user, children }: Props) {
       <div className="admin-content">
         {/* Top bar */}
         <div className="admin-topbar">
-          <div className="admin-topbar-breadcrumb">
-            <span>Admin</span>
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.4 }}>
-              <path fillRule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-            </svg>
-            <span className="current">{breadcrumbLabel}</span>
+          <div className="admin-topbar-left">
+            <div className="admin-topbar-breadcrumb">
+              <span>Admin</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                style={{ opacity: 0.4 }}
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="current">{breadcrumbLabel}</span>
+            </div>
+
+            <div className="admin-topbar-links">
+              {navItems.map(({ href, label, exact }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`admin-topbar-link${isActive(href, exact) ? " admin-topbar-link-active" : ""}`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-              {user.email}
-            </span>
+          <div className="admin-topbar-meta">
+            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>{user.email}</span>
             <span className="badge badge-admin">Admin</span>
           </div>
         </div>

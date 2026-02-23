@@ -1,6 +1,6 @@
-# Landlord Registry Portal
+# Letting Agency Portal
 
-Production-ready Next.js + Prisma portal for landlord registry, agent management, OTP login, and audit logging.
+Production-ready Next.js + Prisma portal for letting agency operations, agent management, OTP login, and audit logging.
 
 ## GitHub Repository
 

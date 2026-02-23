@@ -84,6 +84,17 @@ export type LandlordListResponse = {
   };
 };
 
+export type LandlordLookupResponse = {
+  phoneInput: string;
+  phoneLast10: string;
+  phoneE164: string;
+  landlordExists: boolean;
+  ownershipConflict: boolean;
+  canCreateLandlord: boolean;
+  canCreateProperty: boolean;
+  landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
+};
+
 export type PropertyRow = {
   id: string;
   landlordId: string;
@@ -169,18 +180,7 @@ export function fetchLandlords(params: {
 
 export function checkLandlordNumber(
   phone: string,
-): Promise<
-  ApiResult<{
-    phoneInput: string;
-    phoneLast10: string;
-    phoneE164: string;
-    landlordExists: boolean;
-    ownershipConflict: boolean;
-    canCreateLandlord: boolean;
-    canCreateProperty: boolean;
-    landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
-  }>
-> {
+): Promise<ApiResult<LandlordLookupResponse>> {
   return apiGet(`/api/landlords/check-number?phone=${encodeURIComponent(phone)}`);
 }
 

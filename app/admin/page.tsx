@@ -189,7 +189,7 @@ export default async function AdminPage() {
       <div>
         <p className="section-label">Platform Overview</p>
         <div className="admin-stats-grid-wide">
-          <div className="admin-stat-card">
+          <Link href="/admin/agents" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 0 0-1.588-3.755 4.502 4.502 0 0 1 5.874 2.636.818.818 0 0 1-.36.98A7.465 7.465 0 0 1 14.5 16Z" />
@@ -198,9 +198,9 @@ export default async function AdminPage() {
             <p className="admin-stat-label">Total Agents</p>
             <p className="admin-stat-value">{agentCount}</p>
             <p className="admin-stat-sub">{activeAgentCount} active · {inactiveAgents} disabled</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card">
+          <Link href="/admin/landlords" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
@@ -209,9 +209,9 @@ export default async function AdminPage() {
             <p className="admin-stat-label">Total Landlords</p>
             <p className="admin-stat-value">{landlordCount}</p>
             <p className="admin-stat-sub">{activeLandlordCount} active in registry</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card">
+          <Link href="/admin/properties" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z" clipRule="evenodd" />
@@ -222,9 +222,9 @@ export default async function AdminPage() {
             <p className="admin-stat-sub">
               {statusMap.LIVE ?? 0} live · {statusMap.UNDER_OFFER ?? 0} under offer
             </p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card">
+          <Link href="/admin/sales" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
@@ -233,9 +233,9 @@ export default async function AdminPage() {
             <p className="admin-stat-label">Sales Closed</p>
             <p className="admin-stat-value">{totalSales}</p>
             <p className="admin-stat-sub">{statusMap.SOLD ?? 0} properties sold</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card">
+          <Link href="/admin/tenants" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
@@ -244,9 +244,9 @@ export default async function AdminPage() {
             <p className="admin-stat-label">Total Tenants</p>
             <p className="admin-stat-value">{tenantCount}</p>
             <p className="admin-stat-sub">Tenant records on file</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
+          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
             <div className="admin-stat-card-icon" style={{ background: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.25)" }}>
               <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#4ade80" }}>
                 <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.615Z" />
@@ -258,9 +258,9 @@ export default async function AdminPage() {
               {formatCurrency(totalRevenue)}
             </p>
             <p className="admin-stat-sub">Combined final sale amounts</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
+          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.798 7.45c.512-.67 1.135-.95 1.702-.95s1.19.28 1.702.95a.75.75 0 0 0 1.192-.91C12.637 5.55 11.596 5 10.5 5s-2.137.55-2.894 1.54A5.205 5.205 0 0 0 6.5 10c0 1.173.382 2.26 1.106 3.46C8.363 14.45 9.404 15 10.5 15s2.137-.55 2.894-1.54a.75.75 0 0 0-1.192-.91c-.512.67-1.135.95-1.702.95s-1.19-.28-1.702-.95A3.705 3.705 0 0 1 8 10c0-.87.284-1.72.798-2.55Z" clipRule="evenodd" />
@@ -275,9 +275,9 @@ export default async function AdminPage() {
                 ? `${((totalCommission / totalRevenue) * 100).toFixed(1)}% avg rate`
                 : "No sales yet"}
             </p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
+          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
             <div className="admin-stat-card-icon" style={{ background: "rgba(6,182,212,0.1)", borderColor: "rgba(6,182,212,0.25)" }}>
               <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#22d3ee" }}>
                 <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 0 1 .919-.53l4.78 1.281a.75.75 0 0 1 .531.919l-1.281 4.78a.75.75 0 0 1-1.449-.387l.81-3.022a19.407 19.407 0 0 0-5.594 5.203.75.75 0 0 1-1.139.093L7 10.06l-4.72 4.72a.75.75 0 0 1-1.06-1.061l5.25-5.25a.75.75 0 0 1 1.06 0l3.074 3.073a20.923 20.923 0 0 1 5.545-4.931l-3.042-.815a.75.75 0 0 1-.53-.918Z" clipRule="evenodd" />
@@ -288,9 +288,9 @@ export default async function AdminPage() {
               {formatCurrency(totalProfit)}
             </p>
             <p className="admin-stat-sub">After all costs deducted</p>
-          </div>
+          </Link>
 
-          <div className="admin-stat-card">
+          <Link href="/admin/sales" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.632l2.051-.684a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684Z" />
@@ -301,7 +301,7 @@ export default async function AdminPage() {
               {totalSales > 0 ? formatCurrency(Math.round(totalRevenue / totalSales)) : "—"}
             </p>
             <p className="admin-stat-sub">Per closed sale</p>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -623,11 +623,29 @@ export default async function AdminPage() {
               </svg>
               View Audit Logs
             </Link>
-            <Link className="admin-action-btn admin-action-btn-secondary" href="/landlords">
+            <Link className="admin-action-btn admin-action-btn-secondary" href="/admin/landlords">
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
               </svg>
               All Landlords
+            </Link>
+            <Link className="admin-action-btn admin-action-btn-secondary" href="/admin/properties">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z" clipRule="evenodd" />
+              </svg>
+              All Properties
+            </Link>
+            <Link className="admin-action-btn admin-action-btn-secondary" href="/admin/sales">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+              </svg>
+              All Sales
+            </Link>
+            <Link className="admin-action-btn admin-action-btn-secondary" href="/admin/tenants">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
+              </svg>
+              All Tenants
             </Link>
             <Link className="admin-action-btn admin-action-btn-secondary" href="/dashboard">
               <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">

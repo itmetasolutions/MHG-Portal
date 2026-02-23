@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
@@ -398,13 +399,16 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                     return (
                       <tr key={agent.id}>
                         <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                          <Link
+                            href={`/admin/agents/${agent.id}`}
+                            style={{ display: "flex", alignItems: "center", gap: "0.6rem", textDecoration: "none", color: "inherit" }}
+                          >
                             <AgentInitials
                               name={agent.agentDisplayName}
                               email={agent.email}
                             />
                             <div>
-                              <strong>{agent.agentDisplayName}</strong>
+                              <strong style={{ color: "var(--brand-gold)" }}>{agent.agentDisplayName}</strong>
                               <span
                                 className="muted"
                                 style={{ display: "block", fontSize: "0.78rem" }}
@@ -412,7 +416,7 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                                 {agent.email}
                               </span>
                             </div>
-                          </div>
+                          </Link>
                         </td>
                         <td>
                           <span

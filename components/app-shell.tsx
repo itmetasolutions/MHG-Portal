@@ -23,6 +23,19 @@ export function AppShell({ session, children }: Props) {
     return <>{children}</>;
   }
 
+  // Protected agent routes have their own full layout via AgentShell
+  const isProtectedPath =
+    pathname === "/dashboard" ||
+    pathname?.startsWith("/landlords") ||
+    pathname?.startsWith("/properties") ||
+    pathname?.startsWith("/sales") ||
+    pathname?.startsWith("/tenants") ||
+    pathname?.startsWith("/profile");
+
+  if (session && isProtectedPath) {
+    return <>{children}</>;
+  }
+
   return (
     <>
       <header className="top-nav">
@@ -44,6 +57,15 @@ export function AppShell({ session, children }: Props) {
                 </Link>
                 <Link className="nav-link" href="/landlords">
                   Landlords
+                </Link>
+                <Link className="nav-link" href="/properties">
+                  Properties
+                </Link>
+                <Link className="nav-link" href="/sales">
+                  Sales
+                </Link>
+                <Link className="nav-link" href="/tenants">
+                  Tenants
                 </Link>
                 <Link className="nav-link" href="/profile">
                   Profile
@@ -76,7 +98,7 @@ export function AppShell({ session, children }: Props) {
           <span className="footer-copy">
             &copy; {new Date().getFullYear()} More Homes Group. All rights reserved.
           </span>
-          <span className="footer-tag">Landlord Registry Portal</span>
+          <span className="footer-tag">Letting Agency Portal</span>
         </div>
       </footer>
     </>
