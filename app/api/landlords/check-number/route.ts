@@ -3,12 +3,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { normalizeUkPhone } from "@/server/phone";
 
 const querySchema = z
   .object({
-    landlordNumber: z.string().trim().min(1, "landlordNumber is required"),
+    phone: z.string().trim().min(1).optional(),
+    landlordNumber: z.string().trim().min(1).optional(),
   })
-  .strict();
+  .superRefine((value, ctx) => {
+    if (!value.phone && !value.landlordNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone"],
+        message: "phone is required.",
+      });
+    }
+  });
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
@@ -22,6 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   const parse = querySchema.safeParse({
+    phone: request.nextUrl.searchParams.get("phone") ?? undefined,
     landlordNumber: request.nextUrl.searchParams.get("landlordNumber") ?? undefined,
   });
 
@@ -29,49 +40,63 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "INVALID_QUERY",
-        message: "landlordNumber is required.",
+        message: "phone is required.",
         details: parse.error.flatten(),
       },
       { status: 400 },
     );
   }
 
-  const landlordNumber = parse.data.landlordNumber;
-
-  const [active, passiveCount] = await Promise.all([
-    db.landlord.findFirst({
-      where: {
-        landlordNumber,
-        status: "ACTIVE",
+  const phoneInput = parse.data.phone ?? parse.data.landlordNumber ?? "";
+  const normalized = normalizeUkPhone(phoneInput);
+  if (!normalized.ok) {
+    return NextResponse.json(
+      {
+        error: "INVALID_PHONE",
+        message: normalized.message,
       },
-      select: {
-        id: true,
-        landlordName: true,
-        landlordNumber: true,
-        status: true,
-        ownerAgentId: true,
-        createdAt: true,
-        ownerAgent: {
-          select: {
-            id: true,
-            agentDisplayName: true,
-          },
+      { status: 400 },
+    );
+  }
+
+  const landlord = await db.landlord.findUnique({
+    where: {
+      phoneLast10: normalized.phoneLast10,
+    },
+    select: {
+      id: true,
+      landlordName: true,
+      phoneE164: true,
+      phoneLast10: true,
+      email: true,
+      notes: true,
+      ownerAgentId: true,
+      createdAt: true,
+      ownerAgent: {
+        select: {
+          id: true,
+          agentDisplayName: true,
         },
       },
-    }),
-    db.landlord.count({
-      where: {
-        landlordNumber,
-        status: "PASSIVE",
+      _count: {
+        select: {
+          properties: true,
+        },
       },
-    }),
-  ]);
+    },
+  });
+
+  const canAccessExisting =
+    landlord === null || auth.user.role === "ADMIN" || landlord.ownerAgentId === auth.user.id;
 
   return NextResponse.json({
-    landlordNumber,
-    activeExists: Boolean(active),
-    existingActiveLandlord: active ?? null,
-    passiveCount,
-    canCreate: !active,
+    phoneInput,
+    phoneLast10: normalized.phoneLast10,
+    phoneE164: normalized.phoneE164,
+    landlordExists: Boolean(landlord),
+    landlord,
+    canCreateLandlord: !landlord,
+    canCreateProperty: canAccessExisting,
+    ownershipConflict: Boolean(landlord && !canAccessExisting),
   });
 }

@@ -1,25 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
-import { UIStatusBadge } from "@/components/ui/badge";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
-import { UIConfirmModal } from "@/components/ui/modal";
 import { UISelect } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
-import { fetchLandlords, setLandlordPassive, type LandlordRow, type SessionRole } from "@/lib/portal-api";
-
-type TabKey = "ALL" | "MY" | "ACTIVE" | "PASSIVE";
-
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "ALL", label: "All" },
-  { key: "MY", label: "My Landlords" },
-  { key: "ACTIVE", label: "Active" },
-  { key: "PASSIVE", label: "Passive" },
-];
+import { fetchLandlords, type LandlordRow, type SessionRole } from "@/lib/portal-api";
 
 type Props = {
   currentUserId: string;
@@ -27,12 +16,12 @@ type Props = {
 };
 
 export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
-  const [tab, setTab] = useState<TabKey>("ALL");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [agent, setAgent] = useState("");
+  const [phoneLast10, setPhoneLast10] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [mineOnly, setMineOnly] = useState(currentRole === "AGENT");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [busy, setBusy] = useState(false);
@@ -40,19 +29,11 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const [confirmLandlord, setConfirmLandlord] = useState<LandlordRow | null>(null);
-  const [passiveBusy, setPassiveBusy] = useState(false);
-
-  const effectiveStatus = useMemo(() => {
-    if (tab === "ACTIVE") return "ACTIVE" as const;
-    if (tab === "PASSIVE") return "PASSIVE" as const;
-    return status ? (status as "ACTIVE" | "PASSIVE") : undefined;
-  }, [status, tab]);
 
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, tab]);
+  }, [page, pageSize]);
 
   async function load() {
     setBusy(true);
@@ -60,13 +41,13 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
 
     const result = await fetchLandlords({
       search: search || undefined,
-      status: effectiveStatus,
       agent: agent || undefined,
+      phoneLast10: phoneLast10 || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
       page,
       pageSize,
-      mine: tab === "MY",
+      mine: mineOnly || currentRole === "AGENT",
     });
 
     setBusy(false);
@@ -84,30 +65,8 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
     setTotal(result.data.pagination.total);
   }
 
-  async function markPassive(landlord: LandlordRow) {
-    setPassiveBusy(true);
-    const result = await setLandlordPassive(landlord.id);
-    setPassiveBusy(false);
-
-    if (!result.ok) {
-      setMessage({
-        type: "error",
-        text: result.message ?? "Failed to set landlord as PASSIVE.",
-      });
-      return;
-    }
-
-    setMessage({ type: "success", text: "Landlord set to PASSIVE." });
-    setConfirmLandlord(null);
-    await load();
-  }
-
   function canEdit(row: LandlordRow) {
-    return currentRole === "ADMIN" || (row.ownerAgent.id === currentUserId && row.status !== "PASSIVE");
-  }
-
-  function canSetPassive(row: LandlordRow) {
-    return row.ownerAgent.id === currentUserId && row.status === "ACTIVE";
+    return currentRole === "ADMIN" || row.ownerAgent.id === currentUserId;
   }
 
   return (
@@ -115,31 +74,15 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
       <header className="page-header">
         <div>
           <h1 className="page-title">Landlord Registry</h1>
-          <p className="page-subtitle">Search, filter, and manage landlord records.</p>
+          <p className="page-subtitle">Phone-keyed landlords with owner-agent enforcement.</p>
         </div>
         <Link className="btn btn-primary" href="/landlords/new">
-          New Landlord
+          Add Property
         </Link>
       </header>
 
       <UICard>
         <UICardBody className="stack">
-          <div className="chip-group">
-            {TABS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`chip ${tab === item.key ? "chip-active" : ""}`.trim()}
-                onClick={() => {
-                  setTab(item.key);
-                  setPage(1);
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
           <div className="two-col">
             <div className="field-grid">
               <label className="field">
@@ -147,33 +90,35 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
                 <UIInput
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Name, number, property ID, URL"
+                  placeholder="Name, phone, email"
                 />
               </label>
-
               <label className="field">
-                <span className="label">Agent</span>
+                <span className="label">Phone Last 10</span>
                 <UIInput
-                  value={agent}
-                  onChange={(event) => setAgent(event.target.value)}
-                  placeholder="Agent display name"
+                  value={phoneLast10}
+                  onChange={(event) => setPhoneLast10(event.target.value)}
+                  placeholder="7911122233"
                 />
               </label>
             </div>
 
             <div className="field-grid">
-              <label className="field">
-                <span className="label">Status</span>
-                <UISelect
-                  value={effectiveStatus ?? ""}
-                  onChange={(event) => setStatus(event.target.value)}
-                  disabled={tab === "ACTIVE" || tab === "PASSIVE"}
-                >
-                  <option value="">All</option>
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="PASSIVE">PASSIVE</option>
-                </UISelect>
-              </label>
+              {currentRole === "ADMIN" ? (
+                <label className="field">
+                  <span className="label">Agent</span>
+                  <UIInput
+                    value={agent}
+                    onChange={(event) => setAgent(event.target.value)}
+                    placeholder="Agent name/email/id"
+                  />
+                </label>
+              ) : (
+                <label className="field">
+                  <span className="label">Scope</span>
+                  <UIInput value="Your landlords only" disabled />
+                </label>
+              )}
 
               <div className="inline-row">
                 <label className="field" style={{ flex: 1 }}>
@@ -202,11 +147,11 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
               variant="secondary"
               onClick={() => {
                 setSearch("");
-                setStatus("");
                 setAgent("");
+                setPhoneLast10("");
                 setDateFrom("");
                 setDateTo("");
-                setTab("ALL");
+                setMineOnly(currentRole === "AGENT");
                 setPage(1);
                 void load();
               }}
@@ -214,6 +159,16 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             >
               Reset
             </UIButton>
+            {currentRole === "ADMIN" ? (
+              <label className="inline-row">
+                <input
+                  type="checkbox"
+                  checked={mineOnly}
+                  onChange={(event) => setMineOnly(event.target.checked)}
+                />
+                <span className="label">Mine only</span>
+              </label>
+            ) : null}
             <label className="inline-row">
               <span className="label">Page Size</span>
               <UISelect
@@ -236,13 +191,12 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>landlordName</th>
-                  <th>landlordNumber</th>
-                  <th>propertyId</th>
-                  <th>url</th>
-                  <th>agentDisplayName</th>
-                  <th>status</th>
-                  <th>createdAt</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Owner Agent</th>
+                  <th>Properties</th>
+                  <th>Created</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -250,21 +204,12 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
                 {rows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.landlordName}</td>
-                    <td>{row.landlordNumber}</td>
-                    <td>{row.propertyId}</td>
                     <td>
-                      {row.url ? (
-                        <a className="btn btn-secondary" href={row.url} target="_blank" rel="noreferrer">
-                          Open
-                        </a>
-                      ) : (
-                        <span className="muted">-</span>
-                      )}
+                      <code>{row.phoneLast10}</code>
                     </td>
+                    <td>{row.email ?? "-"}</td>
                     <td>{row.ownerAgent.agentDisplayName}</td>
-                    <td>
-                      <UIStatusBadge status={row.status} />
-                    </td>
+                    <td>{row._count?.properties ?? "-"}</td>
                     <td>{formatDate(row.createdAt)}</td>
                     <td>
                       <div className="inline-row">
@@ -276,18 +221,13 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
                             Edit
                           </Link>
                         ) : null}
-                        {canSetPassive(row) ? (
-                          <UIButton variant="danger" onClick={() => setConfirmLandlord(row)}>
-                            Set Passive
-                          </UIButton>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
                 ))}
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="muted">
+                    <td colSpan={7} className="muted">
                       No landlords found.
                     </td>
                   </tr>
@@ -328,24 +268,6 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
           </div>
         </UICardBody>
       </UICard>
-
-      {confirmLandlord ? (
-        <UIConfirmModal
-          title="Set Landlord to PASSIVE"
-          body={
-            <p style={{ margin: 0 }}>
-              Landlord <strong>{confirmLandlord.landlordName}</strong> will be locked permanently and cannot
-              return to ACTIVE. Continue?
-            </p>
-          }
-          confirmLabel="Confirm PASSIVE"
-          busy={passiveBusy}
-          onCancel={() => setConfirmLandlord(null)}
-          onConfirm={() => {
-            void markPassive(confirmLandlord);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

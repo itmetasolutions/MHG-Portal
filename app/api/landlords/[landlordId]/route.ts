@@ -1,39 +1,41 @@
-import { LandlordStatus, Prisma, UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { env } from "@/lib/env";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { normalizeUkPhone } from "@/server/phone";
 import {
   canChangeLandlordOwnership,
   canEditLandlord,
-  canSetLandlordStatus,
   canViewLandlordRegistry,
 } from "@/server/policies";
 
 const landlordIdSchema = z.string().uuid("landlord id must be a valid UUID");
 
+const optionalEmailSchema = z.union([z.string().trim().email(), z.literal(""), z.null()]).optional();
+const optionalNotesSchema = z.union([z.string().trim().max(5000), z.literal(""), z.null()]).optional();
+
 const agentPatchSchema = z
   .object({
-    landlordName: z.string().trim().min(1).optional(),
-    landlordNumber: z.string().trim().min(1).optional(),
-    propertyId: z.string().trim().min(1).optional(),
-    url: z.string().url().optional(),
-    status: z.enum(["ACTIVE", "PASSIVE"]).optional(),
+    fullName: z.string().trim().min(1).optional(),
+    phone: z.string().trim().min(1).optional(),
+    email: optionalEmailSchema,
+    notes: optionalNotesSchema,
   })
   .strict();
 
 const adminPatchSchema = agentPatchSchema
   .extend({
     ownerAgentId: z.string().uuid().optional(),
+    reassignmentReason: z.string().trim().min(3).max(500).optional(),
   })
   .strict();
 
-const activeConflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
+const conflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
   id: true,
   landlordName: true,
-  landlordNumber: true,
-  status: true,
+  phoneLast10: true,
+  phoneE164: true,
   ownerAgentId: true,
   createdAt: true,
   ownerAgent: {
@@ -50,15 +52,28 @@ type Params = {
   };
 };
 
-function conflictResponse(existingActiveLandlord: Prisma.LandlordGetPayload<{ select: typeof activeConflictSelect }>) {
+function conflictResponse(existingLandlord: Prisma.LandlordGetPayload<{ select: typeof conflictSelect }>) {
   return NextResponse.json(
     {
-      error: "LANDLORD_NUMBER_CONFLICT",
-      message: "An ACTIVE landlord with this landlordNumber already exists.",
-      existingActiveLandlord,
+      error: "LANDLORD_PHONE_CONFLICT",
+      message: "A landlord already exists with this phone (last 10 digits).",
+      existingLandlord,
     },
     { status: 409 },
   );
+}
+
+async function ensureOwnerAgent(ownerAgentId: string) {
+  const user = await db.user.findUnique({
+    where: { id: ownerAgentId },
+    select: { id: true, role: true, isActive: true },
+  });
+
+  if (!user || user.role !== "AGENT" || !user.isActive) {
+    return null;
+  }
+
+  return user;
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
@@ -93,10 +108,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       id: true,
       landlordName: true,
       landlordNumber: true,
-      propertyId: true,
-      url: true,
-      status: true,
-      lockedAt: true,
+      phoneE164: true,
+      phoneLast10: true,
+      email: true,
+      notes: true,
       createdAt: true,
       updatedAt: true,
       createdByUserId: true,
@@ -108,11 +123,26 @@ export async function GET(request: NextRequest, { params }: Params) {
           agentDisplayName: true,
         },
       },
+      _count: {
+        select: {
+          properties: true,
+        },
+      },
     },
   });
 
   if (!landlord) {
     return NextResponse.json({ error: "NOT_FOUND", message: "Landlord not found." }, { status: 404 });
+  }
+
+  if (auth.user.role === "AGENT" && landlord.ownerAgentId !== auth.user.id) {
+    return NextResponse.json(
+      {
+        error: "FORBIDDEN",
+        message: "Agents can only access their own landlords.",
+      },
+      { status: 403 },
+    );
   }
 
   const canEdit = canEditLandlord(auth.user, landlord);
@@ -180,10 +210,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       id: true,
       landlordName: true,
       landlordNumber: true,
-      propertyId: true,
-      url: true,
-      status: true,
-      lockedAt: true,
+      phoneE164: true,
+      phoneLast10: true,
+      email: true,
+      notes: true,
       createdAt: true,
       updatedAt: true,
       createdByUserId: true,
@@ -196,57 +226,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "NOT_FOUND", message: "Landlord not found." }, { status: 404 });
   }
 
-  if (auth.user.role === "AGENT" && currentLandlord.ownerAgentId !== auth.user.id) {
-    return NextResponse.json(
-      {
-        error: "FORBIDDEN",
-        message: "Agents can only update their own landlords.",
-      },
-      { status: 403 },
-    );
-  }
-
-  if (auth.user.role === "AGENT" && currentLandlord.status === "PASSIVE") {
-    return NextResponse.json(
-      {
-        error: "LANDLORD_LOCKED",
-        message: "PASSIVE landlords are immutable for agents.",
-      },
-      { status: 403 },
-    );
-  }
-
-  const requestedStatus = payload.status as LandlordStatus | undefined;
-  const allowAdminPassiveRevert = env.ALLOW_ADMIN_PASSIVE_REVERT;
-
-  if (
-    requestedStatus !== undefined &&
-    requestedStatus !== currentLandlord.status &&
-    !canSetLandlordStatus(auth.user, currentLandlord, requestedStatus, {
-      allowAdminPassiveRevert,
-    })
-  ) {
-    if (requestedStatus === "ACTIVE" && currentLandlord.status === "PASSIVE") {
-      return NextResponse.json(
-        {
-          error: "INVALID_STATUS_TRANSITION",
-          message:
-            "Status cannot revert from PASSIVE to ACTIVE unless admin override is explicitly enabled.",
-        },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: "FORBIDDEN",
-        message: "You cannot apply this status transition.",
-      },
-      { status: 403 },
-    );
-  }
-
-  if (!canEditLandlord(auth.user, currentLandlord) && requestedStatus === undefined) {
+  if (!canEditLandlord(auth.user, currentLandlord)) {
     return NextResponse.json(
       {
         error: "FORBIDDEN",
@@ -256,68 +236,57 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const nextStatus = requestedStatus ?? currentLandlord.status;
-  const nextLandlordNumber = payload.landlordNumber ?? currentLandlord.landlordNumber;
-
-  if (nextStatus === "ACTIVE") {
-    const duplicate = await db.landlord.findFirst({
-      where: {
-        id: { not: currentLandlord.id },
-        landlordNumber: nextLandlordNumber,
-        status: "ACTIVE",
-      },
-      select: activeConflictSelect,
-    });
-
-    if (duplicate) {
-      return conflictResponse(duplicate);
-    }
-  }
-
   const updateData: Prisma.LandlordUncheckedUpdateInput = {
     updatedByUserId: auth.user.id,
   };
-
   let hasChanges = false;
+  let nextPhoneLast10 = currentLandlord.phoneLast10;
+  let nextPhoneE164 = currentLandlord.phoneE164;
 
-  if (payload.landlordName !== undefined && payload.landlordName !== currentLandlord.landlordName) {
-    updateData.landlordName = payload.landlordName;
+  if (payload.fullName !== undefined && payload.fullName !== currentLandlord.landlordName) {
+    updateData.landlordName = payload.fullName;
     hasChanges = true;
   }
 
-  if (
-    payload.landlordNumber !== undefined &&
-    payload.landlordNumber !== currentLandlord.landlordNumber
-  ) {
-    updateData.landlordNumber = payload.landlordNumber;
-    hasChanges = true;
+  if (payload.phone !== undefined) {
+    const normalized = normalizeUkPhone(payload.phone);
+    if (!normalized.ok) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PHONE",
+          message: normalized.message,
+        },
+        { status: 400 },
+      );
+    }
+
+    nextPhoneLast10 = normalized.phoneLast10;
+    nextPhoneE164 = normalized.phoneE164;
+    if (
+      normalized.phoneLast10 !== currentLandlord.phoneLast10 ||
+      normalized.phoneE164 !== currentLandlord.phoneE164
+    ) {
+      updateData.phoneLast10 = normalized.phoneLast10;
+      updateData.phoneE164 = normalized.phoneE164;
+      updateData.landlordNumber = normalized.phoneLast10;
+      hasChanges = true;
+    }
   }
 
-  if (payload.propertyId !== undefined && payload.propertyId !== currentLandlord.propertyId) {
-    updateData.propertyId = payload.propertyId;
-    hasChanges = true;
+  if (payload.email !== undefined) {
+    const nextEmail = payload.email?.trim() || null;
+    if (nextEmail !== currentLandlord.email) {
+      updateData.email = nextEmail;
+      hasChanges = true;
+    }
   }
 
-  if (payload.url !== undefined && payload.url !== currentLandlord.url) {
-    updateData.url = payload.url;
-    hasChanges = true;
-  }
-
-  const statusChangesToPassive =
-    requestedStatus === "PASSIVE" && currentLandlord.status === "ACTIVE";
-  const statusChangesToActive =
-    requestedStatus === "ACTIVE" && currentLandlord.status === "PASSIVE";
-
-  if (statusChangesToPassive) {
-    updateData.status = "PASSIVE";
-    updateData.lockedAt = currentLandlord.lockedAt ?? new Date();
-    hasChanges = true;
-  }
-
-  if (statusChangesToActive) {
-    updateData.status = "ACTIVE";
-    updateData.lockedAt = null;
-    hasChanges = true;
+  if (payload.notes !== undefined) {
+    const nextNotes = payload.notes?.trim() || null;
+    if (nextNotes !== currentLandlord.notes) {
+      updateData.notes = nextNotes;
+      hasChanges = true;
+    }
   }
 
   if ("ownerAgentId" in payload && payload.ownerAgentId !== undefined) {
@@ -331,16 +300,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       );
     }
 
-    const ownerAgent = await db.user.findUnique({
-      where: { id: payload.ownerAgentId },
-      select: {
-        id: true,
-        role: true,
-        isActive: true,
-      },
-    });
-
-    if (!ownerAgent || ownerAgent.role !== "AGENT" || !ownerAgent.isActive) {
+    const ownerAgent = await ensureOwnerAgent(payload.ownerAgentId);
+    if (!ownerAgent) {
       return NextResponse.json(
         {
           error: "INVALID_OWNER_AGENT",
@@ -351,6 +312,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
 
     if (payload.ownerAgentId !== currentLandlord.ownerAgentId) {
+      if (!payload.reassignmentReason) {
+        return NextResponse.json(
+          {
+            error: "REASSIGNMENT_REASON_REQUIRED",
+            message: "reassignmentReason is required when changing ownerAgentId.",
+          },
+          { status: 400 },
+        );
+      }
+
       updateData.ownerAgentId = payload.ownerAgentId;
       hasChanges = true;
     }
@@ -366,6 +337,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
+  const duplicate = await db.landlord.findUnique({
+    where: { phoneLast10: nextPhoneLast10 },
+    select: conflictSelect,
+  });
+
+  if (duplicate && duplicate.id !== currentLandlord.id) {
+    return conflictResponse(duplicate);
+  }
+
   try {
     const updated = await db.$transaction(async (tx) => {
       const landlord = await tx.landlord.update({
@@ -375,24 +355,46 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           id: true,
           landlordName: true,
           landlordNumber: true,
-          propertyId: true,
-          url: true,
-          status: true,
-          lockedAt: true,
+          phoneE164: true,
+          phoneLast10: true,
+          email: true,
+          notes: true,
           createdAt: true,
           updatedAt: true,
           createdByUserId: true,
           updatedByUserId: true,
           ownerAgentId: true,
+          ownerAgent: {
+            select: {
+              id: true,
+              agentDisplayName: true,
+            },
+          },
+          _count: {
+            select: {
+              properties: true,
+            },
+          },
         },
       });
 
+      const ownerChanged = landlord.ownerAgentId !== currentLandlord.ownerAgentId;
       await tx.auditLog.create({
         data: {
           userId: auth.user.id,
           entityType: "LANDLORD",
           entityId: landlord.id,
-          action: statusChangesToPassive || statusChangesToActive ? "LANDLORD_STATUS_CHANGE" : "LANDLORD_UPDATE",
+          action: ownerChanged ? "REASSIGN_LANDLORD_OWNER" : "UPDATE_LANDLORD",
+          metadata: ownerChanged
+            ? {
+                fromOwnerAgentId: currentLandlord.ownerAgentId,
+                toOwnerAgentId: landlord.ownerAgentId,
+                reason: payload.reassignmentReason ?? null,
+              }
+            : {
+                phoneLast10: nextPhoneLast10,
+                phoneE164: nextPhoneE164,
+              },
           beforeJson: currentLandlord,
           afterJson: landlord,
         },
@@ -409,17 +411,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      const duplicate = await db.landlord.findFirst({
-        where: {
-          id: { not: currentLandlord.id },
-          landlordNumber: nextLandlordNumber,
-          status: "ACTIVE",
-        },
-        select: activeConflictSelect,
+      const conflicting = await db.landlord.findUnique({
+        where: { phoneLast10: nextPhoneLast10 },
+        select: conflictSelect,
       });
-
-      if (duplicate) {
-        return conflictResponse(duplicate);
+      if (conflicting && conflicting.id !== currentLandlord.id) {
+        return conflictResponse(conflicting);
       }
     }
 
@@ -431,7 +428,7 @@ export async function DELETE() {
   return NextResponse.json(
     {
       error: "METHOD_NOT_ALLOWED",
-      message: "DELETE is not allowed for landlords. Set status to PASSIVE instead.",
+      message: "DELETE is not allowed for landlords.",
     },
     { status: 405 },
   );

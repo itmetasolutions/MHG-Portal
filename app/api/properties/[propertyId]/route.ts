@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -19,11 +19,14 @@ const agentUpdateSchema = z
     addressLine1: z.string().trim().min(1).nullable().optional(),
     addressLine2: z.string().trim().min(1).nullable().optional(),
     city: z.string().trim().min(1).nullable().optional(),
-    stateRegion: z.string().trim().min(1).nullable().optional(),
-    postalCode: z.string().trim().min(1).nullable().optional(),
-    country: z.string().trim().min(1).nullable().optional(),
-    url: z.string().url().nullable().optional(),
-    status: z.string().trim().min(1).nullable().optional(),
+    county: z.string().trim().min(1).nullable().optional(),
+    postcode: z.string().trim().min(1).nullable().optional(),
+    propertyType: z.string().trim().min(1).nullable().optional(),
+    beds: z.coerce.number().int().min(0).nullable().optional(),
+    baths: z.coerce.number().int().min(0).nullable().optional(),
+    status: z.nativeEnum(PropertyStatus).optional(),
+    landlordDemand: z.coerce.number().positive().nullable().optional(),
+    expectedCommissionPct: z.coerce.number().min(0).max(100).nullable().optional(),
   })
   .strict();
 
@@ -38,6 +41,46 @@ type Params = {
     propertyId: string;
   };
 };
+
+const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
+  id: true,
+  landlordId: true,
+  ownerAgentId: true,
+  propertyRef: true,
+  addressLine1: true,
+  addressLine2: true,
+  city: true,
+  county: true,
+  postcode: true,
+  propertyType: true,
+  beds: true,
+  baths: true,
+  status: true,
+  landlordDemand: true,
+  expectedCommissionPct: true,
+  createdAt: true,
+  updatedAt: true,
+  landlord: {
+    select: {
+      id: true,
+      landlordName: true,
+      phoneLast10: true,
+      phoneE164: true,
+      ownerAgentId: true,
+    },
+  },
+  sale: {
+    select: {
+      id: true,
+      finalAmount: true,
+      commissionPct: true,
+      commissionAmount: true,
+      otherCosts: true,
+      profit: true,
+      closedAt: true,
+    },
+  },
+});
 
 export async function GET(request: NextRequest, { params }: Params) {
   const auth = await requireUser(request);
@@ -63,30 +106,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const property = await db.property.findUnique({
     where: { id: idParse.data },
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      stateRegion: true,
-      postalCode: true,
-      country: true,
-      url: true,
-      status: true,
-      createdAt: true,
-      updatedAt: true,
-      landlord: {
-        select: {
-          id: true,
-          landlordNumber: true,
-          landlordName: true,
-          ownerAgentId: true,
-        },
-      },
-    },
+    select: propertySelect,
   });
 
   if (!property) {
@@ -135,30 +155,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const currentProperty = await db.property.findUnique({
     where: { id: idParse.data },
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      stateRegion: true,
-      postalCode: true,
-      country: true,
-      url: true,
-      status: true,
-      createdAt: true,
-      updatedAt: true,
-      landlord: {
-        select: {
-          id: true,
-          ownerAgentId: true,
-          landlordNumber: true,
-          landlordName: true,
-        },
-      },
-    },
+    select: propertySelect,
   });
 
   if (!currentProperty) {
@@ -203,8 +200,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     select: {
       id: true,
       ownerAgentId: true,
-      landlordNumber: true,
       landlordName: true,
+      phoneLast10: true,
     },
   });
 
@@ -242,6 +239,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
+  if (payload.status === "SOLD" && !currentProperty.sale) {
+    return NextResponse.json(
+      {
+        error: "SALE_REQUIRED",
+        message:
+          "Use POST /api/properties/:propertyId/close-sale to mark property as SOLD with sale details.",
+      },
+      { status: 400 },
+    );
+  }
+
   const updateData: Prisma.PropertyUncheckedUpdateInput = {};
   let hasChanges = false;
 
@@ -271,24 +279,42 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     updateData.city = payload.city;
     hasChanges = true;
   }
-  if (payload.stateRegion !== undefined && payload.stateRegion !== currentProperty.stateRegion) {
-    updateData.stateRegion = payload.stateRegion;
+  if (payload.county !== undefined && payload.county !== currentProperty.county) {
+    updateData.county = payload.county;
     hasChanges = true;
   }
-  if (payload.postalCode !== undefined && payload.postalCode !== currentProperty.postalCode) {
-    updateData.postalCode = payload.postalCode;
+  if (payload.postcode !== undefined && payload.postcode !== currentProperty.postcode) {
+    updateData.postcode = payload.postcode;
     hasChanges = true;
   }
-  if (payload.country !== undefined && payload.country !== currentProperty.country) {
-    updateData.country = payload.country;
+  if (payload.propertyType !== undefined && payload.propertyType !== currentProperty.propertyType) {
+    updateData.propertyType = payload.propertyType;
     hasChanges = true;
   }
-  if (payload.url !== undefined && payload.url !== currentProperty.url) {
-    updateData.url = payload.url;
+  if (payload.beds !== undefined && payload.beds !== currentProperty.beds) {
+    updateData.beds = payload.beds;
+    hasChanges = true;
+  }
+  if (payload.baths !== undefined && payload.baths !== currentProperty.baths) {
+    updateData.baths = payload.baths;
     hasChanges = true;
   }
   if (payload.status !== undefined && payload.status !== currentProperty.status) {
     updateData.status = payload.status;
+    hasChanges = true;
+  }
+  if (
+    payload.landlordDemand !== undefined &&
+    String(payload.landlordDemand) !== String(currentProperty.landlordDemand)
+  ) {
+    updateData.landlordDemand = payload.landlordDemand;
+    hasChanges = true;
+  }
+  if (
+    payload.expectedCommissionPct !== undefined &&
+    String(payload.expectedCommissionPct) !== String(currentProperty.expectedCommissionPct)
+  ) {
+    updateData.expectedCommissionPct = payload.expectedCommissionPct;
     hasChanges = true;
   }
 
@@ -306,22 +332,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const updated = await tx.property.update({
       where: { id: currentProperty.id },
       data: updateData,
-      select: {
-        id: true,
-        landlordId: true,
-        ownerAgentId: true,
-        propertyRef: true,
-        addressLine1: true,
-        addressLine2: true,
-        city: true,
-        stateRegion: true,
-        postalCode: true,
-        country: true,
-        url: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: propertySelect,
     });
 
     await tx.auditLog.create({
@@ -329,7 +340,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         userId: auth.user.id,
         entityType: "PROPERTY",
         entityId: updated.id,
-        action: "PROPERTY_UPDATE",
+        action: "UPDATE_PROPERTY",
+        metadata: {
+          landlordId: updated.landlordId,
+          ownerAgentId: updated.ownerAgentId,
+          status: updated.status,
+        },
         beforeJson: currentProperty,
         afterJson: updated,
       },
@@ -365,29 +381,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
   const currentProperty = await db.property.findUnique({
     where: { id: idParse.data },
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      stateRegion: true,
-      postalCode: true,
-      country: true,
-      url: true,
-      status: true,
-      createdAt: true,
-      updatedAt: true,
-      landlord: {
-        select: {
-          ownerAgentId: true,
-          landlordNumber: true,
-          landlordName: true,
-        },
-      },
-    },
+    select: propertySelect,
   });
 
   if (!currentProperty) {
@@ -416,7 +410,11 @@ export async function DELETE(request: NextRequest, { params }: Params) {
         userId: auth.user.id,
         entityType: "PROPERTY",
         entityId: currentProperty.id,
-        action: "PROPERTY_DELETE",
+        action: "DELETE_PROPERTY",
+        metadata: {
+          landlordId: currentProperty.landlordId,
+          ownerAgentId: currentProperty.ownerAgentId,
+        },
         beforeJson: currentProperty,
         afterJson: Prisma.JsonNull,
       },

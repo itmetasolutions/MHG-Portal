@@ -1,24 +1,26 @@
-import { LandlordStatus, Prisma, UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { normalizeUkPhone } from "@/server/phone";
 import { canCreateLandlord, canViewLandlordRegistry } from "@/server/policies";
 
 const createLandlordSchema = z
   .object({
-    landlordName: z.string().trim().min(1, "landlordName is required"),
-    landlordNumber: z.string().trim().min(1, "landlordNumber is required"),
-    propertyId: z.string().trim().min(1, "propertyId is required"),
-    url: z.string().url("url must be a valid URL"),
+    fullName: z.string().trim().min(1, "fullName is required"),
+    phone: z.string().trim().min(1, "phone is required"),
+    email: z.string().trim().email("email must be valid").optional(),
+    notes: z.string().trim().max(5000).optional(),
+    ownerAgentId: z.string().uuid().optional(),
   })
   .strict();
 
 const listQuerySchema = z
   .object({
     search: z.string().trim().min(1).optional(),
-    status: z.enum(["ACTIVE", "PASSIVE"]).optional(),
     agent: z.string().trim().min(1).optional(),
+    phoneLast10: z.string().trim().regex(/^\d{10}$/).optional(),
     mine: z.coerce.boolean().optional(),
     dateFrom: z.coerce.date().optional(),
     dateTo: z.coerce.date().optional(),
@@ -34,11 +36,34 @@ const listQuerySchema = z
     }
   });
 
-const activeConflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
+const landlordListSelect = Prisma.validator<Prisma.LandlordSelect>()({
   id: true,
   landlordName: true,
   landlordNumber: true,
-  status: true,
+  phoneE164: true,
+  phoneLast10: true,
+  email: true,
+  notes: true,
+  createdAt: true,
+  updatedAt: true,
+  ownerAgent: {
+    select: {
+      id: true,
+      agentDisplayName: true,
+    },
+  },
+  _count: {
+    select: {
+      properties: true,
+    },
+  },
+});
+
+const conflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
+  id: true,
+  landlordName: true,
+  phoneE164: true,
+  phoneLast10: true,
   ownerAgentId: true,
   createdAt: true,
   ownerAgent: {
@@ -49,37 +74,30 @@ const activeConflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
   },
 });
 
-const landlordListCoreSelect = Prisma.validator<Prisma.LandlordSelect>()({
-  id: true,
-  landlordName: true,
-  landlordNumber: true,
-  propertyId: true,
-  url: true,
-  status: true,
-  lockedAt: true,
-  createdAt: true,
-  updatedAt: true,
-  ownerAgent: {
-    select: {
-      id: true,
-      agentDisplayName: true,
-    },
-  },
-});
+type LandlordConflictSummary = Prisma.LandlordGetPayload<{ select: typeof conflictSelect }>;
 
-type LandlordActiveConflictSummary = Prisma.LandlordGetPayload<{
-  select: typeof activeConflictSelect;
-}>;
-
-function conflictResponse(existingActiveLandlord: LandlordActiveConflictSummary) {
+function conflictResponse(existingLandlord: LandlordConflictSummary) {
   return NextResponse.json(
     {
-      error: "LANDLORD_NUMBER_CONFLICT",
-      message: "An ACTIVE landlord with this landlordNumber already exists.",
-      existingActiveLandlord,
+      error: "LANDLORD_PHONE_CONFLICT",
+      message: "A landlord already exists with this phone (last 10 digits).",
+      existingLandlord,
     },
     { status: 409 },
   );
+}
+
+async function ensureOwnerAgent(ownerAgentId: string) {
+  const ownerAgent = await db.user.findUnique({
+    where: { id: ownerAgentId },
+    select: { id: true, role: true, isActive: true },
+  });
+
+  if (!ownerAgent || !ownerAgent.isActive || ownerAgent.role !== "AGENT") {
+    return null;
+  }
+
+  return ownerAgent;
 }
 
 export async function GET(request: NextRequest) {
@@ -99,8 +117,8 @@ export async function GET(request: NextRequest) {
 
   const queryParse = listQuerySchema.safeParse({
     search: request.nextUrl.searchParams.get("search") ?? undefined,
-    status: request.nextUrl.searchParams.get("status") ?? undefined,
     agent: request.nextUrl.searchParams.get("agent") ?? undefined,
+    phoneLast10: request.nextUrl.searchParams.get("phoneLast10") ?? undefined,
     mine: request.nextUrl.searchParams.get("mine") ?? undefined,
     dateFrom: request.nextUrl.searchParams.get("dateFrom") ?? undefined,
     dateTo: request.nextUrl.searchParams.get("dateTo") ?? undefined,
@@ -119,33 +137,38 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { search, status, agent, mine, dateFrom, dateTo, page, pageSize } = queryParse.data;
-
+  const { search, agent, phoneLast10, mine, dateFrom, dateTo, page, pageSize } = queryParse.data;
   const where: Prisma.LandlordWhereInput = {};
 
   if (search) {
     where.OR = [
       { landlordName: { contains: search, mode: "insensitive" } },
-      { landlordNumber: { contains: search, mode: "insensitive" } },
-      { propertyId: { contains: search, mode: "insensitive" } },
-      { url: { contains: search, mode: "insensitive" } },
+      { phoneLast10: { contains: search } },
+      { phoneE164: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
     ];
   }
 
-  if (status) {
-    where.status = status as LandlordStatus;
+  if (phoneLast10) {
+    where.phoneLast10 = phoneLast10;
   }
 
-  if (agent) {
+  if (auth.user.role === "AGENT") {
+    where.ownerAgentId = auth.user.id;
+  } else if (mine) {
+    where.ownerAgentId = auth.user.id;
+  }
+
+  if (auth.user.role === "ADMIN" && agent) {
     where.ownerAgent = {
       is: {
-        agentDisplayName: { contains: agent, mode: "insensitive" },
+        OR: [
+          { id: agent },
+          { email: { contains: agent, mode: "insensitive" } },
+          { agentDisplayName: { contains: agent, mode: "insensitive" } },
+        ],
       },
     };
-  }
-
-  if (mine === true && auth.user.role === "AGENT") {
-    where.ownerAgentId = auth.user.id;
   }
 
   if (dateFrom || dateTo) {
@@ -162,7 +185,6 @@ export async function GET(request: NextRequest) {
   }
 
   const skip = (page - 1) * pageSize;
-
   const [total, landlords] = await db.$transaction([
     db.landlord.count({ where }),
     db.landlord.findMany({
@@ -170,7 +192,7 @@ export async function GET(request: NextRequest) {
       skip,
       take: pageSize,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: landlordListCoreSelect,
+      select: landlordListSelect,
     }),
   ]);
 
@@ -203,15 +225,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "INVALID_REQUEST",
-        message:
-          "landlordName, landlordNumber, propertyId and url are required, and url must be valid.",
+        message: "Invalid landlord payload.",
         details: error instanceof z.ZodError ? error.flatten() : undefined,
       },
       { status: 400 },
     );
   }
 
-  const ownerAgentId = auth.user.id;
+  const normalizedPhone = normalizeUkPhone(payload.phone);
+  if (!normalizedPhone.ok) {
+    return NextResponse.json(
+      {
+        error: "INVALID_PHONE",
+        message: normalizedPhone.message,
+      },
+      { status: 400 },
+    );
+  }
+
+  const ownerAgentId =
+    auth.user.role === "ADMIN" ? payload.ownerAgentId ?? auth.user.id : auth.user.id;
+
   if (!canCreateLandlord(auth.user, ownerAgentId)) {
     return NextResponse.json(
       {
@@ -222,42 +256,69 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existingActive = await db.landlord.findFirst({
+  if (auth.user.role === "ADMIN" && !payload.ownerAgentId) {
+    return NextResponse.json(
+      {
+        error: "OWNER_AGENT_REQUIRED",
+        message: "ownerAgentId is required when an admin creates a landlord.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const ownerAgent = await ensureOwnerAgent(ownerAgentId);
+  if (!ownerAgent) {
+    return NextResponse.json(
+      {
+        error: "INVALID_OWNER_AGENT",
+        message: "ownerAgentId must reference an active AGENT user.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const existingLandlord = await db.landlord.findUnique({
     where: {
-      landlordNumber: payload.landlordNumber,
-      status: "ACTIVE",
+      phoneLast10: normalizedPhone.phoneLast10,
     },
-    select: activeConflictSelect,
+    select: conflictSelect,
   });
 
-  if (existingActive) {
-    return conflictResponse(existingActive);
+  if (existingLandlord) {
+    return conflictResponse(existingLandlord);
   }
 
   try {
     const landlord = await db.$transaction(async (tx) => {
       const created = await tx.landlord.create({
         data: {
-          landlordName: payload.landlordName,
-          landlordNumber: payload.landlordNumber,
-          propertyId: payload.propertyId,
-          url: payload.url,
-          status: "ACTIVE",
+          landlordName: payload.fullName,
+          landlordNumber: normalizedPhone.phoneLast10,
+          phoneE164: normalizedPhone.phoneE164,
+          phoneLast10: normalizedPhone.phoneLast10,
+          email: payload.email?.trim() || null,
+          notes: payload.notes?.trim() || null,
           createdByUserId: auth.user.id,
           updatedByUserId: auth.user.id,
-          ownerAgentId,
+          ownerAgentId: ownerAgent.id,
         },
         select: {
           id: true,
           landlordName: true,
           landlordNumber: true,
-          propertyId: true,
-          url: true,
-          status: true,
-          lockedAt: true,
+          phoneE164: true,
+          phoneLast10: true,
+          email: true,
+          notes: true,
           ownerAgentId: true,
           createdAt: true,
           updatedAt: true,
+          ownerAgent: {
+            select: {
+              id: true,
+              agentDisplayName: true,
+            },
+          },
         },
       });
 
@@ -266,7 +327,11 @@ export async function POST(request: NextRequest) {
           userId: auth.user.id,
           entityType: "LANDLORD",
           entityId: created.id,
-          action: "LANDLORD_CREATE",
+          action: "CREATE_LANDLORD",
+          metadata: {
+            phoneLast10: created.phoneLast10,
+            ownerAgentId: created.ownerAgentId,
+          },
           beforeJson: Prisma.JsonNull,
           afterJson: created,
         },
@@ -278,12 +343,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ landlord }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      const duplicate = await db.landlord.findFirst({
+      const duplicate = await db.landlord.findUnique({
         where: {
-          landlordNumber: payload.landlordNumber,
-          status: "ACTIVE",
+          phoneLast10: normalizedPhone.phoneLast10,
         },
-        select: activeConflictSelect,
+        select: conflictSelect,
       });
 
       if (duplicate) {

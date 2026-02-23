@@ -2,19 +2,36 @@ import { apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
 
 export type SessionRole = "ADMIN" | "AGENT";
 
+export type PropertyStatus = "DRAFT" | "LIVE" | "UNDER_OFFER" | "SOLD" | "WITHDRAWN";
+
+export type SaleRow = {
+  id: string;
+  propertyId: string;
+  closedByUserId: string;
+  finalAmount: string;
+  commissionPct: string;
+  commissionAmount: string;
+  otherCosts: string | null;
+  profit: string;
+  closedAt: string;
+};
+
 export type LandlordRow = {
   id: string;
   landlordName: string;
   landlordNumber: string;
-  propertyId: string;
-  url: string;
-  status: "ACTIVE" | "PASSIVE";
-  lockedAt: string | null;
+  phoneE164: string | null;
+  phoneLast10: string;
+  email: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
   ownerAgent: {
     id: string;
     agentDisplayName: string;
+  };
+  _count?: {
+    properties: number;
   };
 };
 
@@ -22,10 +39,10 @@ export type LandlordDetails = {
   id: string;
   landlordName: string;
   landlordNumber: string;
-  propertyId: string;
-  url: string;
-  status: "ACTIVE" | "PASSIVE";
-  lockedAt: string | null;
+  phoneE164: string | null;
+  phoneLast10: string;
+  email: string | null;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
   createdByUserId: string;
@@ -34,6 +51,9 @@ export type LandlordDetails = {
   ownerAgent: {
     id: string;
     agentDisplayName: string;
+  };
+  _count?: {
+    properties: number;
   };
   canEdit: boolean;
 };
@@ -56,13 +76,17 @@ export type PropertyRow = {
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
-  stateRegion: string | null;
-  postalCode: string | null;
-  country: string | null;
-  url: string | null;
-  status: string | null;
+  county: string | null;
+  postcode: string | null;
+  propertyType: string | null;
+  beds: number | null;
+  baths: number | null;
+  status: PropertyStatus;
+  landlordDemand: string | null;
+  expectedCommissionPct: string | null;
   createdAt: string;
   updatedAt: string;
+  sale?: SaleRow | null;
 };
 
 export type AgentRow = {
@@ -82,6 +106,7 @@ export type AuditLogRow = {
   entityType: string;
   entityId: string;
   action: string;
+  metadata: unknown;
   beforeJson: unknown;
   afterJson: unknown;
   createdAt: string;
@@ -105,8 +130,8 @@ export type AuditLogListResponse = {
 
 export function fetchLandlords(params: {
   search?: string;
-  status?: "ACTIVE" | "PASSIVE";
   agent?: string;
+  phoneLast10?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;
@@ -115,8 +140,8 @@ export function fetchLandlords(params: {
 }): Promise<ApiResult<LandlordListResponse>> {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
-  if (params.status) query.set("status", params.status);
   if (params.agent) query.set("agent", params.agent);
+  if (params.phoneLast10) query.set("phoneLast10", params.phoneLast10);
   if (params.dateFrom) query.set("dateFrom", params.dateFrom);
   if (params.dateTo) query.set("dateTo", params.dateTo);
   if (params.page) query.set("page", String(params.page));
@@ -127,24 +152,28 @@ export function fetchLandlords(params: {
 }
 
 export function checkLandlordNumber(
-  landlordNumber: string,
+  phone: string,
 ): Promise<
   ApiResult<{
-    landlordNumber: string;
-    activeExists: boolean;
-    existingActiveLandlord: LandlordRow | null;
-    passiveCount: number;
-    canCreate: boolean;
+    phoneInput: string;
+    phoneLast10: string;
+    phoneE164: string;
+    landlordExists: boolean;
+    ownershipConflict: boolean;
+    canCreateLandlord: boolean;
+    canCreateProperty: boolean;
+    landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
   }>
 > {
-  return apiGet(`/api/landlords/check-number?landlordNumber=${encodeURIComponent(landlordNumber)}`);
+  return apiGet(`/api/landlords/check-number?phone=${encodeURIComponent(phone)}`);
 }
 
 export function createLandlord(payload: {
-  landlordName: string;
-  landlordNumber: string;
-  propertyId: string;
-  url: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  notes?: string;
+  ownerAgentId?: string;
 }): Promise<ApiResult<{ landlord: LandlordRow }>> {
   return apiPost("/api/landlords", payload);
 }
@@ -156,36 +185,72 @@ export function fetchLandlordDetails(id: string): Promise<ApiResult<{ landlord: 
 export function updateLandlord(
   id: string,
   payload: Partial<{
-    landlordName: string;
-    landlordNumber: string;
-    propertyId: string;
-    url: string;
-    status: "ACTIVE" | "PASSIVE";
+    fullName: string;
+    phone: string;
+    email: string | null;
+    notes: string | null;
+    ownerAgentId: string;
+    reassignmentReason: string;
   }>,
 ): Promise<ApiResult<{ landlord: LandlordDetails }>> {
   return apiPatch(`/api/landlords/${id}`, payload);
 }
 
-export function setLandlordPassive(id: string): Promise<ApiResult<{ landlord: LandlordDetails }>> {
-  return apiPatch(`/api/landlords/${id}/status`, { status: "PASSIVE" });
-}
-
 export function fetchLandlordProperties(
   landlordId: string,
-): Promise<ApiResult<{ landlord: Pick<LandlordDetails, "id" | "landlordName" | "landlordNumber" | "ownerAgentId">; properties: PropertyRow[] }>> {
+): Promise<
+  ApiResult<{
+    landlord: {
+      id: string;
+      fullName: string;
+      phoneE164: string | null;
+      phoneLast10: string;
+      email: string | null;
+      ownerAgentId: string;
+    };
+    properties: PropertyRow[];
+  }>
+> {
   return apiGet(`/api/landlords/${landlordId}/properties`);
 }
 
 export function createLandlordProperty(
   landlordId: string,
-  payload: Partial<PropertyRow> & { propertyRef: string },
+  payload: Partial<PropertyRow> & { propertyRef?: string },
 ): Promise<ApiResult<{ property: PropertyRow }>> {
   return apiPost(`/api/landlords/${landlordId}/properties`, payload);
 }
 
+export function createPropertyIntake(payload: {
+  landlord: {
+    fullName?: string;
+    phone: string;
+    email?: string | null;
+    notes?: string | null;
+    ownerAgentId?: string;
+  };
+  property: Partial<PropertyRow> & { propertyRef?: string };
+}): Promise<
+  ApiResult<{
+    landlordCreated: boolean;
+    landlord: {
+      id: string;
+      landlordName: string;
+      ownerAgentId: string;
+      phoneLast10: string;
+    };
+    property: PropertyRow;
+  }>
+> {
+  return apiPost("/api/properties/intake", payload);
+}
+
 export function fetchProperties(params: {
-  landlordNumber?: string;
+  phoneLast10?: string;
   propertyRef?: string;
+  status?: PropertyStatus;
+  city?: string;
+  postcode?: string;
   createdAt?: string;
   page?: number;
   pageSize?: number;
@@ -195,8 +260,9 @@ export function fetchProperties(params: {
       PropertyRow & {
         landlord: {
           id: string;
-          landlordNumber: string;
           landlordName: string;
+          phoneE164: string | null;
+          phoneLast10: string;
           ownerAgentId: string;
         };
       }
@@ -210,8 +276,11 @@ export function fetchProperties(params: {
   }>
 > {
   const query = new URLSearchParams();
-  if (params.landlordNumber) query.set("landlordNumber", params.landlordNumber);
+  if (params.phoneLast10) query.set("phoneLast10", params.phoneLast10);
   if (params.propertyRef) query.set("propertyRef", params.propertyRef);
+  if (params.status) query.set("status", params.status);
+  if (params.city) query.set("city", params.city);
+  if (params.postcode) query.set("postcode", params.postcode);
   if (params.createdAt) query.set("createdAt", params.createdAt);
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
@@ -224,6 +293,78 @@ export function updateProperty(
   payload: Partial<PropertyRow>,
 ): Promise<ApiResult<{ property: PropertyRow }>> {
   return apiPatch(`/api/properties/${propertyId}`, payload);
+}
+
+export function closePropertySale(
+  propertyId: string,
+  payload: {
+    finalAmount: number;
+    commissionPct: number;
+    otherCosts?: number;
+  },
+): Promise<ApiResult<{ sale: SaleRow }>> {
+  return apiPost(`/api/properties/${propertyId}/close-sale`, payload);
+}
+
+export function listSales(params: {
+  dateFrom?: string;
+  dateTo?: string;
+  agent?: string;
+  status?: PropertyStatus;
+  city?: string;
+  postcode?: string;
+  format?: "json" | "csv";
+  page?: number;
+  pageSize?: number;
+}): Promise<
+  ApiResult<{
+    sales: Array<
+      SaleRow & {
+        property: {
+          id: string;
+          propertyRef: string;
+          status: PropertyStatus;
+          city: string | null;
+          postcode: string | null;
+          ownerAgentId: string;
+          ownerAgent: {
+            id: string;
+            agentDisplayName: string;
+            email: string;
+          };
+          landlord: {
+            id: string;
+            landlordName: string;
+            phoneLast10: string;
+          };
+        };
+      }
+    >;
+    totals: {
+      finalAmount: number | null;
+      commissionAmount: number | null;
+      profit: number | null;
+    };
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }>
+> {
+  const query = new URLSearchParams();
+  if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params.dateTo) query.set("dateTo", params.dateTo);
+  if (params.agent) query.set("agent", params.agent);
+  if (params.status) query.set("status", params.status);
+  if (params.city) query.set("city", params.city);
+  if (params.postcode) query.set("postcode", params.postcode);
+  if (params.format) query.set("format", params.format);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+
+  return apiGet(`/api/sales?${query.toString()}`);
 }
 
 export function listAgents(params: {

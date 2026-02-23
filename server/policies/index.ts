@@ -2,7 +2,6 @@ export {
   canChangeLandlordOwnership,
   canCreateLandlord,
   canEditLandlord,
-  canSetLandlordStatus,
   canViewLandlordRegistry,
   type LandlordPolicyResource,
 } from "./landlord";

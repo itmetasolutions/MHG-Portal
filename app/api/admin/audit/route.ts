@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
         entityType: true,
         entityId: true,
         action: true,
+        metadata: true,
         beforeJson: true,
         afterJson: true,
         createdAt: true,

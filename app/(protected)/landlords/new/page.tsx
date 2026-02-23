@@ -1,233 +1,275 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
-import { formatDateTime } from "@/lib/format";
-import { checkLandlordNumber, createLandlord } from "@/lib/portal-api";
+import { UISelect } from "@/components/ui/select";
+import { createPropertyIntake, checkLandlordNumber, type PropertyStatus } from "@/lib/portal-api";
 
-type NumberCheckState =
+type LookupState =
   | { checked: false }
-  | { checked: true; canCreate: boolean; passiveCount: number; summary?: { id: string; landlordName: string; landlordNumber: string; createdAt: string; ownerAgent: { agentDisplayName: string } } };
+  | {
+      checked: true;
+      phoneLast10: string;
+      ownershipConflict: boolean;
+      landlordExists: boolean;
+      landlord: {
+        id: string;
+        landlordName: string;
+        phoneLast10: string;
+        ownerAgentId: string;
+        ownerAgent: { id: string; agentDisplayName: string };
+        _count: { properties: number };
+      } | null;
+    };
 
 export default function NewLandlordPage() {
   const router = useRouter();
+  const [landlordPhone, setLandlordPhone] = useState("");
   const [landlordName, setLandlordName] = useState("");
-  const [landlordNumber, setLandlordNumber] = useState("");
-  const [propertyId, setPropertyId] = useState("");
-  const [url, setUrl] = useState("");
+  const [landlordEmail, setLandlordEmail] = useState("");
+  const [landlordNotes, setLandlordNotes] = useState("");
+
+  const [propertyRef, setPropertyRef] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [landlordDemand, setLandlordDemand] = useState("");
+  const [status, setStatus] = useState<PropertyStatus>("DRAFT");
+
   const [checking, setChecking] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [lookup, setLookup] = useState<LookupState>({ checked: false });
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [checkState, setCheckState] = useState<NumberCheckState>({ checked: false });
 
-  const normalizedNumber = useMemo(() => landlordNumber.trim(), [landlordNumber]);
+  const normalizedPhoneInput = useMemo(() => landlordPhone.trim(), [landlordPhone]);
 
-  async function runNumberCheck(options?: { silent?: boolean }) {
-    if (!normalizedNumber) {
-      setCheckState({ checked: false });
+  const canSubmit = useMemo(() => {
+    if (!lookup.checked) return false;
+    if (lookup.ownershipConflict) return false;
+    if (lookup.landlordExists) return true;
+    return Boolean(landlordName.trim());
+  }, [landlordName, lookup]);
+
+  async function runPhoneLookup() {
+    if (!normalizedPhoneInput) {
+      setLookup({ checked: false });
       return;
     }
 
     setChecking(true);
-    const checkingNumber = normalizedNumber;
-    const result = await checkLandlordNumber(checkingNumber);
+    setMessage(null);
+    const result = await checkLandlordNumber(normalizedPhoneInput);
     setChecking(false);
 
-    if (checkingNumber !== landlordNumber.trim()) {
-      return;
-    }
-
     if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to validate landlord number." });
+      setMessage({ type: "error", text: result.message ?? "Failed to validate phone." });
       return;
     }
 
-    const nextState: NumberCheckState = {
+    setLookup({
       checked: true,
-      canCreate: result.data.canCreate,
-      passiveCount: result.data.passiveCount,
-      summary: result.data.existingActiveLandlord
-        ? {
-            id: result.data.existingActiveLandlord.id,
-            landlordName: result.data.existingActiveLandlord.landlordName,
-            landlordNumber: result.data.existingActiveLandlord.landlordNumber,
-            createdAt: result.data.existingActiveLandlord.createdAt,
-            ownerAgent: {
-              agentDisplayName: result.data.existingActiveLandlord.ownerAgent.agentDisplayName,
-            },
-          }
-        : undefined,
-    };
+      phoneLast10: result.data.phoneLast10,
+      ownershipConflict: result.data.ownershipConflict,
+      landlordExists: result.data.landlordExists,
+      landlord: result.data.landlord,
+    });
 
-    setCheckState(nextState);
-    if (options?.silent) {
+    if (result.data.landlordExists && result.data.ownershipConflict) {
+      setMessage({
+        type: "error",
+        text: "This landlord is assigned to another agent. Ask admin to reassign ownership.",
+      });
       return;
     }
 
-    if (nextState.canCreate) {
-      setMessage({ type: "success", text: "No ACTIVE conflict found. You can proceed." });
-    } else {
-      setMessage({ type: "error", text: "An ACTIVE landlord already uses this landlordNumber." });
-    }
-  }
-
-  useEffect(() => {
-    if (!normalizedNumber) {
-      setCheckState({ checked: false });
+    if (result.data.landlordExists) {
+      setMessage({
+        type: "success",
+        text: "Existing landlord found. You can add a property under this landlord.",
+      });
       return;
     }
 
-    const timer = setTimeout(() => {
-      void runNumberCheck({ silent: true });
-    }, 450);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [normalizedNumber]);
-
-  function validateForm() {
-    const nextErrors: Record<string, string> = {};
-    if (!landlordName.trim()) nextErrors.landlordName = "landlordName is required.";
-    if (!landlordNumber.trim()) nextErrors.landlordNumber = "landlordNumber is required.";
-    if (!propertyId.trim()) nextErrors.propertyId = "propertyId is required.";
-    if (!url.trim()) nextErrors.url = "url is required.";
-    else {
-      try {
-        new URL(url.trim());
-      } catch {
-        nextErrors.url = "url must be valid.";
-      }
-    }
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    setMessage({
+      type: "success",
+      text: "No landlord found for this phone. Fill landlord details and continue.",
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
-    if (!validateForm()) return;
-
-    if (!checkState.checked) {
-      setMessage({ type: "error", text: "Please run landlordNumber check before creating." });
+    if (!lookup.checked) {
+      setMessage({ type: "error", text: "Run phone lookup first." });
       return;
     }
 
-    if (checkState.checked && !checkState.canCreate) {
-      setMessage({ type: "error", text: "Creation blocked: ACTIVE landlord number conflict." });
+    if (lookup.ownershipConflict) {
+      setMessage({
+        type: "error",
+        text: "This landlord is assigned to another agent. Request admin reassignment.",
+      });
       return;
     }
 
-    setCreating(true);
-    const result = await createLandlord({
-      landlordName: landlordName.trim(),
-      landlordNumber: landlordNumber.trim(),
-      propertyId: propertyId.trim(),
-      url: url.trim(),
+    if (!lookup.landlordExists && !landlordName.trim()) {
+      setMessage({
+        type: "error",
+        text: "Landlord name is required when creating a new landlord.",
+      });
+      return;
+    }
+
+    setSaving(true);
+    const result = await createPropertyIntake({
+      landlord: {
+        phone: landlordPhone.trim(),
+        fullName: landlordName.trim() || undefined,
+        email: landlordEmail.trim() || undefined,
+        notes: landlordNotes.trim() || undefined,
+      },
+      property: {
+        propertyRef: propertyRef.trim() || undefined,
+        addressLine1: addressLine1.trim() || undefined,
+        city: city.trim() || undefined,
+        postcode: postcode.trim() || undefined,
+        landlordDemand: landlordDemand.trim() ? Number(landlordDemand) : undefined,
+        status,
+      },
     });
-    setCreating(false);
+    setSaving(false);
 
     if (!result.ok) {
-      if (result.error === "LANDLORD_NUMBER_CONFLICT") {
-        setMessage({
-          type: "error",
-          text: "ACTIVE landlord conflict detected. Please choose another landlordNumber.",
-        });
-      } else {
-        setMessage({ type: "error", text: result.message ?? "Failed to create landlord." });
-      }
+      setMessage({ type: "error", text: result.message ?? "Failed to create property flow." });
       return;
     }
 
-    setMessage({ type: "success", text: "Landlord created successfully." });
-    router.push(`/landlords/${result.data.landlord.id}`);
+    setMessage({
+      type: "success",
+      text: result.data.landlordCreated
+        ? "Landlord and property created."
+        : "Property created under existing landlord.",
+    });
+    router.push(`/landlords/${result.data.landlord.id}/properties`);
   }
 
   return (
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Create Landlord</h1>
-          <p className="page-subtitle">Add a new ACTIVE landlord under your ownership.</p>
+          <h1 className="page-title">Add Property</h1>
+          <p className="page-subtitle">
+            Phone-first flow: lookup landlord, then create property with ownership enforcement.
+          </p>
         </div>
       </header>
 
-      <UICard style={{ maxWidth: 760 }}>
+      <UICard style={{ maxWidth: 860 }}>
         <UICardBody>
           <form className="field-grid" onSubmit={handleSubmit}>
             <label className="field">
-              <span className="label">landlordName</span>
-              <UIInput value={landlordName} onChange={(event) => setLandlordName(event.target.value)} />
-              {errors.landlordName ? <span className="error-text">{errors.landlordName}</span> : null}
-            </label>
-
-            <label className="field">
-              <span className="label">landlordNumber</span>
+              <span className="label">Landlord Phone</span>
               <div className="inline-row">
                 <UIInput
                   style={{ flex: 1 }}
-                  value={landlordNumber}
-                  onChange={(event) => setLandlordNumber(event.target.value)}
+                  value={landlordPhone}
+                  onChange={(event) => {
+                    setLandlordPhone(event.target.value);
+                    setLookup({ checked: false });
+                  }}
+                  placeholder="+44 7911 122233"
                   onBlur={() => {
-                    void runNumberCheck();
+                    void runPhoneLookup();
                   }}
                 />
-                <UIButton
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    void runNumberCheck();
-                  }}
-                  disabled={checking}
-                >
-                  {checking ? "Checking..." : "Check"}
+                <UIButton type="button" variant="secondary" onClick={() => void runPhoneLookup()} disabled={checking}>
+                  {checking ? "Checking..." : "Lookup"}
                 </UIButton>
               </div>
-              {errors.landlordNumber ? <span className="error-text">{errors.landlordNumber}</span> : null}
             </label>
 
-            {checkState.checked && checkState.summary ? (
-              <UIAlert type="error">
-                ACTIVE conflict: {checkState.summary.landlordName} ({checkState.summary.landlordNumber}) owned by{" "}
-                {checkState.summary.ownerAgent.agentDisplayName}, created {formatDateTime(checkState.summary.createdAt)}.
+            {lookup.checked ? (
+              <UIAlert type={lookup.ownershipConflict ? "error" : "success"}>
+                Normalized phone key: <strong>{lookup.phoneLast10}</strong>.{" "}
+                {lookup.landlordExists
+                  ? `Landlord found (${lookup.landlord?.landlordName ?? "Unknown"}).`
+                  : "No landlord found; a new landlord will be created."}
               </UIAlert>
             ) : null}
 
-            {checkState.checked && !checkState.summary ? (
-              <UIAlert type="success">
-                No ACTIVE conflict found. PASSIVE history count for this number: {checkState.passiveCount}.
-              </UIAlert>
+            {!lookup.checked || !lookup.landlordExists ? (
+              <>
+                <label className="field">
+                  <span className="label">Landlord Name</span>
+                  <UIInput value={landlordName} onChange={(event) => setLandlordName(event.target.value)} />
+                </label>
+                <label className="field">
+                  <span className="label">Landlord Email (optional)</span>
+                  <UIInput
+                    type="email"
+                    value={landlordEmail}
+                    onChange={(event) => setLandlordEmail(event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Landlord Notes (optional)</span>
+                  <UIInput value={landlordNotes} onChange={(event) => setLandlordNotes(event.target.value)} />
+                </label>
+              </>
             ) : null}
 
             <label className="field">
-              <span className="label">propertyId</span>
-              <UIInput value={propertyId} onChange={(event) => setPropertyId(event.target.value)} />
-              {errors.propertyId ? <span className="error-text">{errors.propertyId}</span> : null}
+              <span className="label">Property Reference (optional)</span>
+              <UIInput
+                value={propertyRef}
+                onChange={(event) => setPropertyRef(event.target.value)}
+                placeholder="Auto-generated if empty"
+              />
             </label>
-
             <label className="field">
-              <span className="label">url</span>
-              <UIInput value={url} onChange={(event) => setUrl(event.target.value)} />
-              {errors.url ? <span className="error-text">{errors.url}</span> : null}
+              <span className="label">Address Line 1</span>
+              <UIInput value={addressLine1} onChange={(event) => setAddressLine1(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">City</span>
+              <UIInput value={city} onChange={(event) => setCity(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">Postcode</span>
+              <UIInput value={postcode} onChange={(event) => setPostcode(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">Landlord Demand</span>
+              <UIInput
+                type="number"
+                value={landlordDemand}
+                onChange={(event) => setLandlordDemand(event.target.value)}
+                min={0}
+                step="0.01"
+              />
+            </label>
+            <label className="field">
+              <span className="label">Property Status</span>
+              <UISelect value={status} onChange={(event) => setStatus(event.target.value as PropertyStatus)}>
+                <option value="DRAFT">DRAFT</option>
+                <option value="LIVE">LIVE</option>
+                <option value="UNDER_OFFER">UNDER_OFFER</option>
+                <option value="WITHDRAWN">WITHDRAWN</option>
+              </UISelect>
             </label>
 
             {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
 
             <div className="inline-row">
-              <UIButton type="submit" disabled={creating || checking}>
-                {creating ? "Creating..." : "Create Landlord"}
+              <UIButton type="submit" disabled={!canSubmit || saving || checking}>
+                {saving ? "Saving..." : "Create Property"}
               </UIButton>
-              <UIButton
-                type="button"
-                variant="secondary"
-                onClick={() => router.push("/landlords")}
-                disabled={creating}
-              >
+              <UIButton type="button" variant="secondary" onClick={() => router.push("/landlords")} disabled={saving}>
                 Cancel
               </UIButton>
             </div>

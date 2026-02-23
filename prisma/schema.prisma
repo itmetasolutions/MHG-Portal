@@ -12,9 +12,12 @@ enum UserRole {
   AGENT
 }
 
-enum LandlordStatus {
-  ACTIVE
-  PASSIVE
+enum PropertyStatus {
+  DRAFT
+  LIVE
+  UNDER_OFFER
+  SOLD
+  WITHDRAWN
 }
 
 model User {
@@ -30,6 +33,7 @@ model User {
   updatedLandlords Landlord[] @relation("LandlordUpdatedBy")
   ownedLandlords   Landlord[] @relation("LandlordOwnerAgent")
   ownedProperties  Property[] @relation("PropertyOwnerAgent")
+  closedSales      Sale[]     @relation("SaleClosedBy")
   otpCodes         OTPCode[]
   auditLogs        AuditLog[]
 
@@ -38,18 +42,18 @@ model User {
 }
 
 model Landlord {
-  id              String         @id @default(uuid()) @db.Uuid
-  landlordName    String
-  landlordNumber  String
-  propertyId      String?
-  url             String?
-  status          LandlordStatus @default(ACTIVE)
-  lockedAt        DateTime?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  createdByUserId String         @db.Uuid
-  updatedByUserId String         @db.Uuid
-  ownerAgentId    String         @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  landlordName   String
+  landlordNumber String
+  phoneE164      String?
+  phoneLast10    String   @unique
+  email          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdByUserId String  @db.Uuid
+  updatedByUserId String  @db.Uuid
+  ownerAgentId    String  @db.Uuid
 
   createdBy  User       @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   updatedBy  User       @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -58,48 +62,61 @@ model Landlord {
 
   @@index([landlordName])
   @@index([landlordNumber])
-  @@index([status])
-  @@index([propertyId])
-  @@index([url])
   @@index([ownerAgentId])
-  @@index([ownerAgentId, status])
   @@index([ownerAgentId, createdAt])
   @@index([createdAt])
-  @@index([status, createdAt])
-  @@index([landlordNumber, status])
-  @@unique([id, ownerAgentId])
 }
 
 model Property {
-  id           String   @id @default(uuid()) @db.Uuid
-  landlordId   String   @db.Uuid
-  ownerAgentId String   @db.Uuid
-  propertyRef  String
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  stateRegion  String?
-  postalCode   String?
-  country      String?
-  url          String?
-  status       String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String         @id @default(uuid()) @db.Uuid
+  landlordId            String         @db.Uuid
+  ownerAgentId          String         @db.Uuid
+  propertyRef           String
+  addressLine1          String?
+  addressLine2          String?
+  city                  String?
+  county                String?
+  postcode              String?
+  propertyType          String?
+  beds                  Int?
+  baths                 Int?
+  status                PropertyStatus @default(DRAFT)
+  landlordDemand        Decimal?       @db.Decimal(14, 2)
+  expectedCommissionPct Decimal?       @db.Decimal(5, 2)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
-  landlord   Landlord @relation(fields: [landlordId, ownerAgentId], references: [id, ownerAgentId], onDelete: Cascade, onUpdate: Cascade)
+  landlord   Landlord @relation(fields: [landlordId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ownerAgent User     @relation("PropertyOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sale       Sale?
 
   @@index([landlordId])
   @@index([ownerAgentId])
   @@index([propertyRef])
   @@index([status])
-  @@index([url])
   @@index([city])
-  @@index([postalCode])
-  @@index([landlordId, ownerAgentId])
+  @@index([postcode])
   @@index([createdAt])
   @@index([ownerAgentId, createdAt])
   @@index([landlordId, createdAt])
+}
+
+model Sale {
+  id               String   @id @default(uuid()) @db.Uuid
+  propertyId       String   @unique @db.Uuid
+  closedByUserId   String   @db.Uuid
+  finalAmount      Decimal  @db.Decimal(14, 2)
+  commissionPct    Decimal  @db.Decimal(5, 2)
+  commissionAmount Decimal  @db.Decimal(14, 2)
+  otherCosts       Decimal? @db.Decimal(14, 2)
+  profit           Decimal  @db.Decimal(14, 2)
+  closedAt         DateTime @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  closedBy User     @relation("SaleClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([closedByUserId])
+  @@index([closedAt])
 }
 
 model OTPCode {
@@ -122,6 +139,7 @@ model AuditLog {
   entityType String
   entityId   String
   action     String
+  metadata   Json?
   beforeJson Json?
   afterJson  Json?
   createdAt  DateTime @default(now())

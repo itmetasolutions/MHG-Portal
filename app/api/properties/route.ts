@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -7,8 +7,11 @@ import { canListProperties } from "@/server/policies";
 
 const listQuerySchema = z
   .object({
-    landlordNumber: z.string().trim().min(1).optional(),
+    phoneLast10: z.string().trim().regex(/^\d{10}$/).optional(),
     propertyRef: z.string().trim().min(1).optional(),
+    status: z.nativeEnum(PropertyStatus).optional(),
+    city: z.string().trim().min(1).optional(),
+    postcode: z.string().trim().min(1).optional(),
     createdAt: z.coerce.date().optional(),
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -37,8 +40,14 @@ export async function GET(request: NextRequest) {
   }
 
   const parsedQuery = listQuerySchema.safeParse({
-    landlordNumber: request.nextUrl.searchParams.get("landlordNumber") ?? undefined,
+    phoneLast10:
+      request.nextUrl.searchParams.get("phoneLast10") ??
+      request.nextUrl.searchParams.get("landlordNumber") ??
+      undefined,
     propertyRef: request.nextUrl.searchParams.get("propertyRef") ?? undefined,
+    status: request.nextUrl.searchParams.get("status") ?? undefined,
+    city: request.nextUrl.searchParams.get("city") ?? undefined,
+    postcode: request.nextUrl.searchParams.get("postcode") ?? undefined,
     createdAt: request.nextUrl.searchParams.get("createdAt") ?? undefined,
     page: request.nextUrl.searchParams.get("page") ?? undefined,
     pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
@@ -55,19 +64,32 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { landlordNumber, propertyRef, createdAt, page, pageSize } = parsedQuery.data;
+  const { phoneLast10, propertyRef, status, city, postcode, createdAt, page, pageSize } =
+    parsedQuery.data;
   const where: Prisma.PropertyWhereInput = {};
 
-  if (landlordNumber) {
+  if (phoneLast10) {
     where.landlord = {
       is: {
-        landlordNumber: { contains: landlordNumber, mode: "insensitive" },
+        phoneLast10: { contains: phoneLast10 },
       },
     };
   }
 
   if (propertyRef) {
     where.propertyRef = { contains: propertyRef, mode: "insensitive" };
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (city) {
+    where.city = { contains: city, mode: "insensitive" };
+  }
+
+  if (postcode) {
+    where.postcode = { contains: postcode, mode: "insensitive" };
   }
 
   if (createdAt) {
@@ -84,12 +106,6 @@ export async function GET(request: NextRequest) {
 
   if (auth.user.role === "AGENT") {
     where.ownerAgentId = auth.user.id;
-    where.landlord = {
-      is: {
-        ownerAgentId: auth.user.id,
-        ...(where.landlord?.is ?? {}),
-      },
-    };
   }
 
   const skip = (page - 1) * pageSize;
@@ -109,19 +125,34 @@ export async function GET(request: NextRequest) {
         addressLine1: true,
         addressLine2: true,
         city: true,
-        stateRegion: true,
-        postalCode: true,
-        country: true,
-        url: true,
+        county: true,
+        postcode: true,
+        propertyType: true,
+        beds: true,
+        baths: true,
         status: true,
+        landlordDemand: true,
+        expectedCommissionPct: true,
         createdAt: true,
         updatedAt: true,
         landlord: {
           select: {
             id: true,
-            landlordNumber: true,
             landlordName: true,
+            phoneE164: true,
+            phoneLast10: true,
             ownerAgentId: true,
+          },
+        },
+        sale: {
+          select: {
+            id: true,
+            finalAmount: true,
+            commissionPct: true,
+            commissionAmount: true,
+            otherCosts: true,
+            profit: true,
+            closedAt: true,
           },
         },
       },
@@ -143,7 +174,8 @@ export async function POST() {
   return NextResponse.json(
     {
       error: "METHOD_NOT_ALLOWED",
-      message: "Use POST /api/landlords/:id/properties to create properties.",
+      message:
+        "Use POST /api/properties/intake (phone-first) or POST /api/landlords/:id/properties.",
     },
     { status: 405 },
   );

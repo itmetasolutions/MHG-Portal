@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
+import { UISelect } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
 import {
+  closePropertySale,
   createLandlordProperty,
   fetchLandlordProperties,
   updateProperty,
   type PropertyRow,
+  type PropertyStatus,
   type SessionRole,
 } from "@/lib/portal-api";
 
@@ -20,20 +23,37 @@ type Props = {
   currentRole: SessionRole;
 };
 
+type CloseSaleForm = {
+  propertyId: string;
+  finalAmount: string;
+  commissionPct: string;
+  otherCosts: string;
+};
+
 export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [landlordLabel, setLandlordLabel] = useState("");
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
   const [newPropertyRef, setNewPropertyRef] = useState("");
+  const [newAddressLine1, setNewAddressLine1] = useState("");
+  const [newCity, setNewCity] = useState("");
+  const [newPostcode, setNewPostcode] = useState("");
+  const [newDemand, setNewDemand] = useState("");
+  const [newStatus, setNewStatus] = useState<PropertyStatus>("DRAFT");
+
   const [editId, setEditId] = useState<string | null>(null);
   const [editPropertyRef, setEditPropertyRef] = useState("");
-  const [editUrl, setEditUrl] = useState("");
-  const [editStatus, setEditStatus] = useState("");
+  const [editStatus, setEditStatus] = useState<PropertyStatus>("DRAFT");
+  const [editCity, setEditCity] = useState("");
+  const [editPostcode, setEditPostcode] = useState("");
+  const [editDemand, setEditDemand] = useState("");
   const [editBusy, setEditBusy] = useState(false);
 
-  const canCreate = useMemo(() => properties.length >= 0, [properties.length]);
+  const [closingSale, setClosingSale] = useState<CloseSaleForm | null>(null);
+  const [closeSaleBusy, setCloseSaleBusy] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -45,7 +65,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       return;
     }
 
-    setLandlordLabel(`${result.data.landlord.landlordName} (${result.data.landlord.landlordNumber})`);
+    setLandlordLabel(`${result.data.landlord.fullName} (${result.data.landlord.phoneLast10})`);
     setProperties(result.data.properties);
   }
 
@@ -58,13 +78,15 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     event.preventDefault();
     setMessage(null);
 
-    if (!newPropertyRef.trim()) {
-      setMessage({ type: "error", text: "propertyRef is required." });
-      return;
-    }
-
     setCreating(true);
-    const result = await createLandlordProperty(landlordId, { propertyRef: newPropertyRef.trim() });
+    const result = await createLandlordProperty(landlordId, {
+      propertyRef: newPropertyRef.trim() || undefined,
+      addressLine1: newAddressLine1.trim() || undefined,
+      city: newCity.trim() || undefined,
+      postcode: newPostcode.trim() || undefined,
+      landlordDemand: newDemand.trim() ? (Number(newDemand) as never) : undefined,
+      status: newStatus,
+    });
     setCreating(false);
 
     if (!result.ok) {
@@ -73,6 +95,11 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     }
 
     setNewPropertyRef("");
+    setNewAddressLine1("");
+    setNewCity("");
+    setNewPostcode("");
+    setNewDemand("");
+    setNewStatus("DRAFT");
     setMessage({ type: "success", text: "Property created." });
     await load();
   }
@@ -83,8 +110,10 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     setEditBusy(true);
     const result = await updateProperty(editId, {
       propertyRef: editPropertyRef.trim(),
-      url: editUrl.trim() || null,
-      status: editStatus.trim() || null,
+      city: editCity.trim() || null,
+      postcode: editPostcode.trim() || null,
+      status: editStatus,
+      landlordDemand: editDemand.trim() ? (Number(editDemand) as never) : null,
     });
     setEditBusy(false);
 
@@ -95,6 +124,40 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
 
     setMessage({ type: "success", text: "Property updated." });
     setEditId(null);
+    await load();
+  }
+
+  async function submitCloseSale() {
+    if (!closingSale) return;
+    const finalAmount = Number(closingSale.finalAmount);
+    const commissionPct = Number(closingSale.commissionPct);
+    const otherCosts = closingSale.otherCosts.trim() ? Number(closingSale.otherCosts) : undefined;
+
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      setMessage({ type: "error", text: "Final amount must be a positive number." });
+      return;
+    }
+
+    if (!Number.isFinite(commissionPct) || commissionPct < 0) {
+      setMessage({ type: "error", text: "Commission % must be zero or positive." });
+      return;
+    }
+
+    setCloseSaleBusy(true);
+    const result = await closePropertySale(closingSale.propertyId, {
+      finalAmount,
+      commissionPct,
+      otherCosts,
+    });
+    setCloseSaleBusy(false);
+
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to close sale." });
+      return;
+    }
+
+    setClosingSale(null);
+    setMessage({ type: "success", text: "Sale closed and property marked SOLD." });
     await load();
   }
 
@@ -121,25 +184,57 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
 
       {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
 
-      {canCreate ? (
-        <UICard>
-          <UICardBody>
-            <form className="inline-row" onSubmit={onCreate}>
-              <label className="field" style={{ minWidth: 260 }}>
-                <span className="label">New Property Reference</span>
-                <UIInput
-                  value={newPropertyRef}
-                  onChange={(event) => setNewPropertyRef(event.target.value)}
-                  placeholder="e.g. PROP-001"
-                />
-              </label>
+      <UICard>
+        <UICardBody>
+          <form className="field-grid" onSubmit={onCreate}>
+            <label className="field">
+              <span className="label">Property Reference (optional)</span>
+              <UIInput
+                value={newPropertyRef}
+                onChange={(event) => setNewPropertyRef(event.target.value)}
+                placeholder="Auto-generated if empty"
+              />
+            </label>
+            <label className="field">
+              <span className="label">Address Line 1</span>
+              <UIInput value={newAddressLine1} onChange={(event) => setNewAddressLine1(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">City</span>
+              <UIInput value={newCity} onChange={(event) => setNewCity(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">Postcode</span>
+              <UIInput value={newPostcode} onChange={(event) => setNewPostcode(event.target.value)} />
+            </label>
+            <label className="field">
+              <span className="label">Landlord Demand</span>
+              <UIInput
+                type="number"
+                min={0}
+                step="0.01"
+                value={newDemand}
+                onChange={(event) => setNewDemand(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span className="label">Status</span>
+              <UISelect value={newStatus} onChange={(event) => setNewStatus(event.target.value as PropertyStatus)}>
+                <option value="DRAFT">DRAFT</option>
+                <option value="LIVE">LIVE</option>
+                <option value="UNDER_OFFER">UNDER_OFFER</option>
+                <option value="WITHDRAWN">WITHDRAWN</option>
+              </UISelect>
+            </label>
+
+            <div className="inline-row">
               <UIButton type="submit" disabled={creating}>
                 {creating ? "Adding..." : "Add Property"}
               </UIButton>
-            </form>
-          </UICardBody>
-        </UICard>
-      ) : null}
+            </div>
+          </form>
+        </UICardBody>
+      </UICard>
 
       <UICard>
         <UICardBody>
@@ -147,16 +242,22 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>propertyRef</th>
-                  <th>status</th>
-                  <th>url</th>
-                  <th>createdAt</th>
+                  <th>Ref</th>
+                  <th>Status</th>
+                  <th>City / Postcode</th>
+                  <th>Demand</th>
+                  <th>Sale</th>
+                  <th>Created</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {properties.map((property) => {
                   const editing = editId === property.id;
+                  const canCloseSale =
+                    !property.sale &&
+                    (property.status === "LIVE" || property.status === "UNDER_OFFER");
+
                   return (
                     <tr key={property.id}>
                       <td>
@@ -171,18 +272,50 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                       </td>
                       <td>
                         {editing ? (
-                          <UIInput value={editStatus} onChange={(event) => setEditStatus(event.target.value)} />
+                          <UISelect
+                            value={editStatus}
+                            onChange={(event) => setEditStatus(event.target.value as PropertyStatus)}
+                          >
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="LIVE">LIVE</option>
+                            <option value="UNDER_OFFER">UNDER_OFFER</option>
+                            <option value="WITHDRAWN">WITHDRAWN</option>
+                            <option value="SOLD" disabled>
+                              SOLD (use Close Sale)
+                            </option>
+                          </UISelect>
                         ) : (
-                          property.status ?? "-"
+                          property.status
                         )}
                       </td>
                       <td>
                         {editing ? (
-                          <UIInput value={editUrl} onChange={(event) => setEditUrl(event.target.value)} />
-                        ) : property.url ? (
-                          <a className="btn btn-secondary" target="_blank" rel="noreferrer" href={property.url}>
-                            Open
-                          </a>
+                          <div className="inline-row">
+                            <UIInput value={editCity} onChange={(event) => setEditCity(event.target.value)} />
+                            <UIInput value={editPostcode} onChange={(event) => setEditPostcode(event.target.value)} />
+                          </div>
+                        ) : (
+                          `${property.city ?? "-"} / ${property.postcode ?? "-"}`
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <UIInput
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={editDemand}
+                            onChange={(event) => setEditDemand(event.target.value)}
+                          />
+                        ) : property.landlordDemand ? (
+                          `£${property.landlordDemand}`
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {property.sale ? (
+                          <span className="muted">£{property.sale.finalAmount}</span>
                         ) : (
                           "-"
                         )}
@@ -195,11 +328,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                               <UIButton onClick={() => void saveEdit()} disabled={editBusy}>
                                 {editBusy ? "Saving..." : "Save"}
                               </UIButton>
-                              <UIButton
-                                variant="secondary"
-                                onClick={() => setEditId(null)}
-                                disabled={editBusy}
-                              >
+                              <UIButton variant="secondary" onClick={() => setEditId(null)} disabled={editBusy}>
                                 Cancel
                               </UIButton>
                             </>
@@ -209,13 +338,30 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                               onClick={() => {
                                 setEditId(property.id);
                                 setEditPropertyRef(property.propertyRef);
-                                setEditStatus(property.status ?? "");
-                                setEditUrl(property.url ?? "");
+                                setEditStatus(property.status);
+                                setEditCity(property.city ?? "");
+                                setEditPostcode(property.postcode ?? "");
+                                setEditDemand(property.landlordDemand ?? "");
                               }}
                             >
                               Edit
                             </UIButton>
                           )}
+                          {canCloseSale ? (
+                            <UIButton
+                              variant="secondary"
+                              onClick={() =>
+                                setClosingSale({
+                                  propertyId: property.id,
+                                  finalAmount: "",
+                                  commissionPct: property.expectedCommissionPct ?? "",
+                                  otherCosts: "",
+                                })
+                              }
+                            >
+                              Close Sale
+                            </UIButton>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -223,7 +369,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                 })}
                 {properties.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="muted">
+                    <td colSpan={7} className="muted">
                       No properties found.
                     </td>
                   </tr>
@@ -234,6 +380,62 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
           <p className="muted">{properties.length} properties listed. Role: {currentRole}</p>
         </UICardBody>
       </UICard>
+
+      {closingSale ? (
+        <UICard>
+          <UICardBody>
+            <div className="field-grid">
+              <h3 style={{ margin: 0 }}>Close Sale</h3>
+              <label className="field">
+                <span className="label">Final Amount</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={closingSale.finalAmount}
+                  onChange={(event) =>
+                    setClosingSale((prev) => (prev ? { ...prev, finalAmount: event.target.value } : prev))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span className="label">Commission %</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={closingSale.commissionPct}
+                  onChange={(event) =>
+                    setClosingSale((prev) => (prev ? { ...prev, commissionPct: event.target.value } : prev))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span className="label">Other Costs (optional)</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={closingSale.otherCosts}
+                  onChange={(event) =>
+                    setClosingSale((prev) => (prev ? { ...prev, otherCosts: event.target.value } : prev))
+                  }
+                />
+              </label>
+
+              <div className="inline-row">
+                <UIButton onClick={() => void submitCloseSale()} disabled={closeSaleBusy}>
+                  {closeSaleBusy ? "Closing..." : "Confirm Close Sale"}
+                </UIButton>
+                <UIButton variant="secondary" onClick={() => setClosingSale(null)} disabled={closeSaleBusy}>
+                  Cancel
+                </UIButton>
+              </div>
+            </div>
+          </UICardBody>
+        </UICard>
+      ) : null}
     </div>
   );
 }

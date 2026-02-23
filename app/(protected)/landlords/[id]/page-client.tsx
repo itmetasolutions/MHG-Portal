@@ -3,64 +3,29 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
-import { UIStatusBadge } from "@/components/ui/badge";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
-import { UIConfirmModal } from "@/components/ui/modal";
 import { formatDateTime } from "@/lib/format";
-import {
-  fetchLandlordDetails,
-  setLandlordPassive,
-  updateLandlord,
-  type LandlordDetails,
-  type SessionRole,
-} from "@/lib/portal-api";
+import { fetchLandlordDetails, updateLandlord, type LandlordDetails } from "@/lib/portal-api";
 
 type Props = {
   landlordId: string;
-  currentUserId: string;
-  currentRole: SessionRole;
 };
 
-export function LandlordDetailClient({ landlordId, currentUserId, currentRole }: Props) {
+export function LandlordDetailClient({ landlordId }: Props) {
   const [landlord, setLandlord] = useState<LandlordDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [passiveBusy, setPassiveBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [form, setForm] = useState({
-    landlordName: "",
-    landlordNumber: "",
-    propertyId: "",
-    url: "",
+    fullName: "",
+    phone: "",
+    email: "",
+    notes: "",
   });
-  const [confirmPassive, setConfirmPassive] = useState(false);
-  const [passiveConfirmText, setPassiveConfirmText] = useState("");
 
-  const isLocked = useMemo(
-    () => Boolean(landlord && (landlord.status === "PASSIVE" || landlord.lockedAt)),
-    [landlord],
-  );
-  const canEditFields = useMemo(
-    () => Boolean(landlord?.canEdit) && !isLocked,
-    [isLocked, landlord?.canEdit],
-  );
-
-  const canSetPassive = useMemo(() => {
-    if (!landlord) return false;
-    return (
-      landlord.status === "ACTIVE" &&
-      (currentRole === "ADMIN" || landlord.ownerAgent.id === currentUserId)
-    );
-  }, [currentRole, currentUserId, landlord]);
-
-  const passiveConfirmValid = useMemo(() => {
-    if (!landlord) return false;
-    const typed = passiveConfirmText.trim().toUpperCase();
-    const landlordNumber = landlord.landlordNumber.trim().toUpperCase();
-    return typed === "PASSIVE" || typed === landlordNumber;
-  }, [landlord, passiveConfirmText]);
+  const canEdit = useMemo(() => Boolean(landlord?.canEdit), [landlord?.canEdit]);
 
   async function load() {
     setLoading(true);
@@ -76,12 +41,13 @@ export function LandlordDetailClient({ landlordId, currentUserId, currentRole }:
       return;
     }
 
-    setLandlord(result.data.landlord);
+    const row = result.data.landlord;
+    setLandlord(row);
     setForm({
-      landlordName: result.data.landlord.landlordName,
-      landlordNumber: result.data.landlord.landlordNumber,
-      propertyId: result.data.landlord.propertyId,
-      url: result.data.landlord.url,
+      fullName: row.landlordName,
+      phone: row.phoneE164 ?? row.phoneLast10,
+      email: row.email ?? "",
+      notes: row.notes ?? "",
     });
   }
 
@@ -92,16 +58,14 @@ export function LandlordDetailClient({ landlordId, currentUserId, currentRole }:
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canEditFields) {
-      return;
-    }
+    if (!canEdit) return;
 
     setSaving(true);
     const result = await updateLandlord(landlordId, {
-      landlordName: form.landlordName.trim(),
-      landlordNumber: form.landlordNumber.trim(),
-      propertyId: form.propertyId.trim(),
-      url: form.url.trim(),
+      fullName: form.fullName.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || null,
+      notes: form.notes.trim() || null,
     });
     setSaving(false);
 
@@ -112,30 +76,6 @@ export function LandlordDetailClient({ landlordId, currentUserId, currentRole }:
 
     setLandlord(result.data.landlord);
     setMessage({ type: "success", text: "Landlord updated successfully." });
-  }
-
-  async function markPassive() {
-    if (!passiveConfirmValid) {
-      setMessage({
-        type: "error",
-        text: `Type PASSIVE or landlord number ${landlord?.landlordNumber ?? ""} to confirm.`,
-      });
-      return;
-    }
-
-    setPassiveBusy(true);
-    const result = await setLandlordPassive(landlordId);
-    setPassiveBusy(false);
-
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to set PASSIVE." });
-      return;
-    }
-
-    setConfirmPassive(false);
-    setPassiveConfirmText("");
-    setMessage({ type: "success", text: "Landlord set to PASSIVE and locked." });
-    await load();
   }
 
   if (loading) {
@@ -159,7 +99,7 @@ export function LandlordDetailClient({ landlordId, currentUserId, currentRole }:
         <div>
           <h1 className="page-title">{landlord.landlordName}</h1>
           <p className="page-subtitle">
-            Landlord #{landlord.landlordNumber} owned by {landlord.ownerAgent.agentDisplayName}
+            Phone key: {landlord.phoneLast10} • Owner: {landlord.ownerAgent.agentDisplayName}
           </p>
         </div>
         <div className="inline-row">
@@ -175,110 +115,62 @@ export function LandlordDetailClient({ landlordId, currentUserId, currentRole }:
       <UICard>
         <UICardBody className="stack">
           <div className="inline-row">
-            <UIStatusBadge status={landlord.status} />
-            {isLocked ? <span className="badge badge-locked">Locked</span> : null}
             <span className="muted">Created {formatDateTime(landlord.createdAt)}</span>
-            {landlord.lockedAt ? <span className="muted">Locked {formatDateTime(landlord.lockedAt)}</span> : null}
-            {currentRole === "ADMIN" ? <span className="muted">Admin view</span> : null}
+            <span className="muted">Updated {formatDateTime(landlord.updatedAt)}</span>
+            <span className="muted">{landlord._count?.properties ?? 0} properties</span>
           </div>
 
           {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
 
           <form className="field-grid" onSubmit={onSubmit}>
             <label className="field">
-              <span className="label">landlordName</span>
+              <span className="label">Full Name</span>
               <UIInput
-                value={form.landlordName}
-                onChange={(event) => setForm((prev) => ({ ...prev, landlordName: event.target.value }))}
-                disabled={!canEditFields}
+                value={form.fullName}
+                onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                disabled={!canEdit}
               />
             </label>
 
             <label className="field">
-              <span className="label">landlordNumber</span>
+              <span className="label">Phone</span>
               <UIInput
-                value={form.landlordNumber}
-                onChange={(event) => setForm((prev) => ({ ...prev, landlordNumber: event.target.value }))}
-                disabled={!canEditFields}
+                value={form.phone}
+                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+                disabled={!canEdit}
               />
             </label>
 
             <label className="field">
-              <span className="label">propertyId</span>
+              <span className="label">Email</span>
               <UIInput
-                value={form.propertyId}
-                onChange={(event) => setForm((prev) => ({ ...prev, propertyId: event.target.value }))}
-                disabled={!canEditFields}
+                value={form.email}
+                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                disabled={!canEdit}
               />
             </label>
 
             <label className="field">
-              <span className="label">url</span>
+              <span className="label">Notes</span>
               <UIInput
-                value={form.url}
-                onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
-                disabled={!canEditFields}
+                value={form.notes}
+                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                disabled={!canEdit}
               />
             </label>
 
             <div className="inline-row">
-              {canEditFields ? (
+              {canEdit ? (
                 <UIButton type="submit" disabled={saving}>
                   {saving ? "Saving..." : "Save Changes"}
                 </UIButton>
-              ) : isLocked ? (
-                <span className="hint-text">This landlord is locked (PASSIVE). No further edits allowed.</span>
               ) : (
-                <span className="hint-text">This landlord is read-only for your account.</span>
+                <span className="hint-text">Read-only for your account.</span>
               )}
-              {canSetPassive ? (
-                <UIButton
-                  type="button"
-                  variant="danger"
-                  onClick={() => {
-                    setPassiveConfirmText("");
-                    setConfirmPassive(true);
-                  }}
-                >
-                  Set Passive
-                </UIButton>
-              ) : null}
             </div>
           </form>
         </UICardBody>
       </UICard>
-
-      {confirmPassive ? (
-        <UIConfirmModal
-          title="Set Landlord to PASSIVE"
-          body={
-            <div className="field-grid">
-              <p style={{ margin: 0 }}>
-                This action is irreversible. Type <strong>PASSIVE</strong> or{" "}
-                <strong>{landlord.landlordNumber}</strong> to confirm locking this landlord.
-              </p>
-              <label className="field">
-                <span className="label">Confirmation</span>
-                <UIInput
-                  value={passiveConfirmText}
-                  onChange={(event) => setPassiveConfirmText(event.target.value)}
-                  placeholder={`Type PASSIVE or ${landlord.landlordNumber}`}
-                />
-              </label>
-            </div>
-          }
-          confirmLabel="Confirm PASSIVE"
-          confirmDisabled={!passiveConfirmValid}
-          busy={passiveBusy}
-          onCancel={() => {
-            setPassiveConfirmText("");
-            setConfirmPassive(false);
-          }}
-          onConfirm={() => {
-            void markPassive();
-          }}
-        />
-      ) : null}
     </div>
   );
 }
