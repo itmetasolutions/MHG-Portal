@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { UserRole } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { AdminShell } from "./admin-shell";
@@ -10,7 +10,7 @@ export default async function AdminLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getAuthSession();
   if (!session) {
-    redirect("/login");
+    return <>{children}</>;
   }
 
   const user = await db.user.findUnique({
@@ -23,12 +23,8 @@ export default async function AdminLayout({
     },
   });
 
-  if (!user || !user.isActive) {
-    redirect("/login");
-  }
-
-  if (user.role !== "ADMIN") {
-    redirect("/dashboard");
+  if (!user || !user.isActive || user.role !== UserRole.ADMIN) {
+    return <>{children}</>;
   }
 
   return (

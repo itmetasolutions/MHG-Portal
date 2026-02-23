@@ -1,10 +1,33 @@
 import { UserRole } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { AgentsAdminClient } from "../agents-admin-client";
 import { db } from "@/server/db";
+import { getAuthSession } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAgentsPage() {
+  const session = await getAuthSession();
+  if (!session) {
+    redirect("/admin/login");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      role: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    redirect("/admin/login");
+  }
+
+  if (user.role !== UserRole.ADMIN) {
+    redirect("/dashboard");
+  }
+
   const agents = await db.user.findMany({
     where: { role: UserRole.AGENT },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],

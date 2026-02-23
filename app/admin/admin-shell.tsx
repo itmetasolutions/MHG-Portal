@@ -38,31 +38,10 @@ function AuditIcon() {
   );
 }
 
-function LandlordIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0H3Z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: DashboardIcon, exact: true },
   { href: "/admin/agents", label: "Agents", icon: AgentsIcon, exact: false },
   { href: "/admin/audit", label: "Audit Logs", icon: AuditIcon, exact: false },
-];
-
-const bottomNavItems = [
-  { href: "/landlords", label: "Landlord Registry", icon: LandlordIcon },
-  { href: "/profile", label: "My Profile", icon: ProfileIcon },
 ];
 
 export function AdminShell({ user, children }: Props) {
@@ -83,7 +62,7 @@ export function AdminShell({ user, children }: Props) {
   }
 
   // Compute breadcrumb label
-  const activeItem = [...navItems, ...bottomNavItems].find((item) =>
+  const activeItem = navItems.find((item) =>
     item.href === "/admin" ? pathname === "/admin" : pathname?.startsWith(item.href)
   );
   const breadcrumbLabel = activeItem?.label ?? "Admin";
@@ -106,19 +85,6 @@ export function AdminShell({ user, children }: Props) {
               key={href}
               href={href}
               className={`admin-nav-link${isActive(href, exact) ? " admin-nav-link-active" : ""}`}
-            >
-              <Icon />
-              {label}
-            </Link>
-          ))}
-
-          <span className="admin-nav-section">Tools</span>
-
-          {bottomNavItems.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`admin-nav-link${isActive(href, false) ? " admin-nav-link-active" : ""}`}
             >
               <Icon />
               {label}

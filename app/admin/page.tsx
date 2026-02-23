@@ -1,11 +1,34 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { UserRole } from "@prisma/client";
 import { db } from "@/server/db";
 import { formatDateTime } from "@/lib/format";
+import { getAuthSession } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
+  const session = await getAuthSession();
+  if (!session) {
+    redirect("/admin/login");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      role: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive) {
+    redirect("/admin/login");
+  }
+
+  if (user.role !== UserRole.ADMIN) {
+    redirect("/dashboard");
+  }
+
   const [
     agentCount,
     activeAgentCount,
@@ -273,18 +296,6 @@ export default async function AdminPage() {
                 <path fillRule="evenodd" d="M4 4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-5L9 4H4Z" clipRule="evenodd" />
               </svg>
               View Audit Logs
-            </Link>
-            <Link className="admin-action-btn admin-action-btn-secondary" href="/landlords">
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
-              </svg>
-              Landlord Registry
-            </Link>
-            <Link className="admin-action-btn admin-action-btn-secondary" href="/landlords/new">
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
-              </svg>
-              Add Landlord
             </Link>
           </div>
         </div>

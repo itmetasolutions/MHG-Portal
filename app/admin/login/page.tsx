@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { LoginClient } from "./login-client";
+import { AdminLoginClient } from "./admin-login-client";
 
 type PageProps = {
   searchParams?: {
@@ -18,7 +18,7 @@ function readParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function LoginPage({ searchParams }: PageProps) {
+export default async function AdminLoginPage({ searchParams }: PageProps) {
   const session = await getAuthSession();
   if (session) {
     const user = await db.user.findUnique({
@@ -37,5 +37,5 @@ export default async function LoginPage({ searchParams }: PageProps) {
   const initialEmail = readParam(searchParams?.email) ?? "";
   const reason = readParam(searchParams?.reason);
 
-  return <LoginClient initialEmail={initialEmail} reason={reason} />;
+  return <AdminLoginClient initialEmail={initialEmail} reason={reason} />;
 }

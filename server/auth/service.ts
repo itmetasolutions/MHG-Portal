@@ -17,8 +17,13 @@ type LoginResult =
   | { ok: true }
   | {
       ok: false;
-      code: "INVALID_CREDENTIALS" | "OTP_SEND_RATE_LIMIT" | "OTP_DELIVERY_FAILED";
+      code:
+        | "INVALID_CREDENTIALS"
+        | "OTP_SEND_RATE_LIMIT"
+        | "OTP_DELIVERY_FAILED"
+        | "ROLE_MISMATCH";
       retryAfterSeconds?: number;
+      actualRole?: UserRole;
     };
 
 type VerifyOtpResult =
@@ -31,9 +36,11 @@ type VerifyOtpResult =
         | "OTP_REQUIRED"
         | "OTP_EXPIRED"
         | "OTP_INVALID"
-        | "OTP_ATTEMPTS_EXCEEDED";
+        | "OTP_ATTEMPTS_EXCEEDED"
+        | "ROLE_MISMATCH";
       retryAfterSeconds?: number;
       attemptsRemaining?: number;
+      actualRole?: UserRole;
     };
 
 function normalizeEmail(email: string): string {
@@ -43,6 +50,7 @@ function normalizeEmail(email: string): string {
 export async function loginWithPassword(params: {
   email: string;
   password: string;
+  expectedRole?: UserRole;
 }): Promise<LoginResult> {
   const email = normalizeEmail(params.email);
   const user = await db.user.findUnique({
@@ -50,6 +58,7 @@ export async function loginWithPassword(params: {
     select: {
       id: true,
       email: true,
+      role: true,
       passwordHash: true,
       isActive: true,
     },
@@ -62,6 +71,14 @@ export async function loginWithPassword(params: {
   const passwordIsValid = await verifyPassword(params.password, user.passwordHash);
   if (!passwordIsValid) {
     return { ok: false, code: "INVALID_CREDENTIALS" };
+  }
+
+  if (params.expectedRole && user.role !== params.expectedRole) {
+    return {
+      ok: false,
+      code: "ROLE_MISMATCH",
+      actualRole: user.role,
+    };
   }
 
   const sendRateLimit = await checkOtpSendRateLimit(user.id);
@@ -120,6 +137,7 @@ export async function loginWithPassword(params: {
 export async function verifyOtpForLogin(params: {
   email: string;
   otpCode: string;
+  expectedRole?: UserRole;
 }): Promise<VerifyOtpResult> {
   const email = normalizeEmail(params.email);
   const user = await db.user.findUnique({
@@ -134,6 +152,14 @@ export async function verifyOtpForLogin(params: {
 
   if (!user || !user.isActive) {
     return { ok: false, code: "INVALID_CREDENTIALS" };
+  }
+
+  if (params.expectedRole && user.role !== params.expectedRole) {
+    return {
+      ok: false,
+      code: "ROLE_MISMATCH",
+      actualRole: user.role,
+    };
   }
 
   const verifyRateLimit = await checkOtpVerifyRateLimit(user.id);

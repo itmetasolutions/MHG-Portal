@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { loginWithPassword } from "@/server/auth";
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  portal: z.enum(["agent", "admin"]).optional().default("agent"),
 });
 
 export async function POST(request: Request) {
@@ -16,8 +18,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
   }
 
-  const result = await loginWithPassword(payload);
+  const expectedRole = payload.portal === "admin" ? UserRole.ADMIN : UserRole.AGENT;
+  const result = await loginWithPassword({
+    email: payload.email,
+    password: payload.password,
+    expectedRole,
+  });
+
   if (!result.ok) {
+    if (result.code === "ROLE_MISMATCH") {
+      if (result.actualRole === UserRole.ADMIN) {
+        return NextResponse.json({ error: "ADMIN_LOGIN_REQUIRED" }, { status: 403 });
+      }
+
+      return NextResponse.json({ error: "AGENT_LOGIN_REQUIRED" }, { status: 403 });
+    }
+
     if (result.code === "INVALID_CREDENTIALS") {
       return NextResponse.json({ error: result.code }, { status: 401 });
     }

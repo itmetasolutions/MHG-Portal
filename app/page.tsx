@@ -1,6 +1,14 @@
 import Link from "next/link";
+import { UserRole } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { getAuthSession } from "@/server/auth";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getAuthSession();
+  if (session) {
+    redirect(session.role === UserRole.ADMIN ? "/admin" : "/dashboard");
+  }
+
   return (
     <div>
       <section className="landing-hero">
