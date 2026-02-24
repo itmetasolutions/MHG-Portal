@@ -84,12 +84,14 @@ export function AgentMessagesClient({ agentId, adminId, adminName }: Props) {
     );
   }
 
-  const initials = adminName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials =
+    (adminName || "A")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "A";
 
   return (
     <div className="stack">

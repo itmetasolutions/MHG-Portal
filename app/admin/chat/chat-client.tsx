@@ -24,6 +24,18 @@ type Props = {
   agents: Agent[];
 };
 
+function getInitials(name: string | null | undefined): string {
+  return (
+    (name || "?")
+      .split(" ")
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?"
+  );
+}
+
 export function AdminChatClient({ adminId, agents }: Props) {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -182,7 +194,7 @@ export function AdminChatClient({ adminId, agents }: Props) {
               onClick={() => setSelectedAgent(agent)}
             >
               <div className="chat-agent-avatar">
-                {agent.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+                {getInitials(agent.name)}
               </div>
               <div className="chat-agent-info">
                 <div className="chat-agent-name">
@@ -229,7 +241,7 @@ export function AdminChatClient({ adminId, agents }: Props) {
             <div className="chat-pane-header">
               <div className="chat-pane-header-info">
                 <div className="chat-pane-avatar">
-                  {selectedAgent.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)}
+                  {getInitials(selectedAgent.name)}
                 </div>
                 <div>
                   <div className="chat-pane-name">{selectedAgent.name}</div>
