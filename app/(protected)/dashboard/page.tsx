@@ -2,7 +2,14 @@ import Link from "next/link";
 import { Prisma, UserRole, PropertyStatus } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { formatDate, formatCurrency } from "@/lib/format";
+import {
+  formatDate,
+  formatCurrency,
+  formatPKR,
+  gbpToPkr,
+  pkrToGbp,
+  AGENT_COMMISSION_PKR,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -156,6 +163,10 @@ export default async function DashboardPage() {
   const totalProfit      = Number(salesAgg._sum.profit          ?? 0);
   const totalSales       = salesAgg._count.id;
 
+  // Agent personal commission: fixed PKR 5,000 per closed sale
+  const myCommissionPKR = totalSales * AGENT_COMMISSION_PKR;
+  const myCommissionGBP = pkrToGbp(myCommissionPKR);
+
   // Status map: { LIVE: 4, SOLD: 2, ... }
   const statusMap: Partial<Record<PropertyStatus, number>> = {};
   for (const g of propByStatus) statusMap[g.status] = g._count.id;
@@ -220,11 +231,13 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="stat-card stat-card-money">
-              <p className="stat-label">Commission Earned</p>
-              <p className="stat-value stat-value-money" style={{ fontSize: "1.65rem" }}>
-                {formatCurrency(totalCommission)}
+              <p className="stat-label">My Commission</p>
+              <p className="stat-value" style={{ fontSize: "1.5rem", color: "var(--brand-gold)" }}>
+                {formatPKR(myCommissionPKR)}
               </p>
-              <p className="stat-sub">From {totalSales} closed {totalSales === 1 ? "sale" : "sales"}</p>
+              <p className="stat-sub">
+                ≈ {formatCurrency(myCommissionGBP)} · {totalSales} {totalSales === 1 ? "sale" : "sales"}
+              </p>
             </div>
           )}
         </div>
@@ -240,32 +253,30 @@ export default async function DashboardPage() {
               <p className="stat-value stat-value-money" style={{ fontSize: "1.65rem" }}>
                 {formatCurrency(totalRevenue)}
               </p>
-              <p className="stat-sub">Combined final sale amounts</p>
+              <p className="stat-pkr-sub">{formatPKR(gbpToPkr(totalRevenue))}</p>
             </div>
             <div className="stat-card stat-card-money">
-              <p className="stat-label">Commission Earned</p>
+              <p className="stat-label">Co. Commission</p>
               <p className="stat-value stat-value-money" style={{ fontSize: "1.65rem" }}>
                 {formatCurrency(totalCommission)}
               </p>
-              <p className="stat-sub">
-                {totalRevenue > 0
-                  ? `${((totalCommission / totalRevenue) * 100).toFixed(1)}% avg rate`
-                  : "—"}
-              </p>
+              <p className="stat-pkr-sub">{formatPKR(gbpToPkr(totalCommission))}</p>
             </div>
             <div className="stat-card stat-card-profit">
               <p className="stat-label">Net Profit</p>
               <p className="stat-value stat-value-profit" style={{ fontSize: "1.65rem" }}>
                 {formatCurrency(totalProfit)}
               </p>
-              <p className="stat-sub">After all costs</p>
+              <p className="stat-pkr-sub">{formatPKR(gbpToPkr(totalProfit))}</p>
             </div>
             <div className="stat-card">
               <p className="stat-label">Avg Sale Value</p>
               <p className="stat-value" style={{ fontSize: "1.65rem" }}>
                 {totalSales > 0 ? formatCurrency(Math.round(totalRevenue / totalSales)) : "—"}
               </p>
-              <p className="stat-sub">Per closed sale</p>
+              {totalSales > 0 && (
+                <p className="stat-pkr-sub">{formatPKR(gbpToPkr(Math.round(totalRevenue / totalSales)))}</p>
+              )}
             </div>
           </div>
         </div>
@@ -470,11 +481,21 @@ export default async function DashboardPage() {
                             : ""}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 700, color: "#4ade80" }}>
-                        {formatCurrency(Number(sale.finalAmount))}
+                      <td>
+                        <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
+                          {formatCurrency(Number(sale.finalAmount))}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {formatPKR(gbpToPkr(Number(sale.finalAmount)))}
+                        </span>
                       </td>
-                      <td style={{ fontWeight: 600, color: "var(--brand-gold)" }}>
-                        {formatCurrency(Number(sale.commissionAmount))}
+                      <td>
+                        <span style={{ fontWeight: 600, color: "var(--brand-gold)", display: "block" }}>
+                          {formatCurrency(Number(sale.commissionAmount))}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {formatPKR(gbpToPkr(Number(sale.commissionAmount)))}
+                        </span>
                       </td>
                       <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                         {formatDate(sale.closedAt)}

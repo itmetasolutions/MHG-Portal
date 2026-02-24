@@ -3,7 +3,14 @@ import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
-import { formatDate, formatCurrency } from "@/lib/format";
+import {
+  formatDate,
+  formatCurrency,
+  formatPKR,
+  gbpToPkr,
+  AGENT_COMMISSION_PKR,
+  pkrToGbp,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +59,10 @@ export default async function AdminSalesPage() {
   const totalProfit     = Number(agg._sum.profit          ?? 0);
   const totalSales      = agg._count.id;
 
+  // Total agent commissions (PKR 5,000 × number of sales)
+  const totalAgentCommPKR = totalSales * AGENT_COMMISSION_PKR;
+  const totalAgentCommGBP = pkrToGbp(totalAgentCommPKR);
+
   return (
     <div className="stack">
       <header className="page-header">
@@ -74,26 +85,33 @@ export default async function AdminSalesPage() {
             <p className="admin-stat-value" style={{ color: "#4ade80", fontSize: "1.8rem" }}>
               {formatCurrency(totalRevenue)}
             </p>
-            <p className="admin-stat-sub">Combined final amounts</p>
+            <p className="admin-stat-pkr">{formatPKR(gbpToPkr(totalRevenue))}</p>
           </div>
           <div className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
-            <p className="admin-stat-label">Commission Earned</p>
+            <p className="admin-stat-label">Co. Commission</p>
             <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
               {formatCurrency(totalCommission)}
             </p>
-            <p className="admin-stat-sub">
-              {totalRevenue > 0
-                ? `${((totalCommission / totalRevenue) * 100).toFixed(1)}% avg rate`
-                : "—"}
-            </p>
+            <p className="admin-stat-pkr">{formatPKR(gbpToPkr(totalCommission))}</p>
           </div>
           <div className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
             <p className="admin-stat-label">Net Profit</p>
             <p className="admin-stat-value" style={{ color: "#22d3ee", fontSize: "1.8rem" }}>
               {formatCurrency(totalProfit)}
             </p>
-            <p className="admin-stat-sub">After all costs</p>
+            <p className="admin-stat-pkr">{formatPKR(gbpToPkr(totalProfit))}</p>
           </div>
+        </div>
+      )}
+
+      {/* Agent commissions summary */}
+      {totalSales > 0 && (
+        <div className="admin-stat-card" style={{ borderTopColor: "#a855f7", maxWidth: "360px" }}>
+          <p className="admin-stat-label">Total Agent Commissions Paid</p>
+          <p className="admin-stat-value" style={{ color: "#c084fc", fontSize: "1.8rem" }}>
+            {formatPKR(totalAgentCommPKR)}
+          </p>
+          <p className="admin-stat-pkr">≈ {formatCurrency(totalAgentCommGBP)} · PKR {AGENT_COMMISSION_PKR.toLocaleString("en-US")}/sale</p>
         </div>
       )}
 
@@ -121,8 +139,9 @@ export default async function AdminSalesPage() {
                   <th>Landlord</th>
                   <th>Agent</th>
                   <th>Sale Amount</th>
-                  <th>Commission</th>
+                  <th>Co. Commission</th>
                   <th>Net Profit</th>
+                  <th>Agent Comm.</th>
                   <th>Tenant</th>
                   <th>Closed</th>
                 </tr>
@@ -151,14 +170,37 @@ export default async function AdminSalesPage() {
                         </Link>
                       )}
                     </td>
-                    <td style={{ fontWeight: 700, color: "#4ade80" }}>
-                      {formatCurrency(Number(sale.finalAmount))}
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
+                        {formatCurrency(Number(sale.finalAmount))}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(Number(sale.finalAmount)))}
+                      </span>
                     </td>
-                    <td style={{ fontWeight: 700, color: "var(--brand-gold)" }}>
-                      {formatCurrency(Number(sale.commissionAmount))}
+                    <td>
+                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
+                        {formatCurrency(Number(sale.commissionAmount))}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(Number(sale.commissionAmount)))}
+                      </span>
                     </td>
-                    <td style={{ fontWeight: 600, color: "#22d3ee" }}>
-                      {formatCurrency(Number(sale.profit))}
+                    <td>
+                      <span style={{ fontWeight: 600, color: "#22d3ee", display: "block" }}>
+                        {formatCurrency(Number(sale.profit))}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(Number(sale.profit)))}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: "#c084fc", display: "block" }}>
+                        {formatPKR(AGENT_COMMISSION_PKR)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        ≈ {formatCurrency(pkrToGbp(AGENT_COMMISSION_PKR))}
+                      </span>
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                       {sale.tenant?.fullName ?? "—"}
@@ -169,6 +211,51 @@ export default async function AdminSalesPage() {
                   </tr>
                 ))}
               </tbody>
+              {sales.length > 1 && (
+                <tfoot>
+                  <tr style={{ borderTop: "2px solid var(--border)" }}>
+                    <td
+                      colSpan={3}
+                      style={{ fontWeight: 700, color: "var(--text-muted)", fontSize: "0.82rem", padding: "0.6rem 0.75rem" }}
+                    >
+                      Totals ({totalSales} sales)
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
+                        {formatCurrency(totalRevenue)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(totalRevenue))}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
+                        {formatCurrency(totalCommission)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(totalCommission))}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#22d3ee", display: "block" }}>
+                        {formatCurrency(totalProfit)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {formatPKR(gbpToPkr(totalProfit))}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: "#c084fc", display: "block" }}>
+                        {formatPKR(totalAgentCommPKR)}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        ≈ {formatCurrency(totalAgentCommGBP)}
+                      </span>
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}

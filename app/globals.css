@@ -1922,6 +1922,40 @@ a.admin-stat-card {
   .admin-stats-grid-wide { grid-template-columns: 1fr; }
 }
 
+/* ─── Admin Stats 2-col Hero Grid ──────────────────────────────────────── */
+.admin-stats-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 640px) {
+  .admin-stats-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ─── Agent Stats 2-col Hero Grid ──────────────────────────────────────── */
+.agent-stats-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 640px) {
+  .agent-stats-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ─── PKR sub-text (below main value in stat cards) ────────────────────── */
+.admin-stat-pkr {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  letter-spacing: 0.01em;
+}
+.stat-pkr-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  letter-spacing: 0.01em;
+}
+
 /* Agent performance table row highlight */
 .perf-rank-1 td:first-child { border-left: 2px solid var(--brand-gold); }
 

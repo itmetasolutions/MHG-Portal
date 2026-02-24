@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UserRole, PropertyStatus } from "@prisma/client";
 import { db } from "@/server/db";
-import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
+import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, pkrToGbp, AGENT_COMMISSION_PKR } from "@/lib/format";
 import { getAuthSession } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,6 @@ export default async function AdminPage() {
   if (!user || !user.isActive) redirect("/admin/login");
   if (user.role !== UserRole.ADMIN) redirect("/dashboard");
 
-  // ── All platform queries in parallel ──────────────────────────────────
   const [
     agentCount,
     activeAgentCount,
@@ -38,23 +37,12 @@ export default async function AdminPage() {
     db.landlord.count(),
     db.landlord.count({ where: { properties: { some: {} } } }),
     db.property.count(),
-
-    // Platform-wide sales aggregate
     db.sale.aggregate({
       _sum: { finalAmount: true, commissionAmount: true, profit: true },
       _count: { id: true },
     }),
-
-    // Platform-wide tenant count
     db.tenant.count(),
-
-    // Properties by status
-    db.property.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
-
-    // Agent performance: with sold property count, commission & tenant count
+    db.property.groupBy({ by: ["status"], _count: { id: true } }),
     db.user.findMany({
       where: { role: UserRole.AGENT },
       select: {
@@ -63,13 +51,7 @@ export default async function AdminPage() {
         email: true,
         isActive: true,
         createdAt: true,
-        _count: {
-          select: {
-            ownedLandlords: true,
-            ownedProperties: true,
-          },
-        },
-        // Fetch sold properties with their sale commissions and tenants
+        _count: { select: { ownedLandlords: true, ownedProperties: true } },
         ownedProperties: {
           where: { sale: { isNot: null } },
           select: {
@@ -84,8 +66,6 @@ export default async function AdminPage() {
         },
       },
     }),
-
-    // Recent 6 sales (platform-wide)
     db.sale.findMany({
       orderBy: { closedAt: "desc" },
       take: 6,
@@ -106,8 +86,6 @@ export default async function AdminPage() {
         },
       },
     }),
-
-    // Recent 5 agents
     db.user.findMany({
       where: { role: UserRole.AGENT },
       orderBy: { createdAt: "desc" },
@@ -121,8 +99,6 @@ export default async function AdminPage() {
         _count: { select: { ownedLandlords: true, ownedProperties: true } },
       },
     }),
-
-    // Recent 8 audit logs
     db.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 8,
@@ -136,17 +112,17 @@ export default async function AdminPage() {
     }),
   ]);
 
-  // ── Computed values ────────────────────────────────────────────────────
-  const inactiveAgents   = agentCount - activeAgentCount;
-  const totalRevenue     = Number(salesAgg._sum.finalAmount     ?? 0);
-  const totalCommission  = Number(salesAgg._sum.commissionAmount ?? 0);
-  const totalProfit      = Number(salesAgg._sum.profit          ?? 0);
-  const totalSales       = salesAgg._count.id;
+  const inactiveAgents    = agentCount - activeAgentCount;
+  const totalRevenue      = Number(salesAgg._sum.finalAmount     ?? 0);
+  const totalCommission   = Number(salesAgg._sum.commissionAmount ?? 0);
+  const totalProfit       = Number(salesAgg._sum.profit          ?? 0);
+  const totalSales        = salesAgg._count.id;
+  const avgSaleValue      = totalSales > 0 ? Math.round(totalRevenue / totalSales) : 0;
+  const totalAgentCommPKR = totalSales * AGENT_COMMISSION_PKR;
 
   const statusMap: Partial<Record<PropertyStatus, number>> = {};
   for (const g of propByStatus) statusMap[g.status] = g._count.id;
 
-  // Build agent performance rows
   const agentPerformance = agentPerformanceRaw
     .map((agent) => ({
       ...agent,
@@ -161,13 +137,11 @@ export default async function AdminPage() {
   return (
     <div className="stack">
 
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
+      {/* ── Page Header ───────────────────────────────────────────────── */}
       <header className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
-          <p className="page-subtitle">
-            Platform overview — agents, landlords, properties, sales &amp; revenue.
-          </p>
+          <p className="page-subtitle">Platform overview — agents, landlords, properties, sales &amp; revenue.</p>
         </div>
         <div className="inline-row">
           <Link className="admin-action-btn admin-action-btn-primary" href="/admin/agents">
@@ -185,10 +159,111 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      {/* ── Platform Stats ───────────────────────────────────────────────── */}
+      {/* ── ROW 1: 2 hero cards — Sales Closed + Commission Earned ──────── */}
       <div>
-        <p className="section-label">Platform Overview</p>
+        <p className="section-label">Sales Overview</p>
+        <div className="admin-stats-grid-2">
+
+          <Link href="/admin/sales" className="admin-stat-card admin-stat-card-hero">
+            <div className="admin-stat-card-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Sales Closed</p>
+            <p className="admin-stat-value admin-stat-value-hero">{totalSales}</p>
+            <p className="admin-stat-sub">{statusMap.SOLD ?? 0} properties marked as sold</p>
+          </Link>
+
+          <Link href="/admin/sales" className="admin-stat-card admin-stat-card-hero" style={{ borderTopColor: "var(--brand-gold)" }}>
+            <div className="admin-stat-card-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.798 7.45c.512-.67 1.135-.95 1.702-.95s1.19.28 1.702.95a.75.75 0 0 0 1.192-.91C12.637 5.55 11.596 5 10.5 5s-2.137.55-2.894 1.54A5.205 5.205 0 0 0 6.5 10c0 1.173.382 2.26 1.106 3.46C8.363 14.45 9.404 15 10.5 15s2.137-.55 2.894-1.54a.75.75 0 0 0-1.192-.91c-.512.67-1.135.95-1.702.95s-1.19-.28-1.702-.95A3.705 3.705 0 0 1 8 10c0-.87.284-1.72.798-2.55Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Commission Earned</p>
+            <p className="admin-stat-value admin-stat-value-hero" style={{ color: "var(--brand-gold)" }}>
+              {formatCurrency(totalCommission)}
+            </p>
+            <p className="admin-stat-pkr">≈ {formatPKR(gbpToPkr(totalCommission))}</p>
+            <p className="admin-stat-sub">
+              {totalRevenue > 0
+                ? `${((totalCommission / totalRevenue) * 100).toFixed(1)}% avg commission rate`
+                : "No sales yet"}
+            </p>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── ROW 2: 4 financial cards ──────────────────────────────────────── */}
+      <div>
+        <p className="section-label">Financial Breakdown</p>
         <div className="admin-stats-grid-wide">
+
+          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
+            <div className="admin-stat-card-icon" style={{ background: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.25)" }}>
+              <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#4ade80" }}>
+                <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.615Z" />
+                <path fillRule="evenodd" d="M9.99 2.17a8 8 0 1 0 .02 15.94A8 8 0 0 0 9.99 2.17ZM10 4a6 6 0 1 1 0 12A6 6 0 0 1 10 4ZM9.25 6.75a.75.75 0 0 1 1.5 0V7h.25a2.25 2.25 0 0 1 2.25 2.25c0 .666-.327 1.22-.812 1.58.485.36.812.914.812 1.58A2.25 2.25 0 0 1 11 14.75h-.25v.5a.75.75 0 0 1-1.5 0v-.5H9a2.25 2.25 0 0 1-2.25-2.25.75.75 0 0 1 1.5 0c0 .414.336.75.75.75h.25v-2.364a3.386 3.386 0 0 1-1.306-.73C7.41 9.9 7 9.247 7 8.5A2.25 2.25 0 0 1 9.25 6.25V6.75Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Total Revenue</p>
+            <p className="admin-stat-value" style={{ color: "#4ade80", fontSize: "1.8rem" }}>
+              {formatCurrency(totalRevenue)}
+            </p>
+            <p className="admin-stat-pkr">≈ {formatPKR(gbpToPkr(totalRevenue))}</p>
+            <p className="admin-stat-sub">Combined final sale amounts</p>
+          </Link>
+
+          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
+            <div className="admin-stat-card-icon" style={{ background: "rgba(6,182,212,0.1)", borderColor: "rgba(6,182,212,0.25)" }}>
+              <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#22d3ee" }}>
+                <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 0 1 .919-.53l4.78 1.281a.75.75 0 0 1 .531.919l-1.281 4.78a.75.75 0 0 1-1.449-.387l.81-3.022a19.407 19.407 0 0 0-5.594 5.203.75.75 0 0 1-1.139.093L7 10.06l-4.72 4.72a.75.75 0 0 1-1.06-1.061l5.25-5.25a.75.75 0 0 1 1.06 0l3.074 3.073a20.923 20.923 0 0 1 5.545-4.931l-3.042-.815a.75.75 0 0 1-.53-.918Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Net Profit</p>
+            <p className="admin-stat-value" style={{ color: "#22d3ee", fontSize: "1.8rem" }}>
+              {formatCurrency(totalProfit)}
+            </p>
+            <p className="admin-stat-pkr">≈ {formatPKR(gbpToPkr(totalProfit))}</p>
+            <p className="admin-stat-sub">After all costs deducted</p>
+          </Link>
+
+          <Link href="/admin/sales" className="admin-stat-card">
+            <div className="admin-stat-card-icon">
+              <svg viewBox="0 0 20 20" fill="currentColor">
+                <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.632l2.051-.684a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684Z" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Avg Sale Value</p>
+            <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
+              {totalSales > 0 ? formatCurrency(avgSaleValue) : "—"}
+            </p>
+            {totalSales > 0 && <p className="admin-stat-pkr">≈ {formatPKR(gbpToPkr(avgSaleValue))}</p>}
+            <p className="admin-stat-sub">Per closed sale</p>
+          </Link>
+
+          <div className="admin-stat-card" style={{ borderTopColor: "#a78bfa" }}>
+            <div className="admin-stat-card-icon" style={{ background: "rgba(167,139,250,0.1)", borderColor: "rgba(167,139,250,0.25)" }}>
+              <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#a78bfa" }}>
+                <path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM14.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1.615 16.428a1.224 1.224 0 0 1-.569-1.175 6.002 6.002 0 0 1 11.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 0 1 7 18a9.953 9.953 0 0 1-5.385-1.572ZM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 0 0-1.588-3.755 4.502 4.502 0 0 1 5.874 2.636.818.818 0 0 1-.36.98A7.465 7.465 0 0 1 14.5 16Z" />
+              </svg>
+            </div>
+            <p className="admin-stat-label">Agent Commissions</p>
+            <p className="admin-stat-value" style={{ color: "#a78bfa", fontSize: "1.8rem" }}>
+              {formatPKR(totalAgentCommPKR)}
+            </p>
+            <p className="admin-stat-pkr">≈ {formatCurrency(pkrToGbp(totalAgentCommPKR))}</p>
+            <p className="admin-stat-sub">PKR 5,000 × {totalSales} {totalSales === 1 ? "sale" : "sales"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 3: 4 count cards ──────────────────────────────────────────── */}
+      <div>
+        <p className="section-label">Platform Totals</p>
+        <div className="admin-stats-grid-wide">
+
           <Link href="/admin/agents" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
@@ -224,17 +299,6 @@ export default async function AdminPage() {
             </p>
           </Link>
 
-          <Link href="/admin/sales" className="admin-stat-card">
-            <div className="admin-stat-card-icon">
-              <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <p className="admin-stat-label">Sales Closed</p>
-            <p className="admin-stat-value">{totalSales}</p>
-            <p className="admin-stat-sub">{statusMap.SOLD ?? 0} properties sold</p>
-          </Link>
-
           <Link href="/admin/tenants" className="admin-stat-card">
             <div className="admin-stat-card-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
@@ -245,67 +309,10 @@ export default async function AdminPage() {
             <p className="admin-stat-value">{tenantCount}</p>
             <p className="admin-stat-sub">Tenant records on file</p>
           </Link>
-
-          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
-            <div className="admin-stat-card-icon" style={{ background: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.25)" }}>
-              <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#4ade80" }}>
-                <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.33.615Z" />
-                <path fillRule="evenodd" d="M9.99 2.17a8 8 0 1 0 .02 15.94A8 8 0 0 0 9.99 2.17ZM10 4a6 6 0 1 1 0 12A6 6 0 0 1 10 4ZM9.25 6.75a.75.75 0 0 1 1.5 0V7h.25a2.25 2.25 0 0 1 2.25 2.25c0 .666-.327 1.22-.812 1.58.485.36.812.914.812 1.58A2.25 2.25 0 0 1 11 14.75h-.25v.5a.75.75 0 0 1-1.5 0v-.5H9a2.25 2.25 0 0 1-2.25-2.25.75.75 0 0 1 1.5 0c0 .414.336.75.75.75h.25v-2.364a3.386 3.386 0 0 1-1.306-.73C7.41 9.9 7 9.247 7 8.5A2.25 2.25 0 0 1 9.25 6.25V6.75Z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <p className="admin-stat-label">Total Revenue</p>
-            <p className="admin-stat-value" style={{ color: "#4ade80", fontSize: "1.8rem" }}>
-              {formatCurrency(totalRevenue)}
-            </p>
-            <p className="admin-stat-sub">Combined final sale amounts</p>
-          </Link>
-
-          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
-            <div className="admin-stat-card-icon">
-              <svg viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.798 7.45c.512-.67 1.135-.95 1.702-.95s1.19.28 1.702.95a.75.75 0 0 0 1.192-.91C12.637 5.55 11.596 5 10.5 5s-2.137.55-2.894 1.54A5.205 5.205 0 0 0 6.5 10c0 1.173.382 2.26 1.106 3.46C8.363 14.45 9.404 15 10.5 15s2.137-.55 2.894-1.54a.75.75 0 0 0-1.192-.91c-.512.67-1.135.95-1.702.95s-1.19-.28-1.702-.95A3.705 3.705 0 0 1 8 10c0-.87.284-1.72.798-2.55Z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <p className="admin-stat-label">Commission Earned</p>
-            <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
-              {formatCurrency(totalCommission)}
-            </p>
-            <p className="admin-stat-sub">
-              {totalRevenue > 0
-                ? `${((totalCommission / totalRevenue) * 100).toFixed(1)}% avg rate`
-                : "No sales yet"}
-            </p>
-          </Link>
-
-          <Link href="/admin/sales" className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
-            <div className="admin-stat-card-icon" style={{ background: "rgba(6,182,212,0.1)", borderColor: "rgba(6,182,212,0.25)" }}>
-              <svg viewBox="0 0 20 20" fill="currentColor" style={{ color: "#22d3ee" }}>
-                <path fillRule="evenodd" d="M12.577 4.878a.75.75 0 0 1 .919-.53l4.78 1.281a.75.75 0 0 1 .531.919l-1.281 4.78a.75.75 0 0 1-1.449-.387l.81-3.022a19.407 19.407 0 0 0-5.594 5.203.75.75 0 0 1-1.139.093L7 10.06l-4.72 4.72a.75.75 0 0 1-1.06-1.061l5.25-5.25a.75.75 0 0 1 1.06 0l3.074 3.073a20.923 20.923 0 0 1 5.545-4.931l-3.042-.815a.75.75 0 0 1-.53-.918Z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <p className="admin-stat-label">Net Profit</p>
-            <p className="admin-stat-value" style={{ color: "#22d3ee", fontSize: "1.8rem" }}>
-              {formatCurrency(totalProfit)}
-            </p>
-            <p className="admin-stat-sub">After all costs deducted</p>
-          </Link>
-
-          <Link href="/admin/sales" className="admin-stat-card">
-            <div className="admin-stat-card-icon">
-              <svg viewBox="0 0 20 20" fill="currentColor">
-                <path d="M15.98 1.804a1 1 0 0 0-1.96 0l-.24 1.192a1 1 0 0 1-.784.785l-1.192.238a1 1 0 0 0 0 1.962l1.192.238a1 1 0 0 1 .785.785l.238 1.192a1 1 0 0 0 1.962 0l.238-1.192a1 1 0 0 1 .785-.785l1.192-.238a1 1 0 0 0 0-1.962l-1.192-.238a1 1 0 0 1-.785-.785l-.238-1.192ZM6.949 5.684a1 1 0 0 0-1.898 0l-.683 2.051a1 1 0 0 1-.633.633l-2.051.683a1 1 0 0 0 0 1.898l2.051.684a1 1 0 0 1 .633.632l.683 2.051a1 1 0 0 0 1.898 0l.683-2.051a1 1 0 0 1 .633-.632l2.051-.684a1 1 0 0 0 0-1.898l-2.051-.683a1 1 0 0 1-.633-.633L6.95 5.684Z" />
-              </svg>
-            </div>
-            <p className="admin-stat-label">Avg Sale Value</p>
-            <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
-              {totalSales > 0 ? formatCurrency(Math.round(totalRevenue / totalSales)) : "—"}
-            </p>
-            <p className="admin-stat-sub">Per closed sale</p>
-          </Link>
         </div>
       </div>
 
-      {/* ── Properties by Status ─────────────────────────────────────────── */}
+      {/* ── Properties by Status ──────────────────────────────────────────── */}
       {propertyCount > 0 && (
         <div className="admin-card">
           <div className="admin-card-header">
@@ -338,10 +345,9 @@ export default async function AdminPage() {
         </div>
       )}
 
-      {/* ── Agent Performance + Recent Sales ────────────────────────────── */}
+      {/* ── Agent Performance + Recent Sales ──────────────────────────────── */}
       <div className="two-col">
 
-        {/* Agent Performance Table */}
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">
@@ -350,9 +356,7 @@ export default async function AdminPage() {
               </svg>
               Agent Performance
             </h2>
-            <Link className="btn btn-sm btn-secondary" href="/admin/agents">
-              Manage Agents
-            </Link>
+            <Link className="btn btn-sm btn-secondary" href="/admin/agents">Manage Agents</Link>
           </div>
           <div style={{ padding: 0 }}>
             {agentPerformance.length === 0 ? (
@@ -365,11 +369,9 @@ export default async function AdminPage() {
                   <thead>
                     <tr>
                       <th>Agent</th>
-                      <th>Landlords</th>
-                      <th>Properties</th>
                       <th>Sales</th>
-                      <th>Tenants</th>
-                      <th>Commission</th>
+                      <th>Co. Commission</th>
+                      <th>Agent Comm.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -387,24 +389,28 @@ export default async function AdminPage() {
                             <span className="badge badge-locked" style={{ marginTop: "0.2rem", display: "inline-flex" }}>Disabled</span>
                           )}
                         </td>
-                        <td style={{ fontWeight: 600, color: "var(--text)" }}>
-                          {agent._count.ownedLandlords}
-                        </td>
-                        <td style={{ fontWeight: 600, color: "var(--text)" }}>
-                          {agent._count.ownedProperties}
+                        <td style={{ fontWeight: 700, color: agent.salesCount > 0 ? "#4ade80" : "var(--text-subtle)" }}>
+                          {agent.salesCount}
                         </td>
                         <td>
-                          <span style={{ fontWeight: 700, color: agent.salesCount > 0 ? "#4ade80" : "var(--text-subtle)" }}>
-                            {agent.salesCount}
+                          <span style={{ fontWeight: 700, color: agent.totalCommission > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>
+                            {agent.totalCommission > 0 ? formatCurrency(agent.totalCommission) : "—"}
                           </span>
+                          {agent.totalCommission > 0 && (
+                            <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                              ≈ {formatPKR(gbpToPkr(agent.totalCommission))}
+                            </span>
+                          )}
                         </td>
                         <td>
-                          <span style={{ fontWeight: 600, color: agent.tenantsCount > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>
-                            {agent.tenantsCount}
+                          <span style={{ fontWeight: 700, color: agent.salesCount > 0 ? "#a78bfa" : "var(--text-subtle)" }}>
+                            {agent.salesCount > 0 ? formatPKR(agent.salesCount * AGENT_COMMISSION_PKR) : "—"}
                           </span>
-                        </td>
-                        <td style={{ fontWeight: 700, color: agent.totalCommission > 0 ? "var(--brand-gold)" : "var(--text-subtle)" }}>
-                          {agent.totalCommission > 0 ? formatCurrency(agent.totalCommission) : "—"}
+                          {agent.salesCount > 0 && (
+                            <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                              ≈ {formatCurrency(pkrToGbp(agent.salesCount * AGENT_COMMISSION_PKR))}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -415,7 +421,6 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        {/* Recent Sales */}
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">
@@ -450,15 +455,24 @@ export default async function AdminPage() {
                             {sale.property.addressLine1}
                           </span>
                           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                            {sale.property.city}
-                            {sale.closedBy ? ` · ${sale.closedBy.agentDisplayName}` : ""}
+                            {sale.property.city}{sale.closedBy ? ` · ${sale.closedBy.agentDisplayName}` : ""}
                           </span>
                         </td>
-                        <td style={{ fontWeight: 700, color: "#4ade80" }}>
-                          {formatCurrency(Number(sale.finalAmount))}
+                        <td>
+                          <span style={{ fontWeight: 700, color: "#4ade80" }}>
+                            {formatCurrency(Number(sale.finalAmount))}
+                          </span>
+                          <span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                            ≈ {formatPKR(gbpToPkr(Number(sale.finalAmount)))}
+                          </span>
                         </td>
-                        <td style={{ fontWeight: 700, color: "var(--brand-gold)" }}>
-                          {formatCurrency(Number(sale.commissionAmount))}
+                        <td>
+                          <span style={{ fontWeight: 700, color: "var(--brand-gold)" }}>
+                            {formatCurrency(Number(sale.commissionAmount))}
+                          </span>
+                          <span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                            ≈ {formatPKR(gbpToPkr(Number(sale.commissionAmount)))}
+                          </span>
                         </td>
                         <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
                           {formatDate(sale.closedAt)}
@@ -473,10 +487,9 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* ── Recent Agents + Recent Activity ─────────────────────────────── */}
+      {/* ── Recent Agents + Recent Activity ───────────────────────────────── */}
       <div className="two-col">
 
-        {/* Recent Agents */}
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">
@@ -485,9 +498,7 @@ export default async function AdminPage() {
               </svg>
               Recently Added Agents
             </h2>
-            <Link className="btn btn-sm btn-secondary" href="/admin/agents">
-              View All
-            </Link>
+            <Link className="btn btn-sm btn-secondary" href="/admin/agents">View All</Link>
           </div>
           <div style={{ padding: 0 }}>
             {recentAgents.length === 0 ? (
@@ -532,7 +543,6 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        {/* Recent Audit Activity */}
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">
@@ -541,9 +551,7 @@ export default async function AdminPage() {
               </svg>
               Recent Activity
             </h2>
-            <Link className="btn btn-sm btn-secondary" href="/admin/audit">
-              Full Log
-            </Link>
+            <Link className="btn btn-sm btn-secondary" href="/admin/audit">Full Log</Link>
           </div>
           <div style={{ padding: 0 }}>
             {recentAudit.length === 0 ? (
@@ -565,27 +573,21 @@ export default async function AdminPage() {
                     {recentAudit.map((log) => (
                       <tr key={log.id}>
                         <td>
-                          <span
-                            style={{
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                              fontFamily: "monospace",
-                              color:
-                                log.action.includes("CREATE") ? "var(--success)" :
-                                log.action.includes("DELETE") || log.action.includes("REMOVE") ? "var(--danger)" :
-                                log.action.includes("STATUS") ? "var(--warning)" :
-                                "var(--brand-gold)",
-                            }}
-                          >
+                          <span style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            fontFamily: "monospace",
+                            color:
+                              log.action.includes("CREATE") ? "var(--success)" :
+                              log.action.includes("DELETE") || log.action.includes("REMOVE") ? "var(--danger)" :
+                              log.action.includes("STATUS") ? "var(--warning)" :
+                              "var(--brand-gold)",
+                          }}>
                             {log.action}
                           </span>
                         </td>
-                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                          {log.entityType}
-                        </td>
-                        <td style={{ fontSize: "0.8rem" }}>
-                          {log.user.agentDisplayName ?? log.user.email}
-                        </td>
+                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{log.entityType}</td>
+                        <td style={{ fontSize: "0.8rem" }}>{log.user.agentDisplayName ?? log.user.email}</td>
                         <td style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                           {formatDateTime(log.createdAt)}
                         </td>
@@ -599,7 +601,7 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* ── Quick Actions ────────────────────────────────────────────────── */}
+      {/* ── Quick Actions ──────────────────────────────────────────────────── */}
       <div className="admin-card">
         <div className="admin-card-header">
           <h2 className="admin-card-title">
