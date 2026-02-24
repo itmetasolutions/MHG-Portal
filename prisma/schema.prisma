@@ -29,13 +29,15 @@ model User {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
-  createdLandlords Landlord[] @relation("LandlordCreatedBy")
-  updatedLandlords Landlord[] @relation("LandlordUpdatedBy")
-  ownedLandlords   Landlord[] @relation("LandlordOwnerAgent")
-  ownedProperties  Property[] @relation("PropertyOwnerAgent")
-  closedSales      Sale[]     @relation("SaleClosedBy")
+  createdLandlords Landlord[]    @relation("LandlordCreatedBy")
+  updatedLandlords Landlord[]    @relation("LandlordUpdatedBy")
+  ownedLandlords   Landlord[]    @relation("LandlordOwnerAgent")
+  ownedProperties  Property[]    @relation("PropertyOwnerAgent")
+  closedSales      Sale[]        @relation("SaleClosedBy")
   otpCodes         OTPCode[]
   auditLogs        AuditLog[]
+  sentMessages     ChatMessage[] @relation("MessageSentBy")
+  receivedMessages ChatMessage[] @relation("MessageReceivedBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -170,5 +172,21 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid()) @db.Uuid
+  fromUserId String   @db.Uuid
+  toUserId   String   @db.Uuid
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  fromUser User @relation("MessageSentBy",     fields: [fromUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  toUser   User @relation("MessageReceivedBy", fields: [toUserId],   references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([fromUserId, toUserId, createdAt])
+  @@index([toUserId, fromUserId, createdAt])
   @@index([createdAt])
 }

@@ -80,6 +80,14 @@ function ProfileIcon() {
   );
 }
 
+function MessagesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 4.014 1 5.426v5.148c0 1.413.993 2.67 2.43 2.902.848.137 1.705.248 2.57.331v3.443a.75.75 0 0 0 1.28.53l3.58-3.579a.78.78 0 0 1 .527-.224 41.202 41.202 0 0 0 5.183-.5c1.437-.232 2.43-1.49 2.43-2.903V5.426c0-1.413-.993-2.67-2.43-2.902A41.289 41.289 0 0 0 10 2Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM8 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm5 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
   { href: "/landlords", label: "Landlords", icon: LandlordsIcon, exact: false },
@@ -87,6 +95,7 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
   { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
   { href: "/profile", label: "Profile", icon: ProfileIcon, exact: false },
+  { href: "/messages", label: "Messages", icon: MessagesIcon, exact: false },
 ];
 
 export function AgentShell({ user, children }: Props) {
@@ -202,7 +211,7 @@ export function AgentShell({ user, children }: Props) {
             </div>
           </div>
 
-          <div className="agent-topbar-meta">{user.email}</div>
+          <div className="agent-topbar-meta">{user.name || user.email}</div>
         </div>
 
         <div className="agent-lookup-strip">
