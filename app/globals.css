@@ -2226,6 +2226,22 @@ a.admin-stat-card {
   padding: 0 0.3rem;
 }
 
+.chat-role-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(201, 168, 76, 0.15);
+  color: var(--brand-gold);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 3px;
+  padding: 0 0.3rem;
+  line-height: 1.4;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+}
+
 .chat-agent-list {
   flex: 1;
   overflow-y: auto;

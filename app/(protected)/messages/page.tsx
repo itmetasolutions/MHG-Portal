@@ -17,16 +17,22 @@ export default async function AgentMessagesPage() {
   });
   if (!user || !user.isActive) redirect("/login");
 
-  const admin = await db.user.findFirst({
-    where: { role: UserRole.ADMIN, isActive: true },
-    select: { id: true, agentDisplayName: true },
+  // All other active users: other agents + admin
+  const contacts = await db.user.findMany({
+    where: { isActive: true, id: { not: session.userId } },
+    select: { id: true, agentDisplayName: true, email: true, role: true },
+    orderBy: [{ role: "asc" }, { agentDisplayName: "asc" }],
   });
 
   return (
     <AgentMessagesClient
       agentId={session.userId}
-      adminId={admin?.id ?? null}
-      adminName={admin?.agentDisplayName ?? "Admin"}
+      contacts={contacts.map((c) => ({
+        id: c.id,
+        name: c.agentDisplayName,
+        email: c.email,
+        role: c.role as string,
+      }))}
     />
   );
 }
