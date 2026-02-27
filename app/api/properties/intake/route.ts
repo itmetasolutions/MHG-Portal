@@ -31,7 +31,7 @@ const intakeSchema = z
         baths: z.coerce.number().int().min(0).nullable().optional(),
         status: z.nativeEnum(PropertyStatus).optional(),
         landlordDemand: z.coerce.number().positive().nullable().optional(),
-        expectedCommissionPct: z.coerce.number().min(0).max(100).nullable().optional(),
+        expectedCommissionPct: z.coerce.number().min(0).max(9999).nullable().optional(),
       })
       .strict(),
   })

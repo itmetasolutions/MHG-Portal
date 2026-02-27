@@ -430,7 +430,7 @@ export default function AddPropertyPage() {
                       value={commissionPct}
                       onChange={(e) => setCommissionPct(e.target.value)}
                       min={0}
-                      max={100}
+                      max={9999}
                       step="0.1"
                       placeholder="e.g. 10"
                       disabled={saving}
