@@ -44,9 +44,10 @@ export default async function AdminAgentsPage() {
         },
       },
       ownedProperties: {
-        where: { sale: { isNot: null } },
+        where: { sales: { some: {} } },
         select: {
-          sale: {
+          sales: {
+            take: 1,
             select: {
               tenant: { select: { id: true } },
             },
@@ -67,7 +68,7 @@ export default async function AdminAgentsPage() {
         ownedLandlords: agent._count.ownedLandlords,
         ownedProperties: agent._count.ownedProperties,
         closedSales: agent.ownedProperties.length,
-        tenants: agent.ownedProperties.filter((p) => p.sale?.tenant != null).length,
+        tenants: agent.ownedProperties.filter((p) => p.sales[0]?.tenant != null).length,
       }))}
     />
   );
