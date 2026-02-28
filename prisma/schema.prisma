@@ -14,10 +14,8 @@ enum UserRole {
 
 enum PropertyStatus {
   DRAFT
-  LIVE
-  UNDER_OFFER
-  SOLD
-  WITHDRAWN
+  AVAILABLE
+  CLOSED
 }
 
 enum VacancyType {

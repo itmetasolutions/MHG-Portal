@@ -8,11 +8,9 @@ import { db } from "@/server/db";
 export const dynamic = "force-dynamic";
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  LIVE: { label: "Live", badgeClass: "badge-active" },
-  UNDER_OFFER: { label: "Under Offer", badgeClass: "badge-offer" },
-  SOLD: { label: "Sold", badgeClass: "badge-sold" },
-  DRAFT: { label: "Draft", badgeClass: "badge-draft" },
-  WITHDRAWN: { label: "Withdrawn", badgeClass: "badge-locked" },
+  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
+  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
+  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
 };
 
 type Props = {

@@ -114,13 +114,13 @@ export default async function TenantsPage() {
                       {tenant.rentAmount
                         ? (
                           <span style={{ color: "#4ade80", fontWeight: 600 }}>
-                            £{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo
+                            {'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo
                           </span>
                         )
                         : <span className="muted">—</span>}
                       {tenant.depositAmount && (
                         <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                          dep: £{Number(tenant.depositAmount).toLocaleString("en-GB")}
+                          dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
                         </span>
                       )}
                     </td>

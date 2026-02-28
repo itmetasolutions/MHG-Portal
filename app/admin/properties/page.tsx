@@ -8,11 +8,9 @@ import { formatDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  LIVE:        { label: "Live",        badgeClass: "badge-active" },
-  UNDER_OFFER: { label: "Under Offer", badgeClass: "badge-offer"  },
-  SOLD:        { label: "Sold",        badgeClass: "badge-sold"   },
-  DRAFT:       { label: "Draft",       badgeClass: "badge-draft"  },
-  WITHDRAWN:   { label: "Withdrawn",   badgeClass: "badge-locked" },
+  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
+  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
+  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
 };
 
 export default async function AdminPropertiesPage() {
@@ -26,7 +24,7 @@ export default async function AdminPropertiesPage() {
   if (!user || !user.isActive) redirect("/admin/login");
   if (user.role !== UserRole.ADMIN) redirect("/dashboard");
 
-  const activeWhere = { status: { not: "SOLD" as const } };
+  const activeWhere = { status: { not: "CLOSED" as const } };
 
   const [total, byStatus, properties] = await Promise.all([
     db.property.count({ where: activeWhere }),
@@ -73,11 +71,9 @@ export default async function AdminPropertiesPage() {
             <div className="status-breakdown">
               {(
                 [
-                  ["LIVE",        "Live",        "status-item-live"     ],
-                  ["UNDER_OFFER", "Under Offer", "status-item-offer"    ],
-                  ["SOLD",        "Sold",        "status-item-sold"     ],
-                  ["DRAFT",       "Draft",       "status-item-draft"    ],
-                  ["WITHDRAWN",   "Withdrawn",   "status-item-withdrawn"],
+                  ["AVAILABLE", "Available", "status-item-live" ],
+                  ["DRAFT",     "Draft",     "status-item-draft"],
+                  ["CLOSED",    "Closed",    "status-item-sold" ],
                 ] as [PropertyStatus, string, string][]
               ).map(([s, label, cls]) => (
                 <div key={s} className={`status-item ${cls}`}>

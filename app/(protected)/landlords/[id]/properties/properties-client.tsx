@@ -48,9 +48,17 @@ type RoomDraft = {
   expectedCommissionPct: string;
 };
 
+const ROOM_TYPES = [
+  "Studio Room",
+  "Single Room",
+  "Double Room",
+  "Ensuite Room",
+  "Loft",
+] as const;
+
 function createEmptyRoom(index: number): RoomDraft {
   return {
-    roomName: `Room ${index + 1}`,
+    roomName: ROOM_TYPES[0],
     landlordDemand: "",
     expectedCommissionPct: "",
   };
@@ -65,6 +73,12 @@ function roomStatusBadge(status: "AVAILABLE" | "UNDER_OFFER" | "CLOSED") {
   if (status === "UNDER_OFFER") return "badge-offer";
   return "badge-sold";
 }
+
+const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
+  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
+  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
+  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
+};
 
 export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [landlordLabel, setLandlordLabel] = useState("");
@@ -143,7 +157,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
         : [];
 
     if (newVacancyType === "MULTIPLE" && normalizedRooms.length === 0) {
-      setMessage({ type: "error", text: "Add at least one room for MULTIPLE vacancy properties." });
+      setMessage({ type: "error", text: "Add at least one room for Shared properties." });
       return;
     }
 
@@ -265,11 +279,11 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       setMessage({
         type: "success",
         text: allRoomsClosed
-          ? "Room sale closed. All rooms are closed and property marked SOLD."
+          ? "Room sale closed. All rooms are closed and property marked Closed."
           : "Room sale closed successfully.",
       });
     } else {
-      setMessage({ type: "success", text: "Sale closed and property marked SOLD. Tenant details recorded." });
+      setMessage({ type: "success", text: "Sale closed and property marked Closed. Tenant details recorded." });
     }
     await load();
   }
@@ -330,17 +344,15 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
               <label className="field">
                 <span className="label">Status</span>
                 <UISelect value={newStatus} onChange={(event) => setNewStatus(event.target.value as PropertyStatus)}>
-                  <option value="DRAFT">DRAFT</option>
-                  <option value="LIVE">LIVE</option>
-                  <option value="UNDER_OFFER">UNDER_OFFER</option>
-                  <option value="WITHDRAWN">WITHDRAWN</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="AVAILABLE">Available</option>
                 </UISelect>
               </label>
               <label className="field">
-                <span className="label">Vacancy Type</span>
+                <span className="label">Property Type</span>
                 <UISelect value={newVacancyType} onChange={(e) => setNewVacancyType(e.target.value as VacancyType)}>
-                  <option value="SINGLE">SINGLE</option>
-                  <option value="MULTIPLE">MULTIPLE</option>
+                  <option value="SINGLE">Private Property</option>
+                  <option value="MULTIPLE">Shared Property</option>
                 </UISelect>
               </label>
             </div>
@@ -362,7 +374,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                   <table className="room-editor-table">
                     <thead>
                       <tr>
-                        <th>Room Name</th>
+                        <th>Room Type</th>
                         <th>Landlord Demand (GBP)</th>
                         <th>Expected Commission (%)</th>
                         <th />
@@ -372,11 +384,16 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                       {newRooms.map((room, index) => (
                         <tr key={`new-room-${index}`}>
                           <td>
-                            <UIInput
+                            <UISelect
                               value={room.roomName}
                               onChange={(e) => updateNewRoom(index, "roomName", e.target.value)}
-                              placeholder={`Room ${index + 1}`}
-                            />
+                            >
+                              {ROOM_TYPES.map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                            </UISelect>
                           </td>
                           <td>
                             <UIInput
@@ -437,7 +454,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
               <thead>
                 <tr>
                   <th>Ref</th>
-                  <th>Vacancy</th>
+                  <th>Type</th>
                   <th>Status</th>
                   <th>City / Postcode</th>
                   <th>Demand</th>
@@ -456,7 +473,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                   const canCloseSale =
                     vacancy === "SINGLE" &&
                     sales.length === 0 &&
-                    (property.status === "LIVE" || property.status === "UNDER_OFFER");
+                    property.status === "AVAILABLE";
 
                   return (
                     <tr key={property.id}>
@@ -469,22 +486,22 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                       </td>
                       <td>
                         <span className={`badge ${vacancy === "MULTIPLE" ? "badge-offer" : "badge-active"}`}>
-                          {vacancy}
+                          {vacancy === "MULTIPLE" ? "Shared" : "Private"}
                         </span>
                       </td>
                       <td>
                         {editing ? (
                           <UISelect value={editStatus} onChange={(event) => setEditStatus(event.target.value as PropertyStatus)}>
-                            <option value="DRAFT">DRAFT</option>
-                            <option value="LIVE">LIVE</option>
-                            <option value="UNDER_OFFER">UNDER_OFFER</option>
-                            <option value="WITHDRAWN">WITHDRAWN</option>
-                            <option value="SOLD" disabled>
-                              SOLD (auto by closing)
+                            <option value="DRAFT">Draft</option>
+                            <option value="AVAILABLE">Available</option>
+                            <option value="CLOSED" disabled>
+                              Closed (auto on sale close)
                             </option>
                           </UISelect>
                         ) : (
-                          property.status
+                          <span className={`badge ${STATUS_CONFIG[property.status]?.badgeClass ?? "badge-draft"}`}>
+                            {STATUS_CONFIG[property.status]?.label ?? property.status}
+                          </span>
                         )}
                       </td>
                       <td>
@@ -509,7 +526,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                             onChange={(event) => setEditDemand(event.target.value)}
                           />
                         ) : property.landlordDemand ? (
-                          `£${property.landlordDemand}`
+                          `\u00A3${property.landlordDemand}`
                         ) : (
                           "-"
                         )}
@@ -519,7 +536,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                           <div>
                             <strong style={{ color: "#4ade80" }}>{sales.length}</strong>
                             <span className="muted" style={{ marginLeft: "0.35rem" }}>
-                              (£{Math.round(totalSalesAmount).toLocaleString("en-GB")})
+                              ({'\u00A3'}{Math.round(totalSalesAmount).toLocaleString("en-GB")})
                             </span>
                           </div>
                         ) : (
@@ -533,7 +550,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                               const canCloseRoom =
                                 !room.sale &&
                                 room.status !== "CLOSED" &&
-                                (property.status === "LIVE" || property.status === "UNDER_OFFER");
+                                property.status === "AVAILABLE";
                               return (
                                 <div key={room.id} className="room-chip">
                                   <div className="room-chip-head">
@@ -541,12 +558,12 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                     <span className={`badge ${roomStatusBadge(room.status)}`}>{room.status}</span>
                                   </div>
                                   <div className="room-chip-sub">
-                                    {room.landlordDemand ? `£${room.landlordDemand}` : "No demand"}{" "}
+                                    {room.landlordDemand ? `\u00A3${room.landlordDemand}` : "No demand"}{" "}
                                     {room.expectedCommissionPct ? `| ${room.expectedCommissionPct}%` : ""}
                                   </div>
                                   {room.sale ? (
                                     <div className="room-chip-sub">
-                                      Sold £{Math.round(Number(room.sale.finalAmount)).toLocaleString("en-GB")}
+                                      Sold {'\u00A3'}{Math.round(Number(room.sale.finalAmount)).toLocaleString("en-GB")}
                                     </div>
                                   ) : canCloseRoom ? (
                                     <UIButton

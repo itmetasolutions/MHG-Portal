@@ -243,12 +243,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  if (payload.status === "SOLD" && currentProperty.sales.length === 0) {
+  if (payload.status === "CLOSED" && currentProperty.sales.length === 0) {
     return NextResponse.json(
       {
         error: "SALE_REQUIRED",
         message:
-          "Use POST /api/properties/:propertyId/close-sale to mark property as SOLD with sale details.",
+          "Use POST /api/properties/:propertyId/close-sale to mark property as CLOSED with sale details.",
       },
       { status: 400 },
     );

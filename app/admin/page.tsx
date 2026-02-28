@@ -330,7 +330,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
             <p className="admin-stat-label">Total Properties</p>
             <p className="admin-stat-value">{propertyCount}</p>
             <p className="admin-stat-sub">
-              {statusMap.LIVE ?? 0} live · {statusMap.UNDER_OFFER ?? 0} under offer
+              {statusMap.AVAILABLE ?? 0} available · {statusMap.DRAFT ?? 0} draft
             </p>
           </Link>
 
@@ -363,11 +363,9 @@ export default async function AdminPage({ searchParams }: PageProps) {
             <div className="status-breakdown">
               {(
                 [
-                  ["LIVE",        "Live",        "status-item-live"      ],
-                  ["UNDER_OFFER", "Under Offer", "status-item-offer"     ],
-                  ["SOLD",        "Sold",        "status-item-sold"      ],
-                  ["DRAFT",       "Draft",       "status-item-draft"     ],
-                  ["WITHDRAWN",   "Withdrawn",   "status-item-withdrawn" ],
+                  ["AVAILABLE", "Available", "status-item-live" ],
+                  ["DRAFT",     "Draft",     "status-item-draft"],
+                  ["CLOSED",    "Closed",    "status-item-sold" ],
                 ] as [PropertyStatus, string, string][]
               ).map(([status, label, cls]) => (
                 <div key={status} className={`status-item ${cls}`}>

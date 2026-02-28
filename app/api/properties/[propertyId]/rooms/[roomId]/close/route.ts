@@ -93,10 +93,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "ROOM_ALREADY_CLOSED", message: "This room is already closed." }, { status: 409 });
   }
 
-  const closablePropertyStatuses = ["LIVE", "UNDER_OFFER"];
+  const closablePropertyStatuses = ["AVAILABLE"];
   if (!closablePropertyStatuses.includes(room.property.status)) {
     return NextResponse.json(
-      { error: "INVALID_PROPERTY_STATUS", message: "Property must be LIVE or UNDER_OFFER to close a room sale." },
+      { error: "INVALID_PROPERTY_STATUS", message: "Property must be AVAILABLE to close a room sale." },
       { status: 400 },
     );
   }
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       // All rooms closed — mark property as SOLD
       await tx.property.update({
         where: { id: room.propertyId },
-        data: { status: "SOLD" },
+        data: { status: "CLOSED" },
       });
     }
 

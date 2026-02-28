@@ -16,11 +16,9 @@ import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey 
 export const dynamic = "force-dynamic";
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  LIVE:        { label: "Live",        badgeClass: "badge-active"  },
-  UNDER_OFFER: { label: "Under Offer", badgeClass: "badge-offer"   },
-  SOLD:        { label: "Sold",        badgeClass: "badge-sold"    },
-  DRAFT:       { label: "Draft",       badgeClass: "badge-draft"   },
-  WITHDRAWN:   { label: "Withdrawn",   badgeClass: "badge-locked"  },
+  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
+  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
+  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
 };
 
 type PageProps = {
@@ -238,7 +236,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             <p className="stat-label">My Properties</p>
             <p className="stat-value">{propertiesTotal}</p>
             <p className="stat-sub">
-              {statusMap.LIVE ?? 0} live · {statusMap.UNDER_OFFER ?? 0} under offer
+              {statusMap.AVAILABLE ?? 0} available · {statusMap.DRAFT ?? 0} draft
             </p>
           </div>
           <div className="stat-card">
@@ -317,11 +315,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <div className="status-breakdown">
             {(
               [
-                ["LIVE",        "Live",        "status-item-live"      ],
-                ["UNDER_OFFER", "Under Offer", "status-item-offer"     ],
-                ["SOLD",        "Sold",        "status-item-sold"      ],
-                ["DRAFT",       "Draft",       "status-item-draft"     ],
-                ["WITHDRAWN",   "Withdrawn",   "status-item-withdrawn" ],
+                ["AVAILABLE", "Available", "status-item-live" ],
+                ["DRAFT",     "Draft",     "status-item-draft"],
+                ["CLOSED",    "Closed",    "status-item-sold" ],
               ] as [PropertyStatus, string, string][]
             ).map(([status, label, cls]) => (
               <div key={status} className={`status-item ${cls}`}>
@@ -584,10 +580,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     </td>
                     <td style={{ fontSize: "0.82rem" }}>
                       {tenant.rentAmount
-                        ? <span style={{ color: "#4ade80", fontWeight: 600 }}>£{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
+                        ? <span style={{ color: "#4ade80", fontWeight: 600 }}>{'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
                         : <span className="muted">—</span>}
                       {tenant.depositAmount
-                        ? <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>dep: £{Number(tenant.depositAmount).toLocaleString("en-GB")}</span>
+                        ? <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}</span>
                         : null}
                     </td>
                     {isAdmin && (

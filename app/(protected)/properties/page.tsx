@@ -7,18 +7,16 @@ import { formatDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  LIVE:        { label: "Live",        badgeClass: "badge-active" },
-  UNDER_OFFER: { label: "Under Offer", badgeClass: "badge-offer"  },
-  SOLD:        { label: "Sold",        badgeClass: "badge-sold"   },
-  DRAFT:       { label: "Draft",       badgeClass: "badge-draft"  },
-  WITHDRAWN:   { label: "Withdrawn",   badgeClass: "badge-locked" },
+  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
+  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
+  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
 };
 
 export default async function PropertiesPage() {
   const session = await getAuthSession();
   if (!session) return null;
 
-  const where: Prisma.PropertyWhereInput = { ownerAgentId: session.userId, status: { not: "SOLD" } };
+  const where: Prisma.PropertyWhereInput = { ownerAgentId: session.userId, status: { not: "CLOSED" } };
 
   const [total, byStatus, properties] = await Promise.all([
     db.property.count({ where }),
@@ -65,11 +63,9 @@ export default async function PropertiesPage() {
           <div className="status-breakdown">
             {(
               [
-                ["LIVE",        "Live",        "status-item-live"     ],
-                ["UNDER_OFFER", "Under Offer", "status-item-offer"    ],
-                ["SOLD",        "Sold",        "status-item-sold"     ],
-                ["DRAFT",       "Draft",       "status-item-draft"    ],
-                ["WITHDRAWN",   "Withdrawn",   "status-item-withdrawn"],
+                ["AVAILABLE", "Available", "status-item-live" ],
+                ["DRAFT",     "Draft",     "status-item-draft"],
+                ["CLOSED",    "Closed",    "status-item-sold" ],
               ] as [PropertyStatus, string, string][]
             ).map(([s, label, cls]) => (
               <div key={s} className={`status-item ${cls}`}>

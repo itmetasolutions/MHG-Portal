@@ -2,7 +2,7 @@ import { apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
 
 export type SessionRole = "ADMIN" | "AGENT";
 
-export type PropertyStatus = "DRAFT" | "LIVE" | "UNDER_OFFER" | "SOLD" | "WITHDRAWN";
+export type PropertyStatus = "DRAFT" | "AVAILABLE" | "CLOSED";
 export type VacancyType = "SINGLE" | "MULTIPLE";
 export type RoomStatus = "AVAILABLE" | "UNDER_OFFER" | "CLOSED";
 

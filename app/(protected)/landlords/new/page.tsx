@@ -37,28 +37,24 @@ type RoomDraft = {
   expectedCommissionPct: string;
 };
 
-const PROPERTY_TYPES = [
-  "Flat",
-  "Terraced House",
-  "Semi-Detached House",
-  "Detached House",
-  "Bungalow",
-  "Maisonette",
-  "Studio",
-  "HMO",
-  "Other",
+const ROOM_TYPES = [
+  "Studio Room",
+  "Single Room",
+  "Double Room",
+  "Ensuite Room",
+  "Loft",
 ] as const;
 
+const PRIVATE_PROPERTY_TYPES = ["House", "Studio Flat", "Flat"] as const;
+
 const STATUS_OPTIONS: { value: PropertyStatus; label: string; desc: string }[] = [
-  { value: "DRAFT", label: "Draft", desc: "Saved but not yet live" },
-  { value: "LIVE", label: "Live", desc: "Active on the market" },
-  { value: "UNDER_OFFER", label: "Under Offer", desc: "Offer accepted" },
-  { value: "WITHDRAWN", label: "Withdrawn", desc: "Withdrawn from market" },
+  { value: "DRAFT", label: "Draft", desc: "Saved but not yet available" },
+  { value: "AVAILABLE", label: "Available", desc: "Active and available for rent" },
 ];
 
 function createEmptyRoom(index: number): RoomDraft {
   return {
-    roomName: `Room ${index + 1}`,
+    roomName: ROOM_TYPES[0],
     landlordDemand: "",
     expectedCommissionPct: "",
   };
@@ -77,9 +73,8 @@ export default function AddPropertyPage() {
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
   const [county, setCounty] = useState("");
-  const [propertyType, setPropertyType] = useState("");
-  const [beds, setBeds] = useState("");
-  const [baths, setBaths] = useState("");
+  const [privatePropertyType, setPrivatePropertyType] = useState<"House" | "Studio Flat" | "Flat" | "">("");
+  const [numberOfRooms, setNumberOfRooms] = useState("");
   const [landlordDemand, setLandlordDemand] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
   const [propertyRef, setPropertyRef] = useState("");
@@ -166,16 +161,6 @@ export default function AddPropertyPage() {
       return;
     }
 
-    const invalidBlankNamedRoom = rooms.some(
-      (room) =>
-        !room.roomName.trim() &&
-        (room.landlordDemand.trim().length > 0 || room.expectedCommissionPct.trim().length > 0),
-    );
-    if (vacancyType === "MULTIPLE" && invalidBlankNamedRoom) {
-      setMessage({ type: "error", text: "Room name is required when room pricing is entered." });
-      return;
-    }
-
     const roomRows =
       vacancyType === "MULTIPLE"
         ? rooms
@@ -189,9 +174,16 @@ export default function AddPropertyPage() {
         : [];
 
     if (vacancyType === "MULTIPLE" && roomRows.length === 0) {
-      setMessage({ type: "error", text: "Add at least one room for multiple vacancy properties." });
+      setMessage({ type: "error", text: "Add at least one room for shared properties." });
       return;
     }
+
+    // Derive propertyType and beds from private property fields
+    const resolvedPropertyType = vacancyType === "SINGLE" ? privatePropertyType || undefined : undefined;
+    const resolvedBeds =
+      vacancyType === "SINGLE" && privatePropertyType === "Flat" && numberOfRooms !== ""
+        ? Number(numberOfRooms)
+        : undefined;
 
     setSaving(true);
     const result = await createPropertyIntake({
@@ -208,9 +200,8 @@ export default function AddPropertyPage() {
         city: city.trim() || undefined,
         postcode: postcode.trim() || undefined,
         county: county.trim() || undefined,
-        propertyType: propertyType || undefined,
-        beds: beds !== "" ? Number(beds) : undefined,
-        baths: baths !== "" ? Number(baths) : undefined,
+        propertyType: resolvedPropertyType,
+        beds: resolvedBeds,
         vacancyType,
         landlordDemand: vacancyType === "SINGLE" && landlordDemand !== "" ? Number(landlordDemand) : undefined,
         expectedCommissionPct:
@@ -226,7 +217,7 @@ export default function AddPropertyPage() {
       return;
     }
 
-    router.push(`/landlords/${result.data.landlord.id}/properties`);
+    router.push("/properties");
   }
 
   const showPropertySection = lookup.checked && !lookup.ownershipConflict;
@@ -241,8 +232,8 @@ export default function AddPropertyPage() {
             New landlords are registered on first entry and assigned to you.
           </p>
         </div>
-        <UIButton variant="secondary" onClick={() => router.push("/landlords")}>
-          Back to Landlords
+        <UIButton variant="secondary" onClick={() => router.push("/properties")}>
+          Back to Properties
         </UIButton>
       </header>
 
@@ -397,32 +388,10 @@ export default function AddPropertyPage() {
                     <span className="label">County (optional)</span>
                     <UIInput value={county} onChange={(e) => setCounty(e.target.value)} placeholder="Greater London" disabled={saving} />
                   </label>
-                  <label className="field">
-                    <span className="label">Property Type</span>
-                    <UISelect value={propertyType} onChange={(e) => setPropertyType(e.target.value)} disabled={saving}>
-                      <option value="">Select type...</option>
-                      {PROPERTY_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </UISelect>
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Bedrooms</span>
-                    <UIInput type="number" value={beds} onChange={(e) => setBeds(e.target.value)} min={0} max={20} placeholder="e.g. 3" disabled={saving} />
-                  </label>
-                  <label className="field">
-                    <span className="label">Bathrooms</span>
-                    <UIInput type="number" value={baths} onChange={(e) => setBaths(e.target.value)} min={0} max={10} placeholder="e.g. 2" disabled={saving} />
-                  </label>
                 </div>
 
                 <div className="form-section-divider">
-                  <span className="form-section-label">Vacancy Setup</span>
+                  <span className="form-section-label">Property Type</span>
                 </div>
 
                 <div className="vacancy-toggle">
@@ -433,8 +402,8 @@ export default function AddPropertyPage() {
                       onChange={() => setVacancyType("SINGLE")}
                       disabled={saving}
                     />
-                    <span className="vacancy-option-title">Single Vacancy</span>
-                    <span className="vacancy-option-sub">One rental unit with one demand and one expected commission.</span>
+                    <span className="vacancy-option-title">Private Property</span>
+                    <span className="vacancy-option-sub">One property with a single landlord demand and commission.</span>
                   </label>
                   <label className={`vacancy-option${vacancyType === "MULTIPLE" ? " is-active" : ""}`}>
                     <input
@@ -443,8 +412,8 @@ export default function AddPropertyPage() {
                       onChange={() => setVacancyType("MULTIPLE")}
                       disabled={saving}
                     />
-                    <span className="vacancy-option-title">Multiple Vacancy</span>
-                    <span className="vacancy-option-sub">Manage rooms separately with demand and commission per room.</span>
+                    <span className="vacancy-option-title">Shared Property</span>
+                    <span className="vacancy-option-sub">Multiple rooms managed separately with demand and commission per room.</span>
                   </label>
                 </div>
 
@@ -453,40 +422,82 @@ export default function AddPropertyPage() {
                 </div>
 
                 {vacancyType === "SINGLE" ? (
-                  <div className="field-grid-2">
-                    <label className="field">
-                      <span className="label">Landlord Demand (GBP / month)</span>
-                      <UIInput
-                        type="number"
-                        value={landlordDemand}
-                        onChange={(e) => setLandlordDemand(e.target.value)}
-                        min={0}
-                        step="0.01"
-                        placeholder="e.g. 1200"
-                        disabled={saving}
-                      />
-                    </label>
-                    <label className="field">
-                      <span className="label">Expected Commission (%)</span>
-                      <UIInput
-                        type="number"
-                        value={commissionPct}
-                        onChange={(e) => setCommissionPct(e.target.value)}
-                        min={0}
-                        max={9999}
-                        step="0.1"
-                        placeholder="e.g. 10"
-                        disabled={saving}
-                      />
-                    </label>
-                  </div>
+                  <>
+                    <div className="field-grid-2">
+                      <label className="field">
+                        <span className="label">Landlord Demand (GBP / month)</span>
+                        <UIInput
+                          type="number"
+                          value={landlordDemand}
+                          onChange={(e) => setLandlordDemand(e.target.value)}
+                          min={0}
+                          step="0.01"
+                          placeholder="e.g. 1200"
+                          disabled={saving}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="label">Expected Commission (%)</span>
+                        <UIInput
+                          type="number"
+                          value={commissionPct}
+                          onChange={(e) => setCommissionPct(e.target.value)}
+                          min={0}
+                          max={9999}
+                          step="0.1"
+                          placeholder="e.g. 10"
+                          disabled={saving}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="form-section-divider">
+                      <span className="form-section-label">Property Category</span>
+                    </div>
+
+                    <div className="vacancy-toggle">
+                      {PRIVATE_PROPERTY_TYPES.map((type) => (
+                        <label
+                          key={type}
+                          className={`vacancy-option${privatePropertyType === type ? " is-active" : ""}`}
+                        >
+                          <input
+                            type="radio"
+                            name="privatePropertyType"
+                            checked={privatePropertyType === type}
+                            onChange={() => {
+                              setPrivatePropertyType(type);
+                              if (type !== "Flat") setNumberOfRooms("");
+                            }}
+                            disabled={saving}
+                          />
+                          <span className="vacancy-option-title">{type}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    {privatePropertyType === "Flat" && (
+                      <label className="field" style={{ maxWidth: 280 }}>
+                        <span className="label">Number of Rooms</span>
+                        <UIInput
+                          type="number"
+                          value={numberOfRooms}
+                          onChange={(e) => setNumberOfRooms(e.target.value)}
+                          min={1}
+                          max={50}
+                          placeholder="e.g. 3"
+                          disabled={saving}
+                        />
+                      </label>
+                    )}
+                  </>
                 ) : (
                   <div className="room-editor">
                     <div className="table-wrap room-editor-wrap">
                       <table className="room-editor-table">
                         <thead>
                           <tr>
-                            <th>Room Name</th>
+                            <th>Room Type</th>
                             <th>Landlord Demand (GBP)</th>
                             <th>Expected Commission (%)</th>
                             <th />
@@ -496,12 +507,17 @@ export default function AddPropertyPage() {
                           {rooms.map((room, index) => (
                             <tr key={`room-${index}`}>
                               <td>
-                                <UIInput
+                                <UISelect
                                   value={room.roomName}
                                   onChange={(e) => updateRoom(index, "roomName", e.target.value)}
-                                  placeholder={`Room ${index + 1}`}
                                   disabled={saving}
-                                />
+                                >
+                                  {ROOM_TYPES.map((type) => (
+                                    <option key={type} value={type}>
+                                      {type}
+                                    </option>
+                                  ))}
+                                </UISelect>
                               </td>
                               <td>
                                 <UIInput
@@ -583,7 +599,7 @@ export default function AddPropertyPage() {
               <UIButton type="submit" disabled={!canSubmit || saving || checking}>
                 {saving ? "Creating Property..." : "Create Property"}
               </UIButton>
-              <UIButton type="button" variant="secondary" onClick={() => router.push("/landlords")} disabled={saving}>
+              <UIButton type="button" variant="secondary" onClick={() => router.push("/properties")} disabled={saving}>
                 Cancel
               </UIButton>
             </div>
@@ -593,4 +609,3 @@ export default function AddPropertyPage() {
     </div>
   );
 }
-

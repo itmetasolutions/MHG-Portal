@@ -134,12 +134,12 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  const closableStatuses: PropertyStatus[] = ["LIVE", "UNDER_OFFER"];
+  const closableStatuses: PropertyStatus[] = ["AVAILABLE"];
   if (!closableStatuses.includes(property.status)) {
     return NextResponse.json(
       {
         error: "INVALID_PROPERTY_STATUS",
-        message: "Property must be LIVE or UNDER_OFFER to close sale.",
+        message: "Property must be AVAILABLE to close sale.",
       },
       { status: 400 },
     );
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     await tx.property.update({
       where: { id: property.id },
-      data: { status: "SOLD" },
+      data: { status: "CLOSED" },
     });
 
     // Reactivate landlord if it was passive
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           sale: null,
         },
         afterJson: {
-          status: "SOLD",
+          status: "CLOSED",
           sale,
           tenant,
         },

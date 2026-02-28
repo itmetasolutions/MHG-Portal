@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
   if (status) {
     where.status = status;
   } else if (!includeSOLD) {
-    // By default, hide fully-closed (SOLD) properties from the active list
-    where.status = { not: "SOLD" };
+    // By default, hide fully-closed properties from the active list
+    where.status = { not: "CLOSED" };
   }
 
   if (city) {
