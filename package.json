@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
-    "build": "prisma migrate resolve --rolled-back 20260227000000_rooms_passive_multi_vacancy || true && prisma migrate deploy && next build",
+    "build": "prisma migrate resolve --rolled-back 20260227000000_rooms_passive_multi_vacancy || true && prisma migrate resolve --rolled-back 20260228000000_property_status_simplify || true && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "node --import tsx --test tests/index.test.ts",
