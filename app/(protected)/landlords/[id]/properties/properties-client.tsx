@@ -56,7 +56,7 @@ const ROOM_TYPES = [
   "Loft",
 ] as const;
 
-function createEmptyRoom(_index: number): RoomDraft {
+function createEmptyRoom(): RoomDraft {
   return {
     roomName: ROOM_TYPES[0],
     landlordDemand: "",
@@ -94,7 +94,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [newDemand, setNewDemand] = useState("");
   const [newStatus, setNewStatus] = useState<PropertyStatus>("DRAFT");
   const [newVacancyType, setNewVacancyType] = useState<VacancyType>("SINGLE");
-  const [newRooms, setNewRooms] = useState<RoomDraft[]>([createEmptyRoom(0)]);
+  const [newRooms, setNewRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editPropertyRef, setEditPropertyRef] = useState("");
@@ -114,7 +114,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   }
 
   function addNewRoom() {
-    setNewRooms((prev) => [...prev, createEmptyRoom(prev.length)]);
+    setNewRooms((prev) => [...prev, createEmptyRoom()]);
   }
 
   function removeNewRoom(index: number) {
@@ -186,7 +186,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     setNewDemand("");
     setNewStatus("DRAFT");
     setNewVacancyType("SINGLE");
-    setNewRooms([createEmptyRoom(0)]);
+    setNewRooms([createEmptyRoom()]);
     setMessage({ type: "success", text: "Property created." });
     await load();
   }

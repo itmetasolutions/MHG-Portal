@@ -52,7 +52,7 @@ const STATUS_OPTIONS: { value: PropertyStatus; label: string; desc: string }[] =
   { value: "AVAILABLE", label: "Available", desc: "Active and available for rent" },
 ];
 
-function createEmptyRoom(_index: number): RoomDraft {
+function createEmptyRoom(): RoomDraft {
   return {
     roomName: ROOM_TYPES[0],
     landlordDemand: "",
@@ -80,7 +80,7 @@ export default function AddPropertyPage() {
   const [propertyRef, setPropertyRef] = useState("");
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [vacancyType, setVacancyType] = useState<VacancyType>("SINGLE");
-  const [rooms, setRooms] = useState<RoomDraft[]>([createEmptyRoom(0)]);
+  const [rooms, setRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
 
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -101,7 +101,7 @@ export default function AddPropertyPage() {
   }
 
   function addRoom() {
-    setRooms((prev) => [...prev, createEmptyRoom(prev.length)]);
+    setRooms((prev) => [...prev, createEmptyRoom()]);
   }
 
   function removeRoom(index: number) {
