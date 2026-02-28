@@ -52,7 +52,7 @@ const STATUS_OPTIONS: { value: PropertyStatus; label: string; desc: string }[] =
   { value: "AVAILABLE", label: "Available", desc: "Active and available for rent" },
 ];
 
-function createEmptyRoom(index: number): RoomDraft {
+function createEmptyRoom(_index: number): RoomDraft {
   return {
     roomName: ROOM_TYPES[0],
     landlordDemand: "",

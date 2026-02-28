@@ -56,7 +56,7 @@ const ROOM_TYPES = [
   "Loft",
 ] as const;
 
-function createEmptyRoom(index: number): RoomDraft {
+function createEmptyRoom(_index: number): RoomDraft {
   return {
     roomName: ROOM_TYPES[0],
     landlordDemand: "",
