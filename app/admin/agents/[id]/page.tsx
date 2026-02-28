@@ -61,7 +61,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
           status: true,
           createdAt: true,
           landlord: { select: { id: true, landlordName: true } },
-          sale: {
+          sales: {
             select: {
               id: true,
               finalAmount: true,
@@ -100,18 +100,18 @@ export default async function AdminAgentDetailPage({ params }: Props) {
 
   if (!agent) notFound();
 
-  const soldProperties = agent.ownedProperties.filter((property) => property.sale !== null);
-  const tenantProperties = soldProperties.filter((property) => property.sale?.tenant !== null);
+  const soldProperties = agent.ownedProperties.filter((property) => property.sales.length > 0);
+  const tenantProperties = soldProperties.filter((property) => property.sales[0]?.tenant != null);
   const totalRevenue = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sale?.finalAmount ?? 0),
+    (sum, property) => sum + Number(property.sales[0]?.finalAmount ?? 0),
     0,
   );
   const totalCommission = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sale?.commissionAmount ?? 0),
+    (sum, property) => sum + Number(property.sales[0]?.commissionAmount ?? 0),
     0,
   );
   const totalProfit = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sale?.profit ?? 0),
+    (sum, property) => sum + Number(property.sales[0]?.profit ?? 0),
     0,
   );
 
@@ -270,10 +270,10 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                     <td
                       style={{
                         fontWeight: 700,
-                        color: property.sale ? "#4ade80" : "var(--text-subtle)",
+                        color: property.sales.length > 0 ? "#4ade80" : "var(--text-subtle)",
                       }}
                     >
-                      {property.sale ? formatCurrency(Number(property.sale.finalAmount)) : "-"}
+                      {property.sales.length > 0 ? formatCurrency(Number(property.sales[0].finalAmount)) : "-"}
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {formatDate(property.createdAt)}
@@ -327,19 +327,19 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                       </span>
                     </td>
                     <td style={{ fontWeight: 700, color: "#4ade80" }}>
-                      {formatCurrency(Number(property.sale!.finalAmount))}
+                      {formatCurrency(Number(property.sales[0].finalAmount))}
                     </td>
                     <td style={{ fontWeight: 700, color: "var(--brand-gold)" }}>
-                      {formatCurrency(Number(property.sale!.commissionAmount))}
+                      {formatCurrency(Number(property.sales[0].commissionAmount))}
                     </td>
                     <td style={{ fontWeight: 600, color: "#22d3ee" }}>
-                      {formatCurrency(Number(property.sale!.profit))}
+                      {formatCurrency(Number(property.sales[0].profit))}
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {property.sale!.tenant?.fullName ?? "-"}
+                      {property.sales[0].tenant?.fullName ?? "-"}
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(property.sale!.closedAt)}
+                      {formatDate(property.sales[0].closedAt)}
                     </td>
                   </tr>
                 ))}
@@ -375,7 +375,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
               </thead>
               <tbody>
                 {tenantProperties.map((property) => {
-                  const tenant = property.sale!.tenant!;
+                  const tenant = property.sales[0].tenant!;
                   return (
                     <tr key={property.id}>
                       <td style={{ fontWeight: 600, color: "var(--text)" }}>{tenant.fullName}</td>
