@@ -44,6 +44,8 @@ const landlordListSelect = Prisma.validator<Prisma.LandlordSelect>()({
   phoneLast10: true,
   email: true,
   notes: true,
+  isPassive: true,
+  passiveMarkedAt: true,
   createdAt: true,
   updatedAt: true,
   ownerAgent: {
@@ -183,6 +185,26 @@ export async function GET(request: NextRequest) {
     }
     where.createdAt = createdAt;
   }
+
+  // Auto-passive sync: mark landlords with no sale after 21 days
+  const passiveCutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
+  await Promise.all([
+    db.landlord.updateMany({
+      where: {
+        createdAt: { lt: passiveCutoff },
+        isPassive: false,
+        properties: { none: { sales: { some: {} } } },
+      },
+      data: { isPassive: true, passiveMarkedAt: new Date() },
+    }),
+    db.landlord.updateMany({
+      where: {
+        isPassive: true,
+        properties: { some: { sales: { some: {} } } },
+      },
+      data: { isPassive: false, passiveMarkedAt: null },
+    }),
+  ]);
 
   const skip = (page - 1) * pageSize;
   const [total, landlords] = await db.$transaction([

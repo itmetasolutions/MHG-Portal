@@ -1,4 +1,4 @@
-import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
+import { Prisma, PropertyStatus, UserRole, VacancyType } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -6,6 +6,14 @@ import { db } from "@/server/db";
 import { canCreateProperty, canViewProperty } from "@/server/policies";
 
 const landlordIdSchema = z.string().uuid("landlord id must be a valid UUID");
+
+const roomInputSchema = z
+  .object({
+    roomName: z.string().trim().min(1, "roomName is required"),
+    landlordDemand: z.coerce.number().positive().nullable().optional(),
+    expectedCommissionPct: z.coerce.number().min(0).max(9999).nullable().optional(),
+  })
+  .strict();
 
 const createPropertySchema = z
   .object({
@@ -19,10 +27,22 @@ const createPropertySchema = z
     beds: z.coerce.number().int().min(0).nullable().optional(),
     baths: z.coerce.number().int().min(0).nullable().optional(),
     status: z.nativeEnum(PropertyStatus).optional(),
+    vacancyType: z.nativeEnum(VacancyType).optional(),
     landlordDemand: z.coerce.number().positive().nullable().optional(),
-    expectedCommissionPct: z.coerce.number().min(0).max(100).nullable().optional(),
+    expectedCommissionPct: z.coerce.number().min(0).max(9999).nullable().optional(),
+    rooms: z.array(roomInputSchema).max(200).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    const vacancyType = value.vacancyType ?? "SINGLE";
+    if (vacancyType === "MULTIPLE" && (!value.rooms || value.rooms.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one room is required for MULTIPLE vacancy properties.",
+        path: ["rooms"],
+      });
+    }
+  });
 
 const listQuerySchema = z
   .object({
@@ -40,9 +60,102 @@ type Params = {
   };
 };
 
+const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
+  id: true,
+  landlordId: true,
+  ownerAgentId: true,
+  propertyRef: true,
+  addressLine1: true,
+  addressLine2: true,
+  city: true,
+  county: true,
+  postcode: true,
+  propertyType: true,
+  beds: true,
+  baths: true,
+  status: true,
+  vacancyType: true,
+  landlordDemand: true,
+  expectedCommissionPct: true,
+  createdAt: true,
+  updatedAt: true,
+  sales: {
+    orderBy: [{ closedAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+      propertyId: true,
+      roomId: true,
+      closedByUserId: true,
+      finalAmount: true,
+      commissionPct: true,
+      commissionAmount: true,
+      otherCosts: true,
+      profit: true,
+      closedAt: true,
+      tenant: {
+        select: {
+          id: true,
+          saleId: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          currentAddress: true,
+          moveInDate: true,
+          rentAmount: true,
+          depositAmount: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+  },
+  rooms: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      propertyId: true,
+      roomName: true,
+      landlordDemand: true,
+      expectedCommissionPct: true,
+      status: true,
+      createdAt: true,
+      sale: {
+        select: {
+          id: true,
+          finalAmount: true,
+          commissionAmount: true,
+          profit: true,
+          closedAt: true,
+          tenant: { select: { id: true, fullName: true } },
+        },
+      },
+    },
+  },
+});
+
 function generatePropertyRef(landlordId: string): string {
   const suffix = Date.now().toString(36).toUpperCase().slice(-6);
   return `PROP-${landlordId.slice(0, 4).toUpperCase()}-${suffix}`;
+}
+
+function normalizePropertyForCreate(payload: z.infer<typeof createPropertySchema>) {
+  const vacancyType = payload.vacancyType ?? "SINGLE";
+  const rooms =
+    vacancyType === "MULTIPLE"
+      ? (payload.rooms ?? []).map((room) => ({
+          roomName: room.roomName.trim(),
+          landlordDemand: room.landlordDemand ?? null,
+          expectedCommissionPct: room.expectedCommissionPct ?? null,
+        }))
+      : [];
+
+  return {
+    vacancyType,
+    landlordDemand: vacancyType === "SINGLE" ? payload.landlordDemand ?? null : null,
+    expectedCommissionPct: vacancyType === "SINGLE" ? payload.expectedCommissionPct ?? null : null,
+    rooms,
+  };
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
@@ -148,36 +261,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const properties = await db.property.findMany({
     where,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      county: true,
-      postcode: true,
-      propertyType: true,
-      beds: true,
-      baths: true,
-      status: true,
-      landlordDemand: true,
-      expectedCommissionPct: true,
-      createdAt: true,
-      updatedAt: true,
-      sale: {
-        select: {
-          id: true,
-          finalAmount: true,
-          commissionPct: true,
-          commissionAmount: true,
-          otherCosts: true,
-          profit: true,
-          closedAt: true,
-        },
-      },
-    },
+    select: propertySelect,
   });
 
   return NextResponse.json({
@@ -259,6 +343,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const propertyRef = payload.propertyRef?.trim() || generatePropertyRef(landlord.id);
+  const normalized = normalizePropertyForCreate(payload);
 
   const property = await db.$transaction(async (tx) => {
     const created = await tx.property.create({
@@ -275,28 +360,21 @@ export async function POST(request: NextRequest, { params }: Params) {
         beds: payload.beds ?? null,
         baths: payload.baths ?? null,
         status: payload.status ?? "DRAFT",
-        landlordDemand: payload.landlordDemand ?? null,
-        expectedCommissionPct: payload.expectedCommissionPct ?? null,
+        vacancyType: normalized.vacancyType,
+        landlordDemand: normalized.landlordDemand,
+        expectedCommissionPct: normalized.expectedCommissionPct,
+        rooms:
+          normalized.vacancyType === "MULTIPLE"
+            ? {
+                create: normalized.rooms.map((room) => ({
+                  roomName: room.roomName,
+                  landlordDemand: room.landlordDemand,
+                  expectedCommissionPct: room.expectedCommissionPct,
+                })),
+              }
+            : undefined,
       },
-      select: {
-        id: true,
-        landlordId: true,
-        ownerAgentId: true,
-        propertyRef: true,
-        addressLine1: true,
-        addressLine2: true,
-        city: true,
-        county: true,
-        postcode: true,
-        propertyType: true,
-        beds: true,
-        baths: true,
-        status: true,
-        landlordDemand: true,
-        expectedCommissionPct: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: propertySelect,
     });
 
     await tx.auditLog.create({
@@ -309,6 +387,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           landlordId: landlord.id,
           ownerAgentId: landlord.ownerAgentId,
           phoneLast10: landlord.phoneLast10,
+          vacancyType: created.vacancyType,
+          roomsCount: created.rooms.length,
         },
         beforeJson: Prisma.JsonNull,
         afterJson: created,
@@ -320,3 +400,4 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   return NextResponse.json({ property }, { status: 201 });
 }
+

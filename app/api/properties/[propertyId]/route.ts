@@ -69,9 +69,13 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
       ownerAgentId: true,
     },
   },
-  sale: {
+  sales: {
+    orderBy: [{ closedAt: "desc" }, { id: "desc" }],
     select: {
       id: true,
+      propertyId: true,
+      roomId: true,
+      closedByUserId: true,
       finalAmount: true,
       commissionPct: true,
       commissionAmount: true,
@@ -239,7 +243,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  if (payload.status === "SOLD" && !currentProperty.sale) {
+  if (payload.status === "SOLD" && currentProperty.sales.length === 0) {
     return NextResponse.json(
       {
         error: "SALE_REQUIRED",

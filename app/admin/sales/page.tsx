@@ -11,10 +11,25 @@ import {
   AGENT_COMMISSION_PKR,
   pkrToGbp,
 } from "@/lib/format";
+import { SalesFilterBar } from "@/components/sales-filter-bar";
+import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSalesPage() {
+type PageProps = {
+  searchParams?: {
+    period?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+  };
+};
+
+function firstQueryValue(value: string | string[] | undefined): string | undefined {
+  if (!value) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function AdminSalesPage({ searchParams }: PageProps) {
   const session = await getAuthSession();
   if (!session) redirect("/admin/login");
 
@@ -25,12 +40,25 @@ export default async function AdminSalesPage() {
   if (!user || !user.isActive) redirect("/admin/login");
   if (user.role !== UserRole.ADMIN) redirect("/dashboard");
 
+  const requestedPeriod = firstQueryValue(searchParams?.period);
+  const period: PeriodKey = isPeriodKey(requestedPeriod) ? requestedPeriod : "month";
+  const from = firstQueryValue(searchParams?.from);
+  const to = firstQueryValue(searchParams?.to);
+  const salesRange = parsePeriodToDateRange(period, from, to);
+  const salesRangeLabel = formatPeriodRange(salesRange);
+
+  const where = salesRange
+    ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } }
+    : {};
+
   const [agg, sales] = await Promise.all([
     db.sale.aggregate({
+      where,
       _sum: { finalAmount: true, commissionAmount: true, profit: true },
       _count: { id: true },
     }),
     db.sale.findMany({
+      where,
       orderBy: [{ closedAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
@@ -54,12 +82,10 @@ export default async function AdminSalesPage() {
     }),
   ]);
 
-  const totalRevenue    = Number(agg._sum.finalAmount     ?? 0);
+  const totalRevenue = Number(agg._sum.finalAmount ?? 0);
   const totalCommission = Number(agg._sum.commissionAmount ?? 0);
-  const totalProfit     = Number(agg._sum.profit          ?? 0);
-  const totalSales      = agg._count.id;
-
-  // Total agent commissions (PKR 5,000 × number of sales)
+  const totalProfit = Number(agg._sum.profit ?? 0);
+  const totalSales = agg._count.id;
   const totalAgentCommPKR = totalSales * AGENT_COMMISSION_PKR;
   const totalAgentCommGBP = pkrToGbp(totalAgentCommPKR);
 
@@ -68,17 +94,20 @@ export default async function AdminSalesPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">All Sales</h1>
-          <p className="page-subtitle">Platform-wide closed sales overview.</p>
+          <p className="page-subtitle">Platform-wide closed sales for {salesRangeLabel}.</p>
         </div>
       </header>
 
-      {/* Summary stat cards */}
+      <div className="panel" style={{ padding: "1rem 1.1rem" }}>
+        <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
+      </div>
+
       {totalSales > 0 && (
         <div className="admin-stats-grid-wide">
           <div className="admin-stat-card">
             <p className="admin-stat-label">Sales Closed</p>
             <p className="admin-stat-value">{totalSales}</p>
-            <p className="admin-stat-sub">Total completed</p>
+            <p className="admin-stat-sub">{salesRangeLabel}</p>
           </div>
           <div className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
             <p className="admin-stat-label">Total Revenue</p>
@@ -88,7 +117,7 @@ export default async function AdminSalesPage() {
             <p className="admin-stat-pkr">{formatPKR(gbpToPkr(totalRevenue))}</p>
           </div>
           <div className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
-            <p className="admin-stat-label">Co. Commission</p>
+            <p className="admin-stat-label">Company Commission</p>
             <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
               {formatCurrency(totalCommission)}
             </p>
@@ -104,14 +133,13 @@ export default async function AdminSalesPage() {
         </div>
       )}
 
-      {/* Agent commissions summary */}
       {totalSales > 0 && (
         <div className="admin-stat-card" style={{ borderTopColor: "#a855f7", maxWidth: "360px" }}>
           <p className="admin-stat-label">Total Agent Commissions Paid</p>
           <p className="admin-stat-value" style={{ color: "#c084fc", fontSize: "1.8rem" }}>
             {formatPKR(totalAgentCommPKR)}
           </p>
-          <p className="admin-stat-pkr">≈ {formatCurrency(totalAgentCommGBP)} · PKR {AGENT_COMMISSION_PKR.toLocaleString("en-US")}/sale</p>
+          <p className="admin-stat-pkr">~ {formatCurrency(totalAgentCommGBP)} - PKR {AGENT_COMMISSION_PKR.toLocaleString("en-US")}/sale</p>
         </div>
       )}
 
@@ -128,7 +156,7 @@ export default async function AdminSalesPage() {
 
         {sales.length === 0 ? (
           <div className="admin-card-body">
-            <p className="muted" style={{ margin: 0, textAlign: "center" }}>No sales closed yet.</p>
+            <p className="muted" style={{ margin: 0, textAlign: "center" }}>No sales closed for this period.</p>
           </div>
         ) : (
           <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
@@ -139,7 +167,7 @@ export default async function AdminSalesPage() {
                   <th>Landlord</th>
                   <th>Agent</th>
                   <th>Sale Amount</th>
-                  <th>Co. Commission</th>
+                  <th>Company Commission</th>
                   <th>Net Profit</th>
                   <th>Agent Comm.</th>
                   <th>Tenant</th>
@@ -199,11 +227,11 @@ export default async function AdminSalesPage() {
                         {formatPKR(AGENT_COMMISSION_PKR)}
                       </span>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ≈ {formatCurrency(pkrToGbp(AGENT_COMMISSION_PKR))}
+                        ~ {formatCurrency(pkrToGbp(AGENT_COMMISSION_PKR))}
                       </span>
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {sale.tenant?.fullName ?? "—"}
+                      {sale.tenant?.fullName ?? "-"}
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {formatDate(sale.closedAt)}
@@ -249,7 +277,7 @@ export default async function AdminSalesPage() {
                         {formatPKR(totalAgentCommPKR)}
                       </span>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ≈ {formatCurrency(totalAgentCommGBP)}
+                        ~ {formatCurrency(totalAgentCommGBP)}
                       </span>
                     </td>
                     <td colSpan={2} />
@@ -263,3 +291,4 @@ export default async function AdminSalesPage() {
     </div>
   );
 }
+

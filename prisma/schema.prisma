@@ -20,6 +20,17 @@ enum PropertyStatus {
   WITHDRAWN
 }
 
+enum VacancyType {
+  SINGLE
+  MULTIPLE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  UNDER_OFFER
+  CLOSED
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -50,12 +61,14 @@ model Landlord {
   phoneE164      String?
   phoneLast10    String   @unique
   email          String?
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  createdByUserId String  @db.Uuid
-  updatedByUserId String  @db.Uuid
-  ownerAgentId    String  @db.Uuid
+  notes           String?
+  isPassive       Boolean   @default(false)
+  passiveMarkedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdByUserId String    @db.Uuid
+  updatedByUserId String    @db.Uuid
+  ownerAgentId    String    @db.Uuid
 
   createdBy  User       @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   updatedBy  User       @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -83,14 +96,16 @@ model Property {
   beds                  Int?
   baths                 Int?
   status                PropertyStatus @default(DRAFT)
+  vacancyType           VacancyType    @default(SINGLE)
   landlordDemand        Decimal?       @db.Decimal(14, 2)
   expectedCommissionPct Decimal?       @db.Decimal(5, 2)
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
-  landlord   Landlord @relation(fields: [landlordId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  ownerAgent User     @relation("PropertyOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  sale       Sale?
+  landlord   Landlord       @relation(fields: [landlordId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ownerAgent User           @relation("PropertyOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sales      Sale[]
+  rooms      PropertyRoom[]
 
   @@index([landlordId])
   @@index([ownerAgentId])
@@ -105,7 +120,8 @@ model Property {
 
 model Sale {
   id               String   @id @default(uuid()) @db.Uuid
-  propertyId       String   @unique @db.Uuid
+  propertyId       String   @db.Uuid
+  roomId           String?  @unique @db.Uuid
   closedByUserId   String   @db.Uuid
   finalAmount      Decimal  @db.Decimal(14, 2)
   commissionPct    Decimal  @db.Decimal(5, 2)
@@ -114,12 +130,30 @@ model Sale {
   profit           Decimal  @db.Decimal(14, 2)
   closedAt         DateTime @default(now())
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  closedBy User     @relation("SaleClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  property Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  room     PropertyRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  closedBy User          @relation("SaleClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   tenant   Tenant?
 
+  @@index([propertyId])
   @@index([closedByUserId])
   @@index([closedAt])
+}
+
+model PropertyRoom {
+  id                    String      @id @default(uuid()) @db.Uuid
+  propertyId            String      @db.Uuid
+  roomName              String
+  landlordDemand        Decimal?    @db.Decimal(14, 2)
+  expectedCommissionPct Decimal?    @db.Decimal(5, 2)
+  status                RoomStatus  @default(AVAILABLE)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sale     Sale?
+
+  @@index([propertyId])
 }
 
 model Tenant {

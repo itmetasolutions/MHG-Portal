@@ -10,6 +10,8 @@ import {
   pkrToGbp,
   AGENT_COMMISSION_PKR,
 } from "@/lib/format";
+import { SalesFilterBar } from "@/components/sales-filter-bar";
+import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +23,37 @@ const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string 
   WITHDRAWN:   { label: "Withdrawn",   badgeClass: "badge-locked"  },
 };
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams?: {
+    period?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+  };
+};
+
+function firstQueryValue(value: string | string[] | undefined): string | undefined {
+  if (!value) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await getAuthSession();
   if (!session) return null;
 
   const isAdmin = session.role === UserRole.ADMIN;
+  const requestedPeriod = firstQueryValue(searchParams?.period);
+  const period: PeriodKey = isPeriodKey(requestedPeriod) ? requestedPeriod : "month";
+  const from = firstQueryValue(searchParams?.from);
+  const to = firstQueryValue(searchParams?.to);
+  const salesRange = parsePeriodToDateRange(period, from, to);
+  const salesRangeLabel = formatPeriodRange(salesRange);
 
   const landlordWhere: Prisma.LandlordWhereInput = isAdmin ? {} : { ownerAgentId: session.userId };
   const propertyWhere: Prisma.PropertyWhereInput = isAdmin ? {} : { ownerAgentId: session.userId };
   const saleWhere: Prisma.SaleWhereInput        = isAdmin ? {} : { property: { ownerAgentId: session.userId } };
+  if (salesRange) {
+    saleWhere.closedAt = salesRange;
+  }
   const activeLandlordWhere: Prisma.LandlordWhereInput = {
     ...landlordWhere,
     properties: { some: {} },
@@ -198,6 +222,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Portfolio Overview ──────────────────────────────────────────── */}
+      <div className="panel" style={{ padding: "1rem 1.1rem" }}>
+        <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
+      </div>
+
       <div>
         <p className="section-label">Portfolio Overview</p>
         <div className="grid-cards">
@@ -216,7 +244,7 @@ export default async function DashboardPage() {
           <div className="stat-card">
             <p className="stat-label">Sales Closed</p>
             <p className="stat-value">{totalSales}</p>
-            <p className="stat-sub">{statusMap.SOLD ?? 0} properties sold</p>
+            <p className="stat-sub">{salesRangeLabel}</p>
           </div>
           <div className="stat-card">
             <p className="stat-label">Tenants</p>

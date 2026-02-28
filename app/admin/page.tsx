@@ -4,10 +4,25 @@ import { UserRole, PropertyStatus } from "@prisma/client";
 import { db } from "@/server/db";
 import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, pkrToGbp, AGENT_COMMISSION_PKR } from "@/lib/format";
 import { getAuthSession } from "@/server/auth";
+import { SalesFilterBar } from "@/components/sales-filter-bar";
+import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
+type PageProps = {
+  searchParams?: {
+    period?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+  };
+};
+
+function firstQueryValue(value: string | string[] | undefined): string | undefined {
+  if (!value) return undefined;
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function AdminPage({ searchParams }: PageProps) {
   const session = await getAuthSession();
   if (!session) redirect("/admin/login");
 
@@ -17,6 +32,17 @@ export default async function AdminPage() {
   });
   if (!user || !user.isActive) redirect("/admin/login");
   if (user.role !== UserRole.ADMIN) redirect("/dashboard");
+
+  const requestedPeriod = firstQueryValue(searchParams?.period);
+  const period: PeriodKey = isPeriodKey(requestedPeriod) ? requestedPeriod : "month";
+  const from = firstQueryValue(searchParams?.from);
+  const to = firstQueryValue(searchParams?.to);
+  const salesRange = parsePeriodToDateRange(period, from, to);
+  const salesRangeLabel = formatPeriodRange(salesRange);
+
+  const saleWhere = salesRange
+    ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } }
+    : {};
 
   const [
     agentCount,
@@ -38,6 +64,7 @@ export default async function AdminPage() {
     db.landlord.count({ where: { properties: { some: {} } } }),
     db.property.count(),
     db.sale.aggregate({
+      where: saleWhere,
       _sum: { finalAmount: true, commissionAmount: true, profit: true },
       _count: { id: true },
     }),
@@ -53,9 +80,9 @@ export default async function AdminPage() {
         createdAt: true,
         _count: { select: { ownedLandlords: true, ownedProperties: true } },
         ownedProperties: {
-          where: { sale: { isNot: null } },
           select: {
-            sale: {
+            sales: {
+              where: salesRange ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } } : undefined,
               select: {
                 commissionAmount: true,
                 finalAmount: true,
@@ -67,6 +94,7 @@ export default async function AdminPage() {
       },
     }),
     db.sale.findMany({
+      where: saleWhere,
       orderBy: { closedAt: "desc" },
       take: 6,
       select: {
@@ -124,13 +152,16 @@ export default async function AdminPage() {
   for (const g of propByStatus) statusMap[g.status] = g._count.id;
 
   const agentPerformance = agentPerformanceRaw
-    .map((agent) => ({
-      ...agent,
-      salesCount:      agent.ownedProperties.length,
-      tenantsCount:    agent.ownedProperties.filter((p) => p.sale?.tenant != null).length,
-      totalRevenue:    agent.ownedProperties.reduce((s, p) => s + Number(p.sale?.finalAmount    ?? 0), 0),
-      totalCommission: agent.ownedProperties.reduce((s, p) => s + Number(p.sale?.commissionAmount ?? 0), 0),
-    }))
+    .map((agent) => {
+      const sales = agent.ownedProperties.flatMap((property) => property.sales);
+      return {
+        ...agent,
+        salesCount: sales.length,
+        tenantsCount: sales.filter((sale) => sale.tenant != null).length,
+        totalRevenue: sales.reduce((sum, sale) => sum + Number(sale.finalAmount ?? 0), 0),
+        totalCommission: sales.reduce((sum, sale) => sum + Number(sale.commissionAmount ?? 0), 0),
+      };
+    })
     .sort((a, b) => b.salesCount - a.salesCount || b._count.ownedLandlords - a._count.ownedLandlords)
     .slice(0, 8);
 
@@ -160,6 +191,10 @@ export default async function AdminPage() {
       </header>
 
       {/* ── ROW 1: 2 hero cards — Sales Closed + Commission Earned ──────── */}
+      <div className="panel" style={{ padding: "1rem 1.1rem" }}>
+        <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
+      </div>
+
       <div>
         <p className="section-label">Sales Overview</p>
         <div className="admin-stats-grid-2">
@@ -172,7 +207,7 @@ export default async function AdminPage() {
             </div>
             <p className="admin-stat-label">Sales Closed</p>
             <p className="admin-stat-value admin-stat-value-hero">{totalSales}</p>
-            <p className="admin-stat-sub">{statusMap.SOLD ?? 0} properties marked as sold</p>
+            <p className="admin-stat-sub">{salesRangeLabel}</p>
           </Link>
 
           <Link href="/admin/sales" className="admin-stat-card admin-stat-card-hero" style={{ borderTopColor: "var(--brand-gold)" }}>

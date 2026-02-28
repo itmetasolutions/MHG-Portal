@@ -10,7 +10,7 @@ const propertyIdSchema = z.string().uuid("property id must be a valid UUID");
 const closeSaleSchema = z
   .object({
     finalAmount: z.coerce.number().positive("finalAmount must be > 0"),
-    commissionPct: z.coerce.number().min(0, "commissionPct must be >= 0").max(100),
+    commissionPct: z.coerce.number().min(0, "commissionPct must be >= 0").max(9999),
     otherCosts: z.coerce.number().min(0).optional(),
     tenant: z
       .object({
@@ -80,16 +80,17 @@ export async function POST(request: NextRequest, { params }: Params) {
       landlordId: true,
       ownerAgentId: true,
       status: true,
+      vacancyType: true,
       landlord: {
         select: {
+          id: true,
           ownerAgentId: true,
           phoneLast10: true,
         },
       },
-      sale: {
-        select: {
-          id: true,
-        },
+      sales: {
+        select: { id: true },
+        take: 1,
       },
     },
   });
@@ -113,7 +114,17 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  if (property.sale) {
+  if (property.vacancyType === "MULTIPLE") {
+    return NextResponse.json(
+      {
+        error: "USE_ROOM_CLOSE",
+        message: "This property has multiple vacancies. Use the room-level close endpoint.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (property.sales.length > 0) {
     return NextResponse.json(
       {
         error: "SALE_ALREADY_EXISTS",
@@ -194,9 +205,13 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     await tx.property.update({
       where: { id: property.id },
-      data: {
-        status: "SOLD",
-      },
+      data: { status: "SOLD" },
+    });
+
+    // Reactivate landlord if it was passive
+    await tx.landlord.updateMany({
+      where: { id: property.landlord.id, isPassive: true },
+      data: { isPassive: false, passiveMarkedAt: null },
     });
 
     await tx.auditLog.create({

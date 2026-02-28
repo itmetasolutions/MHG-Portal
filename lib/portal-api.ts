@@ -3,6 +3,8 @@ import { apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
 export type SessionRole = "ADMIN" | "AGENT";
 
 export type PropertyStatus = "DRAFT" | "LIVE" | "UNDER_OFFER" | "SOLD" | "WITHDRAWN";
+export type VacancyType = "SINGLE" | "MULTIPLE";
+export type RoomStatus = "AVAILABLE" | "UNDER_OFFER" | "CLOSED";
 
 export type TenantRow = {
   id: string;
@@ -22,6 +24,7 @@ export type TenantRow = {
 export type SaleRow = {
   id: string;
   propertyId: string;
+  roomId?: string | null;
   closedByUserId: string;
   finalAmount: string;
   commissionPct: string;
@@ -32,6 +35,24 @@ export type SaleRow = {
   tenant?: TenantRow | null;
 };
 
+export type PropertyRoomRow = {
+  id: string;
+  propertyId: string;
+  roomName: string;
+  landlordDemand: string | null;
+  expectedCommissionPct: string | null;
+  status: RoomStatus;
+  createdAt: string;
+  sale?: {
+    id: string;
+    finalAmount: string;
+    commissionAmount: string;
+    profit: string;
+    closedAt: string;
+    tenant?: { id: string; fullName: string } | null;
+  } | null;
+};
+
 export type LandlordRow = {
   id: string;
   landlordName: string;
@@ -40,6 +61,8 @@ export type LandlordRow = {
   phoneLast10: string;
   email: string | null;
   notes: string | null;
+  isPassive?: boolean;
+  passiveMarkedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   ownerAgent: {
@@ -59,6 +82,8 @@ export type LandlordDetails = {
   phoneLast10: string;
   email: string | null;
   notes: string | null;
+  isPassive?: boolean;
+  passiveMarkedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   createdByUserId: string;
@@ -72,27 +97,6 @@ export type LandlordDetails = {
     properties: number;
   };
   canEdit: boolean;
-};
-
-export type LandlordListResponse = {
-  landlords: LandlordRow[];
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
-};
-
-export type LandlordLookupResponse = {
-  phoneInput: string;
-  phoneLast10: string;
-  phoneE164: string;
-  landlordExists: boolean;
-  ownershipConflict: boolean;
-  canCreateLandlord: boolean;
-  canCreateProperty: boolean;
-  landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
 };
 
 export type PropertyRow = {
@@ -109,10 +113,14 @@ export type PropertyRow = {
   beds: number | null;
   baths: number | null;
   status: PropertyStatus;
+  vacancyType?: VacancyType;
   landlordDemand: string | null;
   expectedCommissionPct: string | null;
   createdAt: string;
   updatedAt: string;
+  sales?: SaleRow[];
+  rooms?: PropertyRoomRow[];
+  // Backward compatibility for legacy screens still expecting one sale.
   sale?: SaleRow | null;
 };
 
@@ -153,6 +161,68 @@ export type AuditLogListResponse = {
     total: number;
     totalPages: number;
   };
+};
+
+export type LandlordListResponse = {
+  landlords: LandlordRow[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export type LandlordLookupResponse = {
+  phoneInput: string;
+  phoneLast10: string;
+  phoneE164: string;
+  landlordExists: boolean;
+  ownershipConflict: boolean;
+  canCreateLandlord: boolean;
+  canCreateProperty: boolean;
+  landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
+};
+
+export type RoomDraftInput = {
+  roomName: string;
+  landlordDemand?: number | string | null;
+  expectedCommissionPct?: number | string | null;
+};
+
+export type PropertyDraftPayload = {
+  propertyRef?: string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  county?: string | null;
+  postcode?: string | null;
+  propertyType?: string | null;
+  beds?: number | null;
+  baths?: number | null;
+  status?: PropertyStatus;
+  vacancyType?: VacancyType;
+  landlordDemand?: number | string | null;
+  expectedCommissionPct?: number | string | null;
+  rooms?: RoomDraftInput[];
+};
+
+export type CloseSaleTenantPayload = {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  currentAddress?: string;
+  moveInDate?: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  notes?: string;
+};
+
+export type CloseSalePayload = {
+  finalAmount: number;
+  commissionPct: number;
+  otherCosts?: number;
+  tenant: CloseSaleTenantPayload;
 };
 
 export function fetchLandlords(params: {
@@ -232,7 +302,7 @@ export function fetchLandlordProperties(
 
 export function createLandlordProperty(
   landlordId: string,
-  payload: Partial<PropertyRow> & { propertyRef?: string },
+  payload: PropertyDraftPayload,
 ): Promise<ApiResult<{ property: PropertyRow }>> {
   return apiPost(`/api/landlords/${landlordId}/properties`, payload);
 }
@@ -245,7 +315,7 @@ export function createPropertyIntake(payload: {
     notes?: string | null;
     ownerAgentId?: string;
   };
-  property: Partial<PropertyRow> & { propertyRef?: string };
+  property: PropertyDraftPayload;
 }): Promise<
   ApiResult<{
     landlordCreated: boolean;
@@ -306,30 +376,31 @@ export function fetchProperties(params: {
 
 export function updateProperty(
   propertyId: string,
-  payload: Partial<PropertyRow>,
+  payload: Partial<PropertyDraftPayload>,
 ): Promise<ApiResult<{ property: PropertyRow }>> {
   return apiPatch(`/api/properties/${propertyId}`, payload);
 }
 
+export function addPropertyRoom(
+  propertyId: string,
+  payload: RoomDraftInput,
+): Promise<ApiResult<{ room: PropertyRoomRow }>> {
+  return apiPost(`/api/properties/${propertyId}/rooms`, payload);
+}
+
 export function closePropertySale(
   propertyId: string,
-  payload: {
-    finalAmount: number;
-    commissionPct: number;
-    otherCosts?: number;
-    tenant: {
-      fullName: string;
-      email?: string;
-      phone?: string;
-      currentAddress?: string;
-      moveInDate?: string;
-      rentAmount?: number;
-      depositAmount?: number;
-      notes?: string;
-    };
-  },
+  payload: CloseSalePayload,
 ): Promise<ApiResult<{ sale: SaleRow; tenant: TenantRow }>> {
   return apiPost(`/api/properties/${propertyId}/close-sale`, payload);
+}
+
+export function closePropertyRoomSale(
+  propertyId: string,
+  roomId: string,
+  payload: CloseSalePayload,
+): Promise<ApiResult<{ sale: SaleRow; tenant: { id: string; fullName: string }; allRoomsClosed: boolean }>> {
+  return apiPost(`/api/properties/${propertyId}/rooms/${roomId}/close`, payload);
 }
 
 export function listSales(params: {
@@ -425,3 +496,4 @@ export function listAuditLogs(params: {
 
   return apiGet(`/api/admin/audit?${query.toString()}`);
 }
+

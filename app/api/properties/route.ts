@@ -13,6 +13,7 @@ const listQuerySchema = z
     city: z.string().trim().min(1).optional(),
     postcode: z.string().trim().min(1).optional(),
     createdAt: z.coerce.date().optional(),
+    includeSOLD: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
   })
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
     city: request.nextUrl.searchParams.get("city") ?? undefined,
     postcode: request.nextUrl.searchParams.get("postcode") ?? undefined,
     createdAt: request.nextUrl.searchParams.get("createdAt") ?? undefined,
+    includeSOLD: request.nextUrl.searchParams.get("includeSOLD") ?? undefined,
     page: request.nextUrl.searchParams.get("page") ?? undefined,
     pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
   });
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { phoneLast10, propertyRef, status, city, postcode, createdAt, page, pageSize } =
+  const { phoneLast10, propertyRef, status, city, postcode, createdAt, includeSOLD, page, pageSize } =
     parsedQuery.data;
   const where: Prisma.PropertyWhereInput = {};
 
@@ -82,6 +84,9 @@ export async function GET(request: NextRequest) {
 
   if (status) {
     where.status = status;
+  } else if (!includeSOLD) {
+    // By default, hide fully-closed (SOLD) properties from the active list
+    where.status = { not: "SOLD" };
   }
 
   if (city) {
@@ -144,7 +149,8 @@ export async function GET(request: NextRequest) {
             ownerAgentId: true,
           },
         },
-        sale: {
+        vacancyType: true,
+        sales: {
           select: {
             id: true,
             finalAmount: true,
@@ -153,6 +159,17 @@ export async function GET(request: NextRequest) {
             otherCosts: true,
             profit: true,
             closedAt: true,
+            roomId: true,
+          },
+        },
+        rooms: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            roomName: true,
+            landlordDemand: true,
+            expectedCommissionPct: true,
+            status: true,
           },
         },
       },

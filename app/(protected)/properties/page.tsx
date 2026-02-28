@@ -18,7 +18,7 @@ export default async function PropertiesPage() {
   const session = await getAuthSession();
   if (!session) return null;
 
-  const where: Prisma.PropertyWhereInput = { ownerAgentId: session.userId };
+  const where: Prisma.PropertyWhereInput = { ownerAgentId: session.userId, status: { not: "SOLD" } };
 
   const [total, byStatus, properties] = await Promise.all([
     db.property.count({ where }),
@@ -51,7 +51,7 @@ export default async function PropertiesPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">My Properties</h1>
-          <p className="page-subtitle">All {total} properties across your landlords.</p>
+          <p className="page-subtitle">All active properties available for rent.</p>
         </div>
         <Link className="btn btn-primary" href="/landlords/new">
           + Add Property
