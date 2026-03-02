@@ -12,6 +12,11 @@ enum UserRole {
   AGENT
 }
 
+enum CommissionType {
+  FIXED
+  FLEXIBLE
+}
+
 enum PropertyStatus {
   DRAFT
   AVAILABLE
@@ -45,8 +50,9 @@ model User {
   closedSales      Sale[]        @relation("SaleClosedBy")
   otpCodes         OTPCode[]
   auditLogs        AuditLog[]
-  sentMessages     ChatMessage[] @relation("MessageSentBy")
-  receivedMessages ChatMessage[] @relation("MessageReceivedBy")
+  sentMessages     ChatMessage[]    @relation("MessageSentBy")
+  receivedMessages ChatMessage[]    @relation("MessageReceivedBy")
+  commissionUpdates CommissionConfig[] @relation("CommissionConfigUpdatedBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -221,4 +227,17 @@ model ChatMessage {
   @@index([fromUserId, toUserId, createdAt])
   @@index([toUserId, fromUserId, createdAt])
   @@index([createdAt])
+}
+
+// Singleton commission configuration (always upserted with id = "singleton")
+model CommissionConfig {
+  id             String         @id @default("singleton")
+  type           CommissionType @default(FIXED)
+  fixedAmount    Decimal?       @db.Decimal(14, 2)
+  fixedCurrency  String?        // "PKR" | "GBP" | "PCT"
+  flexibleRanges Json?          // FlexibleRange[]
+  updatedAt      DateTime       @updatedAt
+  updatedById    String?        @db.Uuid
+
+  updatedBy User? @relation("CommissionConfigUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
 }

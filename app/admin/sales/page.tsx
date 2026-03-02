@@ -8,9 +8,9 @@ import {
   formatCurrency,
   formatPKR,
   gbpToPkr,
-  AGENT_COMMISSION_PKR,
-  pkrToGbp,
+  GBP_TO_PKR,
 } from "@/lib/format";
+import { calcAgentCommissionGBP, describeCommission, type CommissionConfigData, type FlexibleRange } from "@/lib/commission";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 
@@ -51,7 +51,7 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
     ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } }
     : {};
 
-  const [agg, sales] = await Promise.all([
+  const [agg, sales, commissionRaw] = await Promise.all([
     db.sale.aggregate({
       where,
       _sum: { finalAmount: true, commissionAmount: true, profit: true },
@@ -80,14 +80,30 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
         tenant: { select: { id: true, fullName: true } },
       },
     }),
+    db.commissionConfig.findUnique({ where: { id: "singleton" } }),
   ]);
+
+  const commissionConfig: CommissionConfigData = commissionRaw
+    ? {
+        type: commissionRaw.type as "FIXED" | "FLEXIBLE",
+        fixedAmount: commissionRaw.fixedAmount ? Number(commissionRaw.fixedAmount) : null,
+        fixedCurrency: commissionRaw.fixedCurrency as CommissionConfigData["fixedCurrency"],
+        flexibleRanges: commissionRaw.flexibleRanges as FlexibleRange[] | null,
+      }
+    : { type: "FIXED", fixedAmount: 5000, fixedCurrency: "PKR", flexibleRanges: null };
 
   const totalRevenue = Number(agg._sum.finalAmount ?? 0);
   const totalCommission = Number(agg._sum.commissionAmount ?? 0);
   const totalProfit = Number(agg._sum.profit ?? 0);
   const totalSales = agg._count.id;
-  const totalAgentCommPKR = totalSales * AGENT_COMMISSION_PKR;
-  const totalAgentCommGBP = pkrToGbp(totalAgentCommPKR);
+
+  // Calculate total agent commission across all sales using the dynamic config
+  const totalAgentCommGBP = sales.reduce(
+    (sum, s) => sum + calcAgentCommissionGBP(Number(s.commissionAmount), commissionConfig),
+    0
+  );
+  const totalAgentCommPKR = totalAgentCommGBP * GBP_TO_PKR;
+  const commissionDesc = describeCommission(commissionConfig);
 
   return (
     <div className="stack">
@@ -139,7 +155,7 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
           <p className="admin-stat-value" style={{ color: "#c084fc", fontSize: "1.8rem" }}>
             {formatPKR(totalAgentCommPKR)}
           </p>
-          <p className="admin-stat-pkr">~ {formatCurrency(totalAgentCommGBP)} - PKR {AGENT_COMMISSION_PKR.toLocaleString("en-US")}/sale</p>
+          <p className="admin-stat-pkr">~ {formatCurrency(totalAgentCommGBP)} · {commissionDesc}</p>
         </div>
       )}
 
@@ -223,12 +239,20 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: "#c084fc", display: "block" }}>
-                        {formatPKR(AGENT_COMMISSION_PKR)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ~ {formatCurrency(pkrToGbp(AGENT_COMMISSION_PKR))}
-                      </span>
+                      {(() => {
+                        const agentCommGBP = calcAgentCommissionGBP(Number(sale.commissionAmount), commissionConfig);
+                        const agentCommPKR = agentCommGBP * GBP_TO_PKR;
+                        return (
+                          <>
+                            <span style={{ fontWeight: 600, color: "#c084fc", display: "block" }}>
+                              {formatCurrency(agentCommGBP)}
+                            </span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                              {formatPKR(agentCommPKR)}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                       {sale.tenant?.fullName ?? "-"}
@@ -274,10 +298,10 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
                     </td>
                     <td>
                       <span style={{ fontWeight: 700, color: "#c084fc", display: "block" }}>
-                        {formatPKR(totalAgentCommPKR)}
+                        {formatCurrency(totalAgentCommGBP)}
                       </span>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ~ {formatCurrency(totalAgentCommGBP)}
+                        {formatPKR(totalAgentCommPKR)}
                       </span>
                     </td>
                     <td colSpan={2} />

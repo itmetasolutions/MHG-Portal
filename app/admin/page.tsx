@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UserRole, PropertyStatus } from "@prisma/client";
 import { db } from "@/server/db";
-import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, pkrToGbp, AGENT_COMMISSION_PKR } from "@/lib/format";
+import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, pkrToGbp, GBP_TO_PKR } from "@/lib/format";
+import { calcAgentCommissionGBP, describeCommission, type CommissionConfigData, type FlexibleRange } from "@/lib/commission";
 import { getAuthSession } from "@/server/auth";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
@@ -57,6 +58,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
     recentSales,
     recentAgents,
     recentAudit,
+    commissionRaw,
   ] = await Promise.all([
     db.user.count({ where: { role: UserRole.AGENT } }),
     db.user.count({ where: { role: UserRole.AGENT, isActive: true } }),
@@ -138,15 +140,25 @@ export default async function AdminPage({ searchParams }: PageProps) {
         user: { select: { agentDisplayName: true, email: true } },
       },
     }),
+    db.commissionConfig.findUnique({ where: { id: "singleton" } }),
   ]);
 
-  const inactiveAgents    = agentCount - activeAgentCount;
-  const totalRevenue      = Number(salesAgg._sum.finalAmount     ?? 0);
-  const totalCommission   = Number(salesAgg._sum.commissionAmount ?? 0);
-  const totalProfit       = Number(salesAgg._sum.profit          ?? 0);
-  const totalSales        = salesAgg._count.id;
-  const avgSaleValue      = totalSales > 0 ? Math.round(totalRevenue / totalSales) : 0;
-  const totalAgentCommPKR = totalSales * AGENT_COMMISSION_PKR;
+  const commissionConfig: CommissionConfigData = commissionRaw
+    ? {
+        type: commissionRaw.type as "FIXED" | "FLEXIBLE",
+        fixedAmount: commissionRaw.fixedAmount ? Number(commissionRaw.fixedAmount) : null,
+        fixedCurrency: commissionRaw.fixedCurrency as CommissionConfigData["fixedCurrency"],
+        flexibleRanges: commissionRaw.flexibleRanges as FlexibleRange[] | null,
+      }
+    : { type: "FIXED", fixedAmount: 5000, fixedCurrency: "PKR", flexibleRanges: null };
+
+  const inactiveAgents  = agentCount - activeAgentCount;
+  const totalRevenue    = Number(salesAgg._sum.finalAmount      ?? 0);
+  const totalCommission = Number(salesAgg._sum.commissionAmount ?? 0);
+  const totalProfit     = Number(salesAgg._sum.profit           ?? 0);
+  const totalSales      = salesAgg._count.id;
+  const avgSaleValue    = totalSales > 0 ? Math.round(totalRevenue / totalSales) : 0;
+  const commissionDesc  = describeCommission(commissionConfig);
 
   const statusMap: Partial<Record<PropertyStatus, number>> = {};
   for (const g of propByStatus) statusMap[g.status] = g._count.id;
@@ -154,12 +166,18 @@ export default async function AdminPage({ searchParams }: PageProps) {
   const agentPerformance = agentPerformanceRaw
     .map((agent) => {
       const sales = agent.ownedProperties.flatMap((property) => property.sales);
+      const totalCommission = sales.reduce((sum, sale) => sum + Number(sale.commissionAmount ?? 0), 0);
+      const totalAgentCommGBP = sales.reduce(
+        (sum, sale) => sum + calcAgentCommissionGBP(Number(sale.commissionAmount ?? 0), commissionConfig),
+        0
+      );
       return {
         ...agent,
         salesCount: sales.length,
         tenantsCount: sales.filter((sale) => sale.tenant != null).length,
         totalRevenue: sales.reduce((sum, sale) => sum + Number(sale.finalAmount ?? 0), 0),
-        totalCommission: sales.reduce((sum, sale) => sum + Number(sale.commissionAmount ?? 0), 0),
+        totalCommission,
+        totalAgentCommGBP,
       };
     })
     .sort((a, b) => b.salesCount - a.salesCount || b._count.ownedLandlords - a._count.ownedLandlords)
@@ -285,11 +303,23 @@ export default async function AdminPage({ searchParams }: PageProps) {
               </svg>
             </div>
             <p className="admin-stat-label">Agent Commissions</p>
-            <p className="admin-stat-value" style={{ color: "#a78bfa", fontSize: "1.8rem" }}>
-              {formatPKR(totalAgentCommPKR)}
-            </p>
-            <p className="admin-stat-pkr">≈ {formatCurrency(pkrToGbp(totalAgentCommPKR))}</p>
-            <p className="admin-stat-sub">PKR 5,000 × {totalSales} {totalSales === 1 ? "sale" : "sales"}</p>
+            {(() => {
+              // Sum agent commissions across recent sales data for display
+              // We use the aggregated sum from all sales via recentSales; for the full total we'd need all sales
+              // Display the formula description instead
+              return (
+                <>
+                  <p className="admin-stat-value" style={{ color: "#a78bfa", fontSize: "1.8rem" }}>
+                    {totalSales > 0 ? formatCurrency(
+                      agentPerformanceRaw
+                        .flatMap((a) => a.ownedProperties.flatMap((p) => p.sales))
+                        .reduce((sum, s) => sum + calcAgentCommissionGBP(Number(s.commissionAmount ?? 0), commissionConfig), 0)
+                    ) : "—"}
+                  </p>
+                  <p className="admin-stat-sub">{commissionDesc}</p>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -437,11 +467,11 @@ export default async function AdminPage({ searchParams }: PageProps) {
                         </td>
                         <td>
                           <span style={{ fontWeight: 700, color: agent.salesCount > 0 ? "#a78bfa" : "var(--text-subtle)" }}>
-                            {agent.salesCount > 0 ? formatPKR(agent.salesCount * AGENT_COMMISSION_PKR) : "—"}
+                            {agent.salesCount > 0 ? formatCurrency(agent.totalAgentCommGBP) : "—"}
                           </span>
                           {agent.salesCount > 0 && (
                             <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                              ≈ {formatCurrency(pkrToGbp(agent.salesCount * AGENT_COMMISSION_PKR))}
+                              ≈ {formatPKR(agent.totalAgentCommGBP * GBP_TO_PKR)}
                             </span>
                           )}
                         </td>

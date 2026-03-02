@@ -78,6 +78,14 @@ function ChatIcon() {
   );
 }
 
+function CommissionIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.798 7.45c.512-.67 1.135-.95 1.702-.95s1.19.28 1.702.95a.75.75 0 0 0 1.192-.91C12.637 5.55 11.596 5 10.5 5s-2.137.55-2.894 1.54A5.205 5.205 0 0 0 6.5 10c0 1.173.382 2.26 1.106 3.46C8.363 14.45 9.404 15 10.5 15s2.137-.55 2.894-1.54a.75.75 0 0 0-1.192-.91c-.512.67-1.135.95-1.702.95s-1.19-.28-1.702-.95A3.705 3.705 0 0 1 8 10c0-.87.284-1.72.798-2.55Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
   { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
@@ -87,6 +95,7 @@ const navItems = [
   { href: "/admin/tenants",    label: "Tenants",     icon: TenantsIcon,    exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/chat",       label: "Chat",        icon: ChatIcon,       exact: false },
+  { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
 ];
 
 export function AdminShell({ user, children }: Props) {
