@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { UserRole, PropertyStatus } from "@prisma/client";
 import { db } from "@/server/db";
-import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, pkrToGbp, GBP_TO_PKR } from "@/lib/format";
+import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, GBP_TO_PKR } from "@/lib/format";
 import { calcAgentCommissionGBP, describeCommission, type CommissionConfigData, type FlexibleRange } from "@/lib/commission";
 import { getAuthSession } from "@/server/auth";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
