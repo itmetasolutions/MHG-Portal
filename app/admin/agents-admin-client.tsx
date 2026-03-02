@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useRef, useMemo, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
@@ -102,6 +102,26 @@ export function AgentsAdminClient({ initialAgents }: Props) {
     tempPassword: "",
   });
 
+  // Kebab menu + reset password modal state
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [resetPwFor, setResetPwFor] = useState<AgentRow | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [newPwError, setNewPwError] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpenId) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpenId]);
+
   const shownCount = useMemo(() => agents.length, [agents.length]);
 
   async function fetchAgents() {
@@ -185,22 +205,44 @@ export function AgentsAdminClient({ initialAgents }: Props) {
     setMessage({ type: "success", text: result.data.message });
   }
 
-  async function resetAgentPassword(agent: AgentRow) {
+  async function setAgentPassword(agent: AgentRow, newPassword: string): Promise<boolean> {
     setWorkingAgentId(agent.id);
     setMessage(null);
     const result = await apiPatch<
-      { resetPasswordAuto: boolean },
-      { message: string; generatedTempPassword?: string }
-    >(`/api/admin/users/${agent.id}`, { resetPasswordAuto: true });
+      { newPassword: string },
+      { message: string }
+    >(`/api/admin/users/${agent.id}`, { newPassword });
     setWorkingAgentId(null);
     if (!result.ok) {
       setMessage({ type: "error", text: result.message ?? "Failed to reset password." });
+      return false;
+    }
+    setMessage({ type: "success", text: result.data.message });
+    return true;
+  }
+
+  async function handlePasswordReset(e: FormEvent) {
+    e.preventDefault();
+    if (!resetPwFor) return;
+    if (newPw.length < 8) {
+      setNewPwError("Minimum 8 characters.");
       return;
     }
-    const text = result.data.generatedTempPassword
-      ? `${result.data.message} Temp password: ${result.data.generatedTempPassword}`
-      : result.data.message;
-    setMessage({ type: "success", text });
+    setNewPwError("");
+    setSavingPw(true);
+    const ok = await setAgentPassword(resetPwFor, newPw);
+    setSavingPw(false);
+    if (ok) {
+      setResetPwFor(null);
+      setNewPw("");
+    }
+  }
+
+  function openResetPwModal(agent: AgentRow) {
+    setMenuOpenId(null);
+    setResetPwFor(agent);
+    setNewPw("");
+    setNewPwError("");
   }
 
   return (
@@ -445,25 +487,48 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                           {formatDate(agent.createdAt)}
                         </td>
                         <td>
-                          <div className="inline-row">
-                            <UIButton
-                              variant={agent.isActive ? "danger" : "secondary"}
-                              onClick={() => void toggleAgentStatus(agent)}
+                          <div style={{ position: "relative" }} ref={menuOpenId === agent.id ? menuRef : undefined}>
+                            <button
+                              className="kebab-btn"
+                              aria-label="Agent actions"
+                              onClick={() => setMenuOpenId(menuOpenId === agent.id ? null : agent.id)}
                               disabled={busy}
                             >
-                              {busy
-                                ? "…"
-                                : agent.isActive
-                                ? "Disable"
-                                : "Enable"}
-                            </UIButton>
-                            <UIButton
-                              variant="secondary"
-                              onClick={() => void resetAgentPassword(agent)}
-                              disabled={busy}
-                            >
-                              Reset PW
-                            </UIButton>
+                              {busy ? (
+                                <span style={{ fontWeight: 700, letterSpacing: 1 }}>…</span>
+                              ) : (
+                                <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+                                  <path d="M10 3a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM10 8.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM11.5 15.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0Z" />
+                                </svg>
+                              )}
+                            </button>
+                            {menuOpenId === agent.id && (
+                              <div className="kebab-menu">
+                                <button
+                                  className="kebab-menu-item"
+                                  onClick={() => openResetPwModal(agent)}
+                                >
+                                  <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+                                    <path fillRule="evenodd" d="M8 7a5 5 0 1 1 3.61 4.804l-1.903 1.903A1 1 0 0 1 9 14H8v1a1 1 0 0 1-1 1H6v1a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-2a1 1 0 0 1 .293-.707L8.196 8.39A5.002 5.002 0 0 1 8 7Zm5-3a.75.75 0 0 0 0 1.5A1.5 1.5 0 1 1 11.5 7a.75.75 0 0 0-1.5 0 3 3 0 1 0 3-3Z" clipRule="evenodd" />
+                                  </svg>
+                                  Reset Password
+                                </button>
+                                <div className="kebab-menu-divider" />
+                                <button
+                                  className={`kebab-menu-item${agent.isActive ? " kebab-menu-item-danger" : ""}`}
+                                  onClick={() => { setMenuOpenId(null); void toggleAgentStatus(agent); }}
+                                >
+                                  <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+                                    {agent.isActive ? (
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />
+                                    ) : (
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+                                    )}
+                                  </svg>
+                                  {agent.isActive ? "Disable Agent" : "Enable Agent"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -475,6 +540,58 @@ export function AgentsAdminClient({ initialAgents }: Props) {
           )}
         </div>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetPwFor && (
+        <div
+          className="modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setResetPwFor(null);
+              setNewPw("");
+              setNewPwError("");
+            }
+          }}
+        >
+          <div className="modal-card" style={{ maxWidth: 420 }}>
+            <div className="modal-head">
+              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--text)" }}>
+                Reset Password
+              </h3>
+              <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                Set a new password for <strong style={{ color: "var(--brand-gold)" }}>{resetPwFor.agentDisplayName}</strong>
+              </p>
+            </div>
+            <form onSubmit={handlePasswordReset}>
+              <div className="modal-body">
+                <label className="field">
+                  <span className="label">New Password</span>
+                  <UIInput
+                    type="password"
+                    value={newPw}
+                    onChange={(e) => { setNewPw(e.target.value); setNewPwError(""); }}
+                    placeholder="Min. 8 characters"
+                    autoFocus
+                  />
+                  {newPwError && <span className="error-text">{newPwError}</span>}
+                </label>
+              </div>
+              <div className="modal-foot">
+                <UIButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => { setResetPwFor(null); setNewPw(""); setNewPwError(""); }}
+                >
+                  Cancel
+                </UIButton>
+                <UIButton type="submit" disabled={savingPw || !newPw}>
+                  {savingPw ? "Saving…" : "Save Password"}
+                </UIButton>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

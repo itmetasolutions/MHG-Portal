@@ -2961,6 +2961,83 @@ a.admin-stat-card {
 }
 
 /* =====================================================================
+   Kebab / 3-dot Action Menu
+   ===================================================================== */
+
+.kebab-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+
+.kebab-btn:hover:not(:disabled) {
+  background: var(--hover, rgba(255,255,255,0.06));
+  color: var(--text);
+}
+
+.kebab-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.kebab-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 100;
+  min-width: 180px;
+  background: var(--surface2, #18181f);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.kebab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text);
+  border-radius: 5px;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.kebab-menu-item:hover {
+  background: var(--hover, rgba(255,255,255,0.06));
+}
+
+.kebab-menu-item-danger {
+  color: var(--danger, #ef4444);
+}
+
+.kebab-menu-item-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.kebab-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+/* =====================================================================
    Floating Chat Widget
    ===================================================================== */
 
