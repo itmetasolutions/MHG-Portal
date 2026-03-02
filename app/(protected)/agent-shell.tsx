@@ -93,14 +93,49 @@ function DialerIcon() {
   );
 }
 
+function CallHistoryIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M10 2.5a7.5 7.5 0 1 0 7.387 8.804.75.75 0 1 0-1.476-.26A6 6 0 1 1 10 4a6 6 0 0 1 5.192 2.995H13a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 .75-.75v-3.5a.75.75 0 1 0-1.5 0v1.568A7.489 7.489 0 0 0 10 2.5Zm-.75 3.5a.75.75 0 0 1 1.5 0v3.19l2.03 1.218a.75.75 0 0 1-.772 1.286l-2.392-1.435a.75.75 0 0 1-.366-.643V6Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function IntercallingIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h2A2.5 2.5 0 0 1 9.5 5v1A2.5 2.5 0 0 1 7 8.5H5A2.5 2.5 0 0 1 2.5 6V5Zm8 9A2.5 2.5 0 0 1 13 11.5h2a2.5 2.5 0 0 1 2.5 2.5v1A2.5 2.5 0 0 1 15 17.5h-2a2.5 2.5 0 0 1-2.5-2.5v-1ZM6.75 11a.75.75 0 0 1 0-1.5h6.94l-1.22-1.22a.75.75 0 0 1 1.06-1.06l2.5 2.5a.75.75 0 0 1 0 1.06l-2.5 2.5a.75.75 0 0 1-1.06-1.06l1.22-1.22H6.75Z" />
+    </svg>
+  );
+}
+
+function ContactsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0H3Zm12.25-8a.75.75 0 0 1 .75.75V12h1.25a.75.75 0 0 1 0 1.5H16v1.25a.75.75 0 0 1-1.5 0V13.5h-1.25a.75.75 0 0 1 0-1.5h1.25v-1.25a.75.75 0 0 1 .75-.75Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
+  { href: "/dialer", label: "Dialpad", icon: DialerIcon, exact: true },
+  { href: "/dialer/history", label: "Call History", icon: CallHistoryIcon, exact: false },
+  { href: "/dialer/intercalling", label: "Intercalling", icon: IntercallingIcon, exact: false },
+  { href: "/dialer/contacts", label: "Contacts", icon: ContactsIcon, exact: false },
   { href: "/landlords", label: "Landlords", icon: LandlordsIcon, exact: false },
   { href: "/properties", label: "Properties", icon: PropertiesIcon, exact: false },
   { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
   { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
-  { href: "/dialer", label: "Dialer", icon: DialerIcon, exact: false },
   { href: "/profile", label: "Profile", icon: ProfileIcon, exact: false },
 ];
 

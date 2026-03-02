@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Invitation, Inviter, Registerer, RegistererState, SessionState, UserAgent, type Session } from "sip.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
@@ -31,6 +32,8 @@ type Props = {
   bootstrap: DialerBootstrapResponse;
   contacts: ContactLite[];
   recentCalls: HistoryLite[];
+  initialDialTarget?: string | null;
+  autoCall?: boolean;
 };
 
 type CallStatus = "MISSED" | "RINGING" | "ANSWERED" | "REJECTED" | "COMPLETED" | "FAILED";
@@ -148,7 +151,7 @@ function authUsernameCandidates(providerUsername: string, extensionNumber: strin
   return [...out].filter(Boolean);
 }
 
-export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
+export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
   const [liveCall, setLiveCall] = useState<CallView | null>(null);
@@ -171,6 +174,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const reconnectAttemptRef = useRef(0);
   const isMountedRef = useRef(true);
   const shuttingDownRef = useRef(false);
+  const didAutoCallRef = useRef(false);
 
   const setupIssues = useMemo(() => {
     const issues: string[] = [];
@@ -547,6 +551,15 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const duration = liveCall ? fmtDuration(Math.max(0, Math.floor((nowMs - (liveCall.answeredAtMs ?? liveCall.startedAtMs)) / 1000))) : "00:00";
   const callDisabled = !readyForCalling || Boolean(runtimeRef.current || incomingRef.current);
 
+  useEffect(() => {
+    if (!initialDialTarget) return;
+    setDialInput(initialDialTarget);
+  }, [initialDialTarget]);
+
+  useEffect(() => {
+    didAutoCallRef.current = false;
+  }, [initialDialTarget, autoCall]);
+
   const callFromDialInput = () => {
     const target = dialInput.trim();
     if (!target) return;
@@ -560,36 +573,113 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
     });
   };
 
+  useEffect(() => {
+    if (!autoCall || didAutoCallRef.current || !initialDialTarget || !readyForCalling) return;
+    if (runtimeRef.current || incomingRef.current) return;
+    const target = initialDialTarget.trim();
+    if (!target) return;
+    didAutoCallRef.current = true;
+    const matchingContact = contacts.find((c) => c.phoneNumber === target || c.extensionNumber === target);
+    void callTarget(target, {
+      direction: "OUTGOING",
+      peerName: matchingContact?.fullName ?? null,
+      peerNumber: matchingContact ? matchingContact.phoneNumber : target,
+      peerExtension: matchingContact?.extensionNumber ?? null,
+      contactId: matchingContact?.id,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCall, initialDialTarget, readyForCalling, contacts]);
+
   return (
     <div className="stack">
       <audio ref={audioRef} autoPlay playsInline />
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
-      <div className="dialer-grid">
-        <section className="dialer-card">
+      <div className="dialer-premium-grid">
+        <section className="dialer-card dialer-recent-card">
           <div className="dialer-card-head">
-            <h2 className="dialer-card-title">Connection</h2>
-            <span className={`badge ${registerState === "REGISTERED" ? "badge-active" : registerState === "CONNECTING" ? "badge-warning" : "badge-locked"}`}>{registerState}</span>
+            <h2 className="dialer-card-title">Recent Calls</h2>
+            <Link href="/dialer/history" className="btn btn-secondary btn-sm">
+              View All
+            </Link>
           </div>
-          <div className="dialer-connection-list">
-            <div className="dialer-connection-item"><span>Domain</span><strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong></div>
-            <div className="dialer-connection-item"><span>WebSocket</span><strong>{registerTarget ?? bootstrap.dialerDomain.websocketHost ?? "Not set"}</strong></div>
-            <div className="dialer-connection-item"><span>Extension</span><strong>{bootstrap.me.dialer.extensionNumber ?? bootstrap.me.dialer.providerUsername ?? "Not set"}</strong></div>
-          </div>
-          <p className="dialer-connection-foot">Domain updated: {bootstrap.dialerDomain.updatedAt ? formatDateTime(bootstrap.dialerDomain.updatedAt) : "Never"}</p>
+          {historyPreview.length === 0 ? (
+            <p className="muted" style={{ margin: 0 }}>
+              No calls yet. Place your first call from the dialpad.
+            </p>
+          ) : (
+            <div className="dialer-recent-list">
+              {historyPreview.slice(0, 8).map((call) => {
+                const target = (call.peerNumber || call.peerExtension || "").trim();
+                const redialDirection = call.direction === "INTERNAL" ? "INTERNAL" : "OUTGOING";
+                return (
+                  <article key={call.id} className="dialer-recent-item">
+                    <div>
+                      <p className="dialer-agent-name">{call.peerName || call.peerExtension || call.peerNumber || "Unknown"}</p>
+                      <p className="dialer-agent-meta">
+                        {call.direction} | {fmtDuration(call.durationSec)} | {formatDateTime(call.startedAt)}
+                      </p>
+                    </div>
+                    <div className="inline-row">
+                      <span
+                        className={`badge ${
+                          call.status === "COMPLETED" || call.status === "ANSWERED"
+                            ? "badge-active"
+                            : call.status === "MISSED" || call.status === "FAILED" || call.status === "REJECTED"
+                              ? "badge-locked"
+                              : "badge-warning"
+                        }`}
+                      >
+                        {call.status}
+                      </span>
+                      <UIButton
+                        variant="secondary"
+                        onClick={() => {
+                          if (!target) return;
+                          setDialInput(target);
+                          void callTarget(target, {
+                            direction: redialDirection,
+                            peerName: call.peerName,
+                            peerNumber: call.peerNumber ?? (redialDirection === "OUTGOING" ? target : null),
+                            peerExtension: call.peerExtension ?? (redialDirection === "INTERNAL" ? target : null),
+                          });
+                        }}
+                        disabled={callDisabled || !target}
+                      >
+                        Redial
+                      </UIButton>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
 
-        <section className="dialer-card dialer-dialpad-card">
-          <div className="dialer-card-head">
-            <h2 className="dialer-card-title">Keypad</h2>
-            <select className="select" value={speakerId} onChange={(event) => setSpeakerId(event.target.value)} style={{ minWidth: 160 }}>
-              <option value="default">Speaker: Default</option>
-              {speakerDevices.map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Speaker"}</option>)}
-            </select>
+        <section className="dialer-card dialer-dialpad-card dialer-premium-pad">
+          <div className="dialer-premium-head">
+            <div>
+              <h2 className="dialer-card-title">Premium Dialpad</h2>
+              <p className="dialer-premium-subtitle">Fast input, clean audio routing, and instant call actions.</p>
+            </div>
+            <span className={`badge ${registerState === "REGISTERED" ? "badge-active" : registerState === "CONNECTING" ? "badge-warning" : "badge-locked"}`}>
+              {registerState}
+            </span>
           </div>
           <div className="dialer-dialer-wrap">
-            <UIInput value={dialInput} onChange={(event) => setDialInput(event.target.value)} placeholder="Enter number or extension" className="dialer-dial-input" />
-            <div className="dialer-key-grid">
+            <div className="dialer-premium-input-row">
+              <UIInput
+                value={dialInput}
+                onChange={(event) => setDialInput(event.target.value)}
+                placeholder="Enter number or extension"
+                className="dialer-dial-input dialer-dial-input-premium"
+              />
+              <select className="select" value={speakerId} onChange={(event) => setSpeakerId(event.target.value)} style={{ minWidth: 180 }}>
+                <option value="default">Speaker: Default</option>
+                {speakerDevices.map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Speaker"}</option>)}
+              </select>
+            </div>
+            <div className="dialer-key-grid dialer-key-grid-premium">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
                 <button key={digit} type="button" className="dialer-key" onClick={() => setDialInput((prev) => `${prev}${digit}`)}>{digit}</button>
               ))}
@@ -602,6 +692,21 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
           </div>
         </section>
       </div>
+
+      <section className="dialer-card dialer-status-card">
+        <div className="dialer-card-head">
+          <h2 className="dialer-card-title">Dialer Status & Connection Details</h2>
+          <span className={`badge ${readyForCalling ? "badge-active" : "badge-warning"}`}>
+            {readyForCalling ? "Ready" : "Waiting"}
+          </span>
+        </div>
+        <div className="dialer-connection-list">
+          <div className="dialer-connection-item"><span>Domain</span><strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong></div>
+          <div className="dialer-connection-item"><span>WebSocket</span><strong>{registerTarget ?? bootstrap.dialerDomain.websocketHost ?? "Not set"}</strong></div>
+          <div className="dialer-connection-item"><span>Extension</span><strong>{bootstrap.me.dialer.extensionNumber ?? bootstrap.me.dialer.providerUsername ?? "Not set"}</strong></div>
+        </div>
+        <p className="dialer-connection-foot">Domain updated: {bootstrap.dialerDomain.updatedAt ? formatDateTime(bootstrap.dialerDomain.updatedAt) : "Never"}</p>
+      </section>
 
       {incomingCall && (
         <section className="dialer-card dialer-incoming-card">
@@ -652,130 +757,6 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
           </div>
         </section>
       )}
-
-      <div className="dialer-grid">
-        <section className="dialer-card">
-          <div className="dialer-card-head">
-            <h2 className="dialer-card-title">Intercom Agents</h2>
-            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{bootstrap.intercomAgents.length} online</span>
-          </div>
-          {bootstrap.intercomAgents.length === 0 ? (
-            <p className="muted" style={{ margin: 0 }}>No active agent extensions found.</p>
-          ) : (
-            <div className="dialer-agent-list">
-              {bootstrap.intercomAgents.map((agent) => (
-                <div key={agent.id} className="dialer-agent-item">
-                  <div>
-                    <p className="dialer-agent-name">{agent.name}</p>
-                    <p className="dialer-agent-meta">
-                      {agent.extensionNumber ? `Ext ${agent.extensionNumber}` : "No extension"} | {agent.email}
-                    </p>
-                  </div>
-                  <UIButton
-                    onClick={() =>
-                      void callTarget(agent.extensionNumber || "", {
-                        direction: "INTERNAL",
-                        peerName: agent.name,
-                        peerNumber: null,
-                        peerExtension: agent.extensionNumber,
-                        counterpartUserId: agent.id,
-                      })
-                    }
-                    disabled={callDisabled || !agent.extensionNumber}
-                  >
-                    Call
-                  </UIButton>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="dialer-card">
-          <div className="dialer-card-head">
-            <h2 className="dialer-card-title">Quick Contacts</h2>
-            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{contacts.length} saved</span>
-          </div>
-          {contacts.length === 0 ? (
-            <p className="muted" style={{ margin: 0 }}>Add contacts from the Contacts tab to speed up dialing.</p>
-          ) : (
-            <div className="dialer-contact-list">
-              {contacts.slice(0, 6).map((contact) => (
-                <div key={contact.id} className="dialer-contact-item">
-                  <div>
-                    <p className="dialer-agent-name">{contact.fullName}</p>
-                    <p className="dialer-agent-meta">
-                      {contact.phoneNumber}
-                      {contact.extensionNumber ? ` | Ext ${contact.extensionNumber}` : ""}
-                    </p>
-                  </div>
-                  <UIButton
-                    onClick={() =>
-                      void callTarget(contact.phoneNumber, {
-                        direction: "OUTGOING",
-                        peerName: contact.fullName,
-                        peerNumber: contact.phoneNumber,
-                        peerExtension: contact.extensionNumber,
-                        contactId: contact.id,
-                      })
-                    }
-                    disabled={callDisabled}
-                  >
-                    Call
-                  </UIButton>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <section className="dialer-card">
-        <div className="dialer-card-head">
-          <h2 className="dialer-card-title">Recent Activity</h2>
-          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Latest {historyPreview.length} calls</span>
-        </div>
-        {historyPreview.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>No call logs yet.</p>
-        ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Direction</th>
-                  <th>Peer</th>
-                  <th>Status</th>
-                  <th>Duration</th>
-                  <th>Started</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyPreview.map((call) => (
-                  <tr key={call.id}>
-                    <td>{call.direction}</td>
-                    <td>{call.peerName || call.peerExtension || call.peerNumber || "-"}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          call.status === "COMPLETED" || call.status === "ANSWERED"
-                            ? "badge-active"
-                            : call.status === "MISSED" || call.status === "FAILED" || call.status === "REJECTED"
-                              ? "badge-locked"
-                              : "badge-warning"
-                        }`}
-                      >
-                        {call.status}
-                      </span>
-                    </td>
-                    <td>{fmtDuration(call.durationSec)}</td>
-                    <td>{formatDateTime(call.startedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

@@ -65,7 +65,7 @@ export default async function DialerContactsPage() {
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Dialer Contacts</h1>
+          <h1 className="page-title">Contacts</h1>
           <p className="page-subtitle">
             Add and organize contacts with notes and labels for faster calling.
           </p>

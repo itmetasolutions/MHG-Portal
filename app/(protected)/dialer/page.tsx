@@ -6,7 +6,14 @@ import { db } from "@/server/db";
 
 export const dynamic = "force-dynamic";
 
-export default async function DialerPage() {
+type DialerPageProps = {
+  searchParams?: {
+    dial?: string | string[];
+    autocall?: string | string[];
+  };
+};
+
+export default async function DialerPage({ searchParams }: DialerPageProps) {
   const session = await getAuthSession();
   if (!session) {
     redirect("/login");
@@ -113,13 +120,18 @@ export default async function DialerPage() {
     redirect("/login");
   }
 
+  const dialQuery = Array.isArray(searchParams?.dial) ? searchParams?.dial[0] : searchParams?.dial;
+  const autoCallQuery = Array.isArray(searchParams?.autocall) ? searchParams?.autocall[0] : searchParams?.autocall;
+  const initialDialTarget = dialQuery?.trim() || null;
+  const autoCall = autoCallQuery === "1" || autoCallQuery?.toLowerCase() === "true";
+
   return (
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Dialer</h1>
+          <h1 className="page-title">Dialpad</h1>
           <p className="page-subtitle">
-            Manage live calls and inter-agent intercom from one workspace.
+            Place calls quickly with live status, premium keypad, and instant redial.
           </p>
         </div>
       </header>
@@ -176,6 +188,8 @@ export default async function DialerPage() {
           endedAt: call.endedAt?.toISOString() ?? null,
           durationSec: call.durationSec,
         }))}
+        initialDialTarget={initialDialTarget}
+        autoCall={autoCall}
       />
     </div>
   );
