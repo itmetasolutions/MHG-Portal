@@ -105,9 +105,13 @@ function wsCandidates(websocketHost: string | null, domain: string | null): stri
   return [...out];
 }
 
+function normalizeSipIdentity(value: string): string {
+  return value.trim().replace(/^sips?:/i, "");
+}
+
 function registrationUriCandidates(providerUsername: string, extensionNumber: string | null, domain: string): string[] {
   const out = new Set<string>();
-  const username = providerUsername.trim();
+  const username = normalizeSipIdentity(providerUsername);
   const extension = extensionNumber?.trim();
 
   if (extension) {
@@ -126,6 +130,24 @@ function registrationUriCandidates(providerUsername: string, extensionNumber: st
   return [...out];
 }
 
+function authUsernameCandidates(providerUsername: string, extensionNumber: string | null): string[] {
+  const out = new Set<string>();
+  const username = normalizeSipIdentity(providerUsername);
+  const extension = extensionNumber?.trim();
+
+  if (username) {
+    out.add(username);
+    if (username.includes("@")) {
+      const userPart = username.split("@")[0]?.trim();
+      if (userPart) out.add(userPart);
+    }
+  }
+  if (extension) {
+    out.add(extension.includes("@") ? extension.split("@")[0] : extension);
+  }
+  return [...out].filter(Boolean);
+}
+
 export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
@@ -134,6 +156,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [registerState, setRegisterState] = useState<"DISCONNECTED" | "CONNECTING" | "REGISTERED" | "ERROR">("DISCONNECTED");
   const [registerTarget, setRegisterTarget] = useState<string | null>(null);
+  const [registrationCycle, setRegistrationCycle] = useState(0);
   const [nowMs, setNowMs] = useState(Date.now());
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceInfo[]>([]);
   const [speakerId, setSpeakerId] = useState("default");
@@ -144,18 +167,67 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const runtimeRef = useRef<RuntimeCall | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const isMountedRef = useRef(true);
+  const shuttingDownRef = useRef(false);
 
-  const readyForRegistration = useMemo(
-    () =>
-      Boolean(
-        bootstrap.dialerDomain.isEnabled &&
-          bootstrap.dialerDomain.domain &&
-          bootstrap.me.dialer.providerUsername &&
-          bootstrap.me.dialer.providerPassword,
-      ),
-    [bootstrap],
-  );
+  const setupIssues = useMemo(() => {
+    const issues: string[] = [];
+    if (!bootstrap.dialerDomain.isEnabled) issues.push("dialer is disabled by admin");
+    if (!bootstrap.dialerDomain.domain?.trim()) issues.push("dialer domain is missing");
+    if (!bootstrap.dialerDomain.websocketHost?.trim()) issues.push("WebSocket host is missing");
+    if (!bootstrap.me.dialer.providerUsername?.trim()) issues.push("provider username is missing");
+    if (!bootstrap.me.dialer.providerPassword?.trim()) issues.push("provider password is missing");
+    return issues;
+  }, [
+    bootstrap.dialerDomain.domain,
+    bootstrap.dialerDomain.isEnabled,
+    bootstrap.dialerDomain.websocketHost,
+    bootstrap.me.dialer.providerPassword,
+    bootstrap.me.dialer.providerUsername,
+  ]);
+  const readyForRegistration = setupIssues.length === 0;
   const readyForCalling = readyForRegistration && registerState === "REGISTERED";
+
+  function clearReconnectTimer() {
+    if (!reconnectTimerRef.current) return;
+    clearTimeout(reconnectTimerRef.current);
+    reconnectTimerRef.current = null;
+  }
+
+  function scheduleReconnect() {
+    if (!isMountedRef.current || shuttingDownRef.current || !readyForRegistration) return;
+    if (reconnectTimerRef.current) return;
+    const attempt = reconnectAttemptRef.current + 1;
+    reconnectAttemptRef.current = attempt;
+    const delayMs = Math.min(15000, 1000 * (2 ** Math.min(4, attempt - 1)));
+    setMessage({
+      type: "error",
+      text: `SIP disconnected. Reconnecting in ${Math.round(delayMs / 1000)}s...`,
+    });
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectTimerRef.current = null;
+      if (!isMountedRef.current || shuttingDownRef.current) return;
+      setRegistrationCycle((prev) => prev + 1);
+    }, delayMs);
+  }
+
+  useEffect(() => {
+    if (readyForRegistration) return;
+    clearReconnectTimer();
+    reconnectAttemptRef.current = 0;
+    setRegisterState("DISCONNECTED");
+    setRegisterTarget(null);
+    setMessage({ type: "error", text: `Dialer not ready: ${setupIssues.join(", ")}.` });
+  }, [readyForRegistration, setupIssues]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      clearReconnectTimer();
+    };
+  }, []);
 
   async function logCall(payload: Parameters<typeof createDialerCallHistory>[0]) {
     const result = await createDialerCallHistory(payload);
@@ -343,7 +415,8 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   useEffect(() => {
     const start = async () => {
       if (!readyForRegistration) return;
-      const username = bootstrap.me.dialer.providerUsername!;
+      shuttingDownRef.current = false;
+      const username = normalizeSipIdentity(bootstrap.me.dialer.providerUsername!);
       const password = bootstrap.me.dialer.providerPassword!;
       const domain = bootstrap.dialerDomain.domain!;
       const candidates = wsCandidates(bootstrap.dialerDomain.websocketHost, domain);
@@ -352,62 +425,76 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
         bootstrap.me.dialer.extensionNumber,
         domain,
       );
+      const authCandidates = authUsernameCandidates(username, bootstrap.me.dialer.extensionNumber);
       setRegisterState("CONNECTING");
       for (const server of candidates) {
         for (const uriCandidate of uriCandidates) {
-          const uri = UserAgent.makeURI(uriCandidate);
-          if (!uri) continue;
-          const ua = new UserAgent({
-            uri,
-            authorizationUsername: username,
-            authorizationPassword: password,
-            displayName: bootstrap.me.dialer.extensionName || bootstrap.me.name,
-            transportOptions: { server },
-            delegate: {
-              onInvite: (invitation: Invitation) => {
-                if (runtimeRef.current || incomingRef.current) {
-                  void invitation.reject({ statusCode: 486, reasonPhrase: "Busy" });
-                  return;
-                }
-                const ext = invitation.remoteIdentity.uri.user ?? null;
-                const contact = contacts.find((c) => c.extensionNumber === ext || c.phoneNumber === ext);
-                const intercom = bootstrap.intercomAgents.find((a) => a.extensionNumber === ext);
-                const startedAtMs = Date.now();
-                const runtime: RuntimeCall = {
-                  session: invitation,
-                  direction: intercom ? "INTERNAL" : "INCOMING",
-                  peerName: invitation.remoteIdentity.displayName || ext,
-                  peerNumber: contact?.phoneNumber ?? null,
-                  peerExtension: ext,
-                  contactId: contact?.id,
-                  counterpartUserId: intercom?.id ?? null,
-                  startedAtMs,
-                  answeredAtMs: null,
-                  finalized: false,
-                };
-                runtimeRef.current = runtime;
-                incomingRef.current = invitation;
-                setIncomingCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
-                setLiveCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
-                hookSession(runtime);
+          for (const authUsername of authCandidates) {
+            const uri = UserAgent.makeURI(uriCandidate);
+            if (!uri) continue;
+            const ua = new UserAgent({
+              uri,
+              authorizationUsername: authUsername,
+              authorizationPassword: password,
+              displayName: bootstrap.me.dialer.extensionName || bootstrap.me.name,
+              transportOptions: { server },
+              delegate: {
+                onInvite: (invitation: Invitation) => {
+                  if (runtimeRef.current || incomingRef.current) {
+                    void invitation.reject({ statusCode: 486, reasonPhrase: "Busy" });
+                    return;
+                  }
+                  const ext = invitation.remoteIdentity.uri.user ?? null;
+                  const contact = contacts.find((c) => c.extensionNumber === ext || c.phoneNumber === ext);
+                  const intercom = bootstrap.intercomAgents.find((a) => a.extensionNumber === ext);
+                  const startedAtMs = Date.now();
+                  const runtime: RuntimeCall = {
+                    session: invitation,
+                    direction: intercom ? "INTERNAL" : "INCOMING",
+                    peerName: invitation.remoteIdentity.displayName || ext,
+                    peerNumber: contact?.phoneNumber ?? null,
+                    peerExtension: ext,
+                    contactId: contact?.id,
+                    counterpartUserId: intercom?.id ?? null,
+                    startedAtMs,
+                    answeredAtMs: null,
+                    finalized: false,
+                  };
+                  runtimeRef.current = runtime;
+                  incomingRef.current = invitation;
+                  setIncomingCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+                  setLiveCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+                  hookSession(runtime);
+                },
               },
-            },
-          });
-          const registerer = new Registerer(ua);
-          registerer.stateChange.addListener((state) => {
-            if (state === RegistererState.Registered) setRegisterState("REGISTERED");
-            if (state === RegistererState.Unregistered || state === RegistererState.Terminated) setRegisterState("DISCONNECTED");
-          });
-          try {
-            await ua.start();
-            await registerer.register();
-            userAgentRef.current = ua;
-            registererRef.current = registerer;
-            setRegisterState("REGISTERED");
-            setRegisterTarget(server);
-            return;
-          } catch {
-            try { await ua.stop(); } catch {}
+            });
+            const registerer = new Registerer(ua);
+            registerer.stateChange.addListener((state) => {
+              if (state === RegistererState.Registered) {
+                clearReconnectTimer();
+                reconnectAttemptRef.current = 0;
+                setRegisterState("REGISTERED");
+                setMessage(null);
+              }
+              if (state === RegistererState.Unregistered || state === RegistererState.Terminated) {
+                setRegisterState("DISCONNECTED");
+                if (!shuttingDownRef.current) scheduleReconnect();
+              }
+            });
+            try {
+              await ua.start();
+              await registerer.register();
+              userAgentRef.current = ua;
+              registererRef.current = registerer;
+              setRegisterState("REGISTERED");
+              setRegisterTarget(server);
+              setMessage(null);
+              clearReconnectTimer();
+              reconnectAttemptRef.current = 0;
+              return;
+            } catch {
+              try { await ua.stop(); } catch {}
+            }
           }
         }
       }
@@ -418,10 +505,12 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
           ? "SIP registration failed. Check WSS host, extension/AOR, and credentials."
           : "SIP registration failed. Set the WebSocket host in Dialer Domain, then verify extension/AOR and credentials.",
       });
+      scheduleReconnect();
     };
     void start();
     return () => {
       const cleanup = async () => {
+        shuttingDownRef.current = true;
         const runtime = runtimeRef.current;
         if (runtime && !runtime.finalized) await finalize(runtime, "FAILED");
         const reg = registererRef.current;
@@ -434,7 +523,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
       void cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readyForRegistration, bootstrap.dialerDomain.domain, bootstrap.dialerDomain.websocketHost, bootstrap.me.dialer.providerUsername, bootstrap.me.dialer.providerPassword, bootstrap.me.dialer.extensionName, bootstrap.me.name]);
+  }, [registrationCycle, readyForRegistration, bootstrap.dialerDomain.domain, bootstrap.dialerDomain.websocketHost, bootstrap.me.dialer.providerUsername, bootstrap.me.dialer.providerPassword, bootstrap.me.dialer.extensionNumber, bootstrap.me.dialer.extensionName, bootstrap.me.name]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
