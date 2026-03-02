@@ -192,3 +192,88 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
     generatedTempPassword,
   });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { userId: string } }) {
+  const auth = await requireUser(request);
+  if (!auth.ok) return auth.response;
+
+  const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
+  if (!roleCheck.ok) return roleCheck.response;
+
+  const userIdParse = userIdSchema.safeParse(params.userId);
+  if (!userIdParse.success) {
+    return NextResponse.json(
+      { error: "INVALID_USER_ID", message: userIdParse.error.issues[0]?.message ?? "Invalid user id." },
+      { status: 400 },
+    );
+  }
+
+  const agentId = userIdParse.data;
+  const adminId = auth.user.id;
+
+  if (agentId === adminId) {
+    return NextResponse.json(
+      { error: "CANNOT_DELETE_SELF", message: "You cannot delete your own account." },
+      { status: 400 },
+    );
+  }
+
+  const agent = await db.user.findUnique({
+    where: { id: agentId },
+    select: { id: true, email: true, role: true, agentDisplayName: true, isActive: true, createdAt: true },
+  });
+
+  if (!agent) {
+    return NextResponse.json({ error: "NOT_FOUND", message: "Agent not found." }, { status: 404 });
+  }
+
+  if (agent.role !== UserRole.AGENT) {
+    return NextResponse.json(
+      { error: "INVALID_TARGET_USER", message: "Only AGENT users can be deleted via this endpoint." },
+      { status: 400 },
+    );
+  }
+
+  const snapshot = { id: agent.id, email: agent.email, role: agent.role, agentDisplayName: agent.agentDisplayName };
+
+  await db.$transaction(async (tx) => {
+    // Re-assign landlords created/updated by this agent but owned by someone else
+    await tx.landlord.updateMany({
+      where: { createdByUserId: agentId, ownerAgentId: { not: agentId } },
+      data: { createdByUserId: adminId },
+    });
+    await tx.landlord.updateMany({
+      where: { updatedByUserId: agentId, ownerAgentId: { not: agentId } },
+      data: { updatedByUserId: adminId },
+    });
+
+    // Delete sales closed by this agent (cascades to Tenants)
+    await tx.sale.deleteMany({ where: { closedByUserId: agentId } });
+
+    // Delete properties owned by this agent (cascades to PropertyRooms and Sales)
+    await tx.property.deleteMany({ where: { ownerAgentId: agentId } });
+
+    // Delete landlords owned by this agent (cascades to any remaining properties under them)
+    await tx.landlord.deleteMany({ where: { ownerAgentId: agentId } });
+
+    // Delete audit logs attributed to this agent
+    await tx.auditLog.deleteMany({ where: { userId: agentId } });
+
+    // Log the deletion under the admin's ID
+    await tx.auditLog.create({
+      data: {
+        userId: adminId,
+        entityType: "USER",
+        entityId: agentId,
+        action: "ADMIN_AGENT_DELETE",
+        beforeJson: snapshot,
+        afterJson: Prisma.JsonNull,
+      },
+    });
+
+    // Delete the user (OTPCodes and ChatMessages cascade automatically)
+    await tx.user.delete({ where: { id: agentId } });
+  });
+
+  return NextResponse.json({ message: `Agent ${agent.agentDisplayName} has been deleted.` });
+}

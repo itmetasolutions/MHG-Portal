@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
+import { apiDelete, apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
 
 export type SessionRole = "ADMIN" | "AGENT";
 
@@ -161,6 +161,119 @@ export type AuditLogListResponse = {
     total: number;
     totalPages: number;
   };
+};
+
+export type DialerDomainConfigRow = {
+  id: string;
+  domain: string | null;
+  websocketHost: string | null;
+  isEnabled: boolean;
+  updatedAt: string | null;
+  updatedBy?: {
+    id: string;
+    agentDisplayName: string;
+    email: string;
+  } | null;
+};
+
+export type AdminAgentDialerSettings = {
+  id: string;
+  email: string;
+  agentDisplayName: string;
+  isActive: boolean;
+  createdAt: string;
+  dialer: {
+    extensionNumber: string | null;
+    extensionName: string | null;
+    providerUsername: string | null;
+    autoDetectExtension: boolean;
+    hasProviderPassword: boolean;
+    updatedAt: string | null;
+  };
+};
+
+export type DialerLabelRow = {
+  id: string;
+  name: string;
+  colorHex: string;
+  createdAt: string;
+  updatedAt: string;
+  contactsCount: number;
+};
+
+export type DialerContactRow = {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  extensionNumber: string | null;
+  email: string | null;
+  notes: string | null;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+  labels: Array<{
+    id: string;
+    name: string;
+    colorHex: string;
+  }>;
+};
+
+export type DialerCallHistoryRow = {
+  id: string;
+  direction: "INCOMING" | "OUTGOING" | "INTERNAL";
+  status: "MISSED" | "RINGING" | "ANSWERED" | "REJECTED" | "COMPLETED" | "FAILED";
+  peerName: string | null;
+  peerNumber: string | null;
+  peerExtension: string | null;
+  startedAt: string;
+  answeredAt: string | null;
+  endedAt: string | null;
+  durationSec: number;
+  recordingUrl: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contact: {
+    id: string;
+    fullName: string;
+    phoneNumber: string;
+    extensionNumber: string | null;
+  } | null;
+  counterpartUser: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+};
+
+export type DialerBootstrapResponse = {
+  dialerDomain: {
+    domain: string | null;
+    websocketHost: string | null;
+    isEnabled: boolean;
+    updatedAt: string | null;
+  };
+  me: {
+    id: string;
+    email: string;
+    name: string;
+    role: SessionRole;
+    dialer: {
+      extensionNumber: string | null;
+      extensionName: string | null;
+      providerUsername: string | null;
+      providerPassword: string | null;
+      autoDetectExtension: boolean;
+      updatedAt: string | null;
+    };
+  };
+  intercomAgents: Array<{
+    id: string;
+    name: string;
+    email: string;
+    extensionNumber: string | null;
+    extensionName: string | null;
+  }>;
 };
 
 export type LandlordListResponse = {
@@ -497,3 +610,168 @@ export function listAuditLogs(params: {
   return apiGet(`/api/admin/audit?${query.toString()}`);
 }
 
+export function fetchDialerDomain(): Promise<ApiResult<{ config: DialerDomainConfigRow }>> {
+  return apiGet("/api/admin/dialer-domain");
+}
+
+export function updateDialerDomain(payload: {
+  domain?: string | null;
+  websocketHost?: string | null;
+  isEnabled?: boolean;
+}): Promise<ApiResult<{ message: string; config: DialerDomainConfigRow }>> {
+  return apiPatch("/api/admin/dialer-domain", payload);
+}
+
+export function fetchAdminAgentDialerSettings(
+  agentId: string,
+): Promise<ApiResult<{ agent: AdminAgentDialerSettings }>> {
+  return apiGet(`/api/admin/users/${agentId}/settings`);
+}
+
+export function updateAdminAgentDialerSettings(
+  agentId: string,
+  payload: Partial<{
+    email: string;
+    agentDisplayName: string;
+    isActive: boolean;
+    newPassword: string;
+    providerUsername: string | null;
+    providerPassword: string | null;
+    extensionNumber: string | null;
+    extensionName: string | null;
+    autoDetectExtension: boolean;
+  }>,
+): Promise<ApiResult<{ message: string; agent: AdminAgentDialerSettings }>> {
+  return apiPatch(`/api/admin/users/${agentId}/settings`, payload);
+}
+
+export function fetchDialerBootstrap(): Promise<ApiResult<DialerBootstrapResponse>> {
+  return apiGet("/api/dialer/bootstrap");
+}
+
+export function listDialerContacts(params?: {
+  search?: string;
+  labelId?: string;
+}): Promise<ApiResult<{ contacts: DialerContactRow[] }>> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.labelId) query.set("labelId", params.labelId);
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/dialer/contacts${suffix}`);
+}
+
+export function createDialerContact(payload: {
+  fullName: string;
+  phoneNumber: string;
+  extensionNumber?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  isFavorite?: boolean;
+  labelIds?: string[];
+}): Promise<ApiResult<{ message: string; contact: DialerContactRow }>> {
+  return apiPost("/api/dialer/contacts", payload);
+}
+
+export function updateDialerContact(
+  contactId: string,
+  payload: Partial<{
+    fullName: string;
+    phoneNumber: string;
+    extensionNumber: string | null;
+    email: string | null;
+    notes: string | null;
+    isFavorite: boolean;
+    labelIds: string[];
+  }>,
+): Promise<ApiResult<{ message: string; contact: DialerContactRow }>> {
+  return apiPatch(`/api/dialer/contacts/${contactId}`, payload);
+}
+
+export function deleteDialerContact(
+  contactId: string,
+): Promise<ApiResult<{ message: string }>> {
+  return apiDelete(`/api/dialer/contacts/${contactId}`);
+}
+
+export function listDialerLabels(): Promise<ApiResult<{ labels: DialerLabelRow[] }>> {
+  return apiGet("/api/dialer/labels");
+}
+
+export function createDialerLabel(payload: {
+  name: string;
+  colorHex?: string;
+}): Promise<ApiResult<{ message: string; label: DialerLabelRow }>> {
+  return apiPost("/api/dialer/labels", payload);
+}
+
+export function updateDialerLabel(
+  labelId: string,
+  payload: Partial<{ name: string; colorHex: string }>,
+): Promise<ApiResult<{ message: string; label: DialerLabelRow }>> {
+  return apiPatch(`/api/dialer/labels/${labelId}`, payload);
+}
+
+export function deleteDialerLabel(
+  labelId: string,
+): Promise<ApiResult<{ message: string }>> {
+  return apiDelete(`/api/dialer/labels/${labelId}`);
+}
+
+export function listDialerHistory(params?: {
+  direction?: DialerCallHistoryRow["direction"];
+  status?: DialerCallHistoryRow["status"];
+  search?: string;
+  from?: string;
+  to?: string;
+  contactId?: string;
+  limit?: number;
+}): Promise<ApiResult<{ calls: DialerCallHistoryRow[] }>> {
+  const query = new URLSearchParams();
+  if (params?.direction) query.set("direction", params.direction);
+  if (params?.status) query.set("status", params.status);
+  if (params?.search) query.set("search", params.search);
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.contactId) query.set("contactId", params.contactId);
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/dialer/history${suffix}`);
+}
+
+export function createDialerCallHistory(payload: {
+  direction: DialerCallHistoryRow["direction"];
+  status?: DialerCallHistoryRow["status"];
+  contactId?: string;
+  counterpartUserId?: string | null;
+  peerName?: string | null;
+  peerNumber?: string | null;
+  peerExtension?: string | null;
+  startedAt?: string;
+  answeredAt?: string | null;
+  endedAt?: string | null;
+  durationSec?: number;
+  recordingUrl?: string | null;
+  notes?: string | null;
+}): Promise<ApiResult<{ message: string; call: DialerCallHistoryRow }>> {
+  return apiPost("/api/dialer/history", payload);
+}
+
+export function updateDialerCallHistory(
+  callId: string,
+  payload: Partial<{
+    status: DialerCallHistoryRow["status"];
+    answeredAt: string | null;
+    endedAt: string | null;
+    durationSec: number;
+    recordingUrl: string | null;
+    notes: string | null;
+  }>,
+): Promise<ApiResult<{ message: string; call: DialerCallHistoryRow }>> {
+  return apiPatch(`/api/dialer/history/${callId}`, payload);
+}
+
+export function deleteDialerCallHistory(
+  callId: string,
+): Promise<ApiResult<{ message: string }>> {
+  return apiDelete(`/api/dialer/history/${callId}`);
+}

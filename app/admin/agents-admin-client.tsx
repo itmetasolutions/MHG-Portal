@@ -110,6 +110,10 @@ export function AgentsAdminClient({ initialAgents }: Props) {
   const [savingPw, setSavingPw] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Delete agent state
+  const [deleteConfirmFor, setDeleteConfirmFor] = useState<AgentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Close menu on outside click
   useEffect(() => {
     if (!menuOpenId) return;
@@ -243,6 +247,27 @@ export function AgentsAdminClient({ initialAgents }: Props) {
     setResetPwFor(agent);
     setNewPw("");
     setNewPwError("");
+  }
+
+  async function handleDeleteAgent() {
+    if (!deleteConfirmFor) return;
+    setDeleting(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/users/${deleteConfirmFor.id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ type: "error", text: json.message ?? "Failed to delete agent." });
+      } else {
+        setMessage({ type: "success", text: json.message ?? "Agent deleted." });
+        setAgents((prev) => prev.filter((a) => a.id !== deleteConfirmFor.id));
+      }
+    } catch {
+      setMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmFor(null);
+    }
   }
 
   return (
@@ -487,7 +512,20 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                           {formatDate(agent.createdAt)}
                         </td>
                         <td>
-                          <div style={{ position: "relative" }} ref={menuOpenId === agent.id ? menuRef : undefined}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <Link
+                              href={`/admin/agents/${agent.id}/settings`}
+                              className="kebab-btn"
+                              aria-label={`Open ${agent.agentDisplayName} settings`}
+                              title="Agent settings"
+                            >
+                              <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+                                <path fillRule="evenodd" d="M11.49 3.17a1 1 0 0 0-1.98 0l-.06.31a1 1 0 0 1-.75.77l-.31.08a1 1 0 0 0-.3 1.81l.27.2c.26.2.37.54.29.86l-.09.3a1 1 0 0 0 1.42 1.14l.28-.15a1 1 0 0 1 .94 0l.28.15a1 1 0 0 0 1.42-1.14l-.09-.3a1 1 0 0 1 .29-.86l.27-.2a1 1 0 0 0-.3-1.81l-.31-.08a1 1 0 0 1-.75-.77l-.06-.31ZM10 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+                                <path d="M4 12.25A2.25 2.25 0 0 1 6.25 10h7.5A2.25 2.25 0 0 1 16 12.25v2.5A2.25 2.25 0 0 1 13.75 17h-7.5A2.25 2.25 0 0 1 4 14.75v-2.5Zm2.25-.75a.75.75 0 0 0-.75.75v2.5c0 .414.336.75.75.75h7.5a.75.75 0 0 0 .75-.75v-2.5a.75.75 0 0 0-.75-.75h-7.5Z" />
+                              </svg>
+                            </Link>
+
+                            <div style={{ position: "relative" }} ref={menuOpenId === agent.id ? menuRef : undefined}>
                             <button
                               className="kebab-btn"
                               aria-label="Agent actions"
@@ -527,8 +565,19 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                                   </svg>
                                   {agent.isActive ? "Disable Agent" : "Enable Agent"}
                                 </button>
+                                <div className="kebab-menu-divider" />
+                                <button
+                                  className="kebab-menu-item kebab-menu-item-danger"
+                                  onClick={() => { setMenuOpenId(null); setDeleteConfirmFor(agent); }}
+                                >
+                                  <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+                                    <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clipRule="evenodd" />
+                                  </svg>
+                                  Delete Agent
+                                </button>
                               </div>
                             )}
+                          </div>
                           </div>
                         </td>
                       </tr>
@@ -540,6 +589,50 @@ export function AgentsAdminClient({ initialAgents }: Props) {
           )}
         </div>
       </div>
+
+      {/* Delete Agent Confirmation Modal */}
+      {deleteConfirmFor && (
+        <div
+          className="modal-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget && !deleting) setDeleteConfirmFor(null); }}
+        >
+          <div className="modal-card" style={{ maxWidth: 420 }}>
+            <div className="modal-head">
+              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--text)" }}>
+                Delete Agent
+              </h3>
+              <p style={{ margin: "0.25rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                This will permanently delete{" "}
+                <strong style={{ color: "var(--brand-gold)" }}>{deleteConfirmFor.agentDisplayName}</strong>{" "}
+                and all their landlords, properties, and sales.
+              </p>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#f87171", fontWeight: 600 }}>
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button
+                className="admin-action-btn"
+                style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                onClick={() => setDeleteConfirmFor(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-action-btn"
+                style={{ background: "#dc2626", color: "#fff", border: "none" }}
+                onClick={() => void handleDeleteAgent()}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Delete Agent"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset Password Modal */}
       {resetPwFor && (

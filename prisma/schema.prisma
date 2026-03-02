@@ -34,6 +34,21 @@ enum RoomStatus {
   CLOSED
 }
 
+enum CallDirection {
+  INCOMING
+  OUTGOING
+  INTERNAL
+}
+
+enum CallStatus {
+  MISSED
+  RINGING
+  ANSWERED
+  REJECTED
+  COMPLETED
+  FAILED
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -53,6 +68,12 @@ model User {
   sentMessages     ChatMessage[]    @relation("MessageSentBy")
   receivedMessages ChatMessage[]    @relation("MessageReceivedBy")
   commissionUpdates CommissionConfig[] @relation("CommissionConfigUpdatedBy")
+  dialerSetting      AgentDialerSetting?
+  dialerContacts     DialerContact[]          @relation("DialerContactOwner")
+  dialerLabels       DialerContactLabel[]     @relation("DialerLabelOwner")
+  dialerCalls        DialerCall[]             @relation("DialerCallAgent")
+  dialerCounterCalls DialerCall[]             @relation("DialerCallCounterpart")
+  dialerDomainUpdates DialerDomainConfig[]    @relation("DialerDomainUpdatedBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -227,6 +248,109 @@ model ChatMessage {
   @@index([fromUserId, toUserId, createdAt])
   @@index([toUserId, fromUserId, createdAt])
   @@index([createdAt])
+}
+
+model AgentDialerSetting {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @unique @db.Uuid
+  extensionNumber     String?
+  extensionName       String?
+  providerUsername    String?
+  providerPassword    String?
+  autoDetectExtension Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([extensionNumber])
+}
+
+model DialerDomainConfig {
+  id            String   @id @default("singleton")
+  domain        String?
+  websocketHost String?
+  isEnabled     Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+  updatedById   String?  @db.Uuid
+
+  updatedBy User? @relation("DialerDomainUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+}
+
+model DialerContactLabel {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerUserId String   @db.Uuid
+  name        String
+  colorHex    String   @default("#C9A84C")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownerUser User                        @relation("DialerLabelOwner", fields: [ownerUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  contacts  DialerContactLabelOnContact[]
+
+  @@unique([ownerUserId, name])
+  @@index([ownerUserId, createdAt])
+}
+
+model DialerContact {
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String   @db.Uuid
+  fullName        String
+  phoneNumber     String
+  extensionNumber String?
+  email           String?
+  notes           String?
+  isFavorite      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ownerUser User                        @relation("DialerContactOwner", fields: [ownerUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  labels    DialerContactLabelOnContact[]
+  calls     DialerCall[]
+
+  @@index([ownerUserId, createdAt])
+  @@index([ownerUserId, fullName])
+  @@index([phoneNumber])
+}
+
+model DialerContactLabelOnContact {
+  contactId String @db.Uuid
+  labelId   String @db.Uuid
+
+  contact DialerContact      @relation(fields: [contactId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  label   DialerContactLabel @relation(fields: [labelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([contactId, labelId])
+  @@index([labelId])
+}
+
+model DialerCall {
+  id               String        @id @default(uuid()) @db.Uuid
+  agentUserId      String        @db.Uuid
+  counterpartUserId String?      @db.Uuid
+  contactId        String?       @db.Uuid
+  direction        CallDirection
+  status           CallStatus    @default(RINGING)
+  peerName         String?
+  peerNumber       String?
+  peerExtension    String?
+  startedAt        DateTime      @default(now())
+  answeredAt       DateTime?
+  endedAt          DateTime?
+  durationSec      Int           @default(0)
+  recordingUrl     String?
+  notes            String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  agentUser      User         @relation("DialerCallAgent", fields: [agentUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  counterpartUser User?       @relation("DialerCallCounterpart", fields: [counterpartUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  contact         DialerContact? @relation(fields: [contactId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([agentUserId, startedAt])
+  @@index([agentUserId, direction, status])
+  @@index([counterpartUserId])
+  @@index([contactId])
 }
 
 // Singleton commission configuration (always upserted with id = "singleton")

@@ -84,6 +84,14 @@ function CommissionIcon() {
   );
 }
 
+function DialerIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2 4.75A2.75 2.75 0 0 1 4.75 2h2.5A2.75 2.75 0 0 1 10 4.75v10.5A2.75 2.75 0 0 1 7.25 18h-2.5A2.75 2.75 0 0 1 2 15.25V4.75Zm10 0A2.75 2.75 0 0 1 14.75 2h.5A2.75 2.75 0 0 1 18 4.75v3.5a.75.75 0 0 1-1.5 0v-3.5c0-.69-.56-1.25-1.25-1.25h-.5c-.69 0-1.25.56-1.25 1.25v10.5c0 .69.56 1.25 1.25 1.25h.5c.69 0 1.25-.56 1.25-1.25v-3.5a.75.75 0 0 1 1.5 0v3.5A2.75 2.75 0 0 1 15.25 18h-.5A2.75 2.75 0 0 1 12 15.25V4.75Z" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
   { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
@@ -93,6 +101,7 @@ const navItems = [
   { href: "/admin/tenants",    label: "Tenants",     icon: TenantsIcon,    exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
+  { href: "/admin/dialer-domain", label: "Dialer Domain", icon: DialerIcon, exact: false },
 ];
 
 export function AdminShell({ user, userId, chatContacts, children }: Props) {
