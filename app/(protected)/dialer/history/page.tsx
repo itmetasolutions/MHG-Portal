@@ -64,35 +64,46 @@ export default async function DialerHistoryPage() {
   ]);
 
   return (
-    <DialerHistoryClient
-      initialCalls={calls.map((call) => ({
-        id: call.id,
-        direction: call.direction,
-        status: call.status,
-        peerName: call.peerName,
-        peerNumber: call.peerNumber,
-        peerExtension: call.peerExtension,
-        startedAt: call.startedAt.toISOString(),
-        answeredAt: call.answeredAt?.toISOString() ?? null,
-        endedAt: call.endedAt?.toISOString() ?? null,
-        durationSec: call.durationSec,
-        recordingUrl: call.recordingUrl,
-        notes: call.notes,
-        createdAt: call.createdAt.toISOString(),
-        updatedAt: call.updatedAt.toISOString(),
-        contact: call.contact,
-        counterpartUser: call.counterpartUser
-          ? {
-              id: call.counterpartUser.id,
-              name: call.counterpartUser.agentDisplayName,
-              email: call.counterpartUser.email,
-            }
-          : null,
-      }))}
-      contactOptions={contacts.map((contact) => ({
-        id: contact.id,
-        fullName: contact.fullName,
-      }))}
-    />
+    <div className="stack">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Call History</h1>
+          <p className="page-subtitle">
+            Review incoming, outgoing, and internal call logs with filters and notes.
+          </p>
+        </div>
+      </header>
+
+      <DialerHistoryClient
+        initialCalls={calls.map((call) => ({
+          id: call.id,
+          direction: call.direction,
+          status: call.status,
+          peerName: call.peerName,
+          peerNumber: call.peerNumber,
+          peerExtension: call.peerExtension,
+          startedAt: call.startedAt.toISOString(),
+          answeredAt: call.answeredAt?.toISOString() ?? null,
+          endedAt: call.endedAt?.toISOString() ?? null,
+          durationSec: call.durationSec,
+          recordingUrl: call.recordingUrl,
+          notes: call.notes,
+          createdAt: call.createdAt.toISOString(),
+          updatedAt: call.updatedAt.toISOString(),
+          contact: call.contact,
+          counterpartUser: call.counterpartUser
+            ? {
+                id: call.counterpartUser.id,
+                name: call.counterpartUser.agentDisplayName,
+                email: call.counterpartUser.email,
+              }
+            : null,
+        }))}
+        contactOptions={contacts.map((contact) => ({
+          id: contact.id,
+          fullName: contact.fullName,
+        }))}
+      />
+    </div>
   );
 }

@@ -23,15 +23,6 @@ export function DialerLayoutShell({ children }: Props) {
 
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Dialer Workspace</h1>
-          <p className="page-subtitle">
-            Manage live calls, contacts, and complete call history from one place.
-          </p>
-        </div>
-      </header>
-
       <nav className="dialer-subnav">
         {subnav.map((item) => (
           <Link

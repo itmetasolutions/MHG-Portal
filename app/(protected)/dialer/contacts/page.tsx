@@ -62,27 +62,38 @@ export default async function DialerContactsPage() {
   ]);
 
   return (
-    <DialerContactsClient
-      initialContacts={contacts.map((contact) => ({
-        id: contact.id,
-        fullName: contact.fullName,
-        phoneNumber: contact.phoneNumber,
-        extensionNumber: contact.extensionNumber,
-        email: contact.email,
-        notes: contact.notes,
-        isFavorite: contact.isFavorite,
-        createdAt: contact.createdAt.toISOString(),
-        updatedAt: contact.updatedAt.toISOString(),
-        labels: contact.labels.map((item) => item.label),
-      }))}
-      initialLabels={labels.map((label) => ({
-        id: label.id,
-        name: label.name,
-        colorHex: label.colorHex,
-        createdAt: label.createdAt.toISOString(),
-        updatedAt: label.updatedAt.toISOString(),
-        contactsCount: label._count.contacts,
-      }))}
-    />
+    <div className="stack">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Dialer Contacts</h1>
+          <p className="page-subtitle">
+            Add and organize contacts with notes and labels for faster calling.
+          </p>
+        </div>
+      </header>
+
+      <DialerContactsClient
+        initialContacts={contacts.map((contact) => ({
+          id: contact.id,
+          fullName: contact.fullName,
+          phoneNumber: contact.phoneNumber,
+          extensionNumber: contact.extensionNumber,
+          email: contact.email,
+          notes: contact.notes,
+          isFavorite: contact.isFavorite,
+          createdAt: contact.createdAt.toISOString(),
+          updatedAt: contact.updatedAt.toISOString(),
+          labels: contact.labels.map((item) => item.label),
+        }))}
+        initialLabels={labels.map((label) => ({
+          id: label.id,
+          name: label.name,
+          colorHex: label.colorHex,
+          createdAt: label.createdAt.toISOString(),
+          updatedAt: label.updatedAt.toISOString(),
+          contactsCount: label._count.contacts,
+        }))}
+      />
+    </div>
   );
 }

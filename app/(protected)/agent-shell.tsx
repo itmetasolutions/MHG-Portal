@@ -201,19 +201,7 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="current">{activeItem?.label ?? "Dashboard"}</span>
-            </div>
-
-            <div className="agent-topbar-links">
-              {navItems.map(({ href, label, exact }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`agent-topbar-link${isActive(href, exact) ? " agent-topbar-link-active" : ""}`}
-                >
-                  {label}
-                </Link>
-              ))}
+                <span className="current">{activeItem?.label ?? "Dashboard"}</span>
             </div>
           </div>
 

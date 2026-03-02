@@ -114,58 +114,69 @@ export default async function DialerPage() {
   }
 
   return (
-    <DialerMainClient
-      bootstrap={{
-        dialerDomain: {
-          domain: dialerDomain?.domain ?? null,
-          websocketHost: dialerDomain?.websocketHost ?? null,
-          isEnabled: dialerDomain?.isEnabled ?? true,
-          updatedAt: dialerDomain?.updatedAt?.toISOString() ?? null,
-        },
-        me: {
-          id: me.id,
-          email: me.email,
-          name: me.agentDisplayName,
-          role: me.role as "ADMIN" | "AGENT",
-          dialer: {
-            extensionNumber: me.dialerSetting?.extensionNumber ?? null,
-            extensionName: me.dialerSetting?.extensionName ?? null,
-            providerUsername: me.dialerSetting?.providerUsername ?? null,
-            providerPassword: me.dialerSetting?.providerPassword ?? null,
-            autoDetectExtension: me.dialerSetting?.autoDetectExtension ?? true,
-            updatedAt: me.dialerSetting?.updatedAt?.toISOString() ?? null,
+    <div className="stack">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Dialer</h1>
+          <p className="page-subtitle">
+            Manage live calls and inter-agent intercom from one workspace.
+          </p>
+        </div>
+      </header>
+
+      <DialerMainClient
+        bootstrap={{
+          dialerDomain: {
+            domain: dialerDomain?.domain ?? null,
+            websocketHost: dialerDomain?.websocketHost ?? null,
+            isEnabled: dialerDomain?.isEnabled ?? true,
+            updatedAt: dialerDomain?.updatedAt?.toISOString() ?? null,
           },
-        },
-        intercomAgents: intercomAgents.map((agent) => ({
-          id: agent.id,
-          name: agent.agentDisplayName,
-          email: agent.email,
-          extensionNumber: agent.dialerSetting?.extensionNumber ?? null,
-          extensionName: agent.dialerSetting?.extensionName ?? null,
-        })),
-      }}
-      contacts={contacts.map((contact) => ({
-        id: contact.id,
-        fullName: contact.fullName,
-        phoneNumber: contact.phoneNumber,
-        extensionNumber: contact.extensionNumber,
-        email: contact.email,
-        notes: contact.notes,
-        isFavorite: contact.isFavorite,
-        updatedAt: contact.updatedAt.toISOString(),
-        labels: contact.labels.map((item) => item.label),
-      }))}
-      recentCalls={recentCalls.map((call) => ({
-        id: call.id,
-        direction: call.direction,
-        status: call.status,
-        peerName: call.peerName,
-        peerNumber: call.peerNumber,
-        peerExtension: call.peerExtension,
-        startedAt: call.startedAt.toISOString(),
-        endedAt: call.endedAt?.toISOString() ?? null,
-        durationSec: call.durationSec,
-      }))}
-    />
+          me: {
+            id: me.id,
+            email: me.email,
+            name: me.agentDisplayName,
+            role: me.role as "ADMIN" | "AGENT",
+            dialer: {
+              extensionNumber: me.dialerSetting?.extensionNumber ?? null,
+              extensionName: me.dialerSetting?.extensionName ?? null,
+              providerUsername: me.dialerSetting?.providerUsername ?? null,
+              providerPassword: me.dialerSetting?.providerPassword ?? null,
+              autoDetectExtension: me.dialerSetting?.autoDetectExtension ?? true,
+              updatedAt: me.dialerSetting?.updatedAt?.toISOString() ?? null,
+            },
+          },
+          intercomAgents: intercomAgents.map((agent) => ({
+            id: agent.id,
+            name: agent.agentDisplayName,
+            email: agent.email,
+            extensionNumber: agent.dialerSetting?.extensionNumber ?? null,
+            extensionName: agent.dialerSetting?.extensionName ?? null,
+          })),
+        }}
+        contacts={contacts.map((contact) => ({
+          id: contact.id,
+          fullName: contact.fullName,
+          phoneNumber: contact.phoneNumber,
+          extensionNumber: contact.extensionNumber,
+          email: contact.email,
+          notes: contact.notes,
+          isFavorite: contact.isFavorite,
+          updatedAt: contact.updatedAt.toISOString(),
+          labels: contact.labels.map((item) => item.label),
+        }))}
+        recentCalls={recentCalls.map((call) => ({
+          id: call.id,
+          direction: call.direction,
+          status: call.status,
+          peerName: call.peerName,
+          peerNumber: call.peerNumber,
+          peerExtension: call.peerExtension,
+          startedAt: call.startedAt.toISOString(),
+          endedAt: call.endedAt?.toISOString() ?? null,
+          durationSec: call.durationSec,
+        }))}
+      />
+    </div>
   );
 }

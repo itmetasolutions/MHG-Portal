@@ -186,18 +186,6 @@ export function AdminShell({ user, userId, chatContacts, children }: Props) {
               </svg>
               <span className="current">{breadcrumbLabel}</span>
             </div>
-
-            <div className="admin-topbar-links">
-              {navItems.map(({ href, label, exact }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`admin-topbar-link${isActive(href, exact) ? " admin-topbar-link-active" : ""}`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
           </div>
 
           <div className="admin-topbar-meta">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Invitation, Inviter, Registerer, RegistererState, SessionState, UserAgent, type Session } from "sip.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
@@ -7,23 +8,14 @@ import { UIInput } from "@/components/ui/input";
 import { createDialerCallHistory, type DialerBootstrapResponse } from "@/lib/portal-api";
 import { formatDateTime } from "@/lib/format";
 
-type DialerContactLite = {
+type ContactLite = {
   id: string;
   fullName: string;
   phoneNumber: string;
   extensionNumber: string | null;
-  email: string | null;
-  notes: string | null;
-  isFavorite: boolean;
-  updatedAt: string;
-  labels: Array<{
-    id: string;
-    name: string;
-    colorHex: string;
-  }>;
 };
 
-type DialerHistoryLite = {
+type HistoryLite = {
   id: string;
   direction: "INCOMING" | "OUTGOING" | "INTERNAL";
   status: "MISSED" | "RINGING" | "ANSWERED" | "REJECTED" | "COMPLETED" | "FAILED";
@@ -37,21 +29,14 @@ type DialerHistoryLite = {
 
 type Props = {
   bootstrap: DialerBootstrapResponse;
-  contacts: DialerContactLite[];
-  recentCalls: DialerHistoryLite[];
+  contacts: ContactLite[];
+  recentCalls: HistoryLite[];
 };
 
-type IncomingCall = {
-  direction: "INCOMING";
-  peerName: string | null;
-  peerNumber: string | null;
-  peerExtension: string | null;
-  contactId?: string;
-  counterpartUserId?: string | null;
-  startedAtMs: number;
-};
+type CallStatus = "MISSED" | "RINGING" | "ANSWERED" | "REJECTED" | "COMPLETED" | "FAILED";
 
-type LiveCall = {
+type RuntimeCall = {
+  session: Session;
   direction: "INCOMING" | "OUTGOING" | "INTERNAL";
   peerName: string | null;
   peerNumber: string | null;
@@ -60,63 +45,100 @@ type LiveCall = {
   counterpartUserId?: string | null;
   startedAtMs: number;
   answeredAtMs: number | null;
+  finalStatus?: CallStatus;
+  finalized: boolean;
+};
+
+type CallView = {
+  direction: "INCOMING" | "OUTGOING" | "INTERNAL";
+  peerName: string | null;
+  peerNumber: string | null;
+  peerExtension: string | null;
+  startedAtMs: number;
+  answeredAtMs: number | null;
   state: "RINGING" | "ACTIVE";
   isMuted: boolean;
   isOnHold: boolean;
 };
 
-function formatDuration(totalSec: number): string {
-  const minutes = Math.floor(totalSec / 60);
-  const seconds = totalSec % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+type SdhLike = {
+  peerConnection?: RTCPeerConnection;
+  enableSenderTracks?: (enable: boolean) => void;
+  remoteMediaStream?: MediaStream;
+};
+
+type AudioWithSink = HTMLAudioElement & { setSinkId?: (sinkId: string) => Promise<void> };
+
+function fmtDuration(secondsTotal: number) {
+  const m = Math.floor(secondsTotal / 60);
+  const s = secondsTotal % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function callPeerTitle(call: {
-  peerName: string | null;
-  peerExtension: string | null;
-  peerNumber: string | null;
-}) {
+function peerTitle(call: { peerName: string | null; peerExtension: string | null; peerNumber: string | null }) {
   return call.peerName || call.peerExtension || call.peerNumber || "Unknown";
+}
+
+function wsCandidates(websocketHost: string | null, domain: string | null): string[] {
+  const out = new Set<string>();
+  const normalize = (value: string) => {
+    if (value.startsWith("wss://") || value.startsWith("ws://")) return value;
+    if (value.startsWith("https://")) return `wss://${value.slice(8)}`;
+    if (value.startsWith("http://")) return `ws://${value.slice(7)}`;
+    return `wss://${value}`;
+  };
+  if (websocketHost) {
+    const base = normalize(websocketHost.trim());
+    out.add(base);
+    try {
+      const parsed = new URL(base);
+      if (!parsed.pathname || parsed.pathname === "/") out.add(`${base.replace(/\/+$/, "")}/ws`);
+    } catch {
+      out.add(`${base.replace(/\/+$/, "")}/ws`);
+    }
+  }
+  if (domain) {
+    const base = normalize(domain.trim());
+    out.add(base);
+    out.add(`${base.replace(/\/+$/, "")}/ws`);
+  }
+  return [...out];
 }
 
 export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const [dialInput, setDialInput] = useState("");
-  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const [liveCall, setLiveCall] = useState<LiveCall | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [logging, setLogging] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
+  const [liveCall, setLiveCall] = useState<CallView | null>(null);
   const [historyPreview, setHistoryPreview] = useState(recentCalls);
-  const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [registerState, setRegisterState] = useState<"DISCONNECTED" | "CONNECTING" | "REGISTERED" | "ERROR">("DISCONNECTED");
+  const [registerTarget, setRegisterTarget] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceInfo[]>([]);
+  const [speakerId, setSpeakerId] = useState("default");
 
-  const canPlaceCalls = useMemo(() => {
-    if (!bootstrap.dialerDomain.isEnabled) return false;
-    if (!bootstrap.dialerDomain.domain) return false;
-    if (!bootstrap.me.dialer.providerUsername) return false;
-    if (!bootstrap.me.dialer.providerPassword) return false;
-    return true;
-  }, [bootstrap]);
+  const userAgentRef = useRef<UserAgent | null>(null);
+  const registererRef = useRef<Registerer | null>(null);
+  const incomingRef = useRef<Invitation | null>(null);
+  const runtimeRef = useRef<RuntimeCall | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if (!liveCall) return;
-    const handle = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(handle);
-  }, [liveCall]);
+  const readyForRegistration = useMemo(
+    () =>
+      Boolean(
+        bootstrap.dialerDomain.isEnabled &&
+          bootstrap.dialerDomain.domain &&
+          bootstrap.me.dialer.providerUsername &&
+          bootstrap.me.dialer.providerPassword,
+      ),
+    [bootstrap],
+  );
+  const readyForCalling = readyForRegistration && registerState === "REGISTERED";
 
-  useEffect(() => {
-    return () => {
-      if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
-    };
-  }, []);
-
-  async function appendHistory(payload: Parameters<typeof createDialerCallHistory>[0]) {
-    setLogging(true);
+  async function logCall(payload: Parameters<typeof createDialerCallHistory>[0]) {
     const result = await createDialerCallHistory(payload);
-    setLogging(false);
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Unable to log this call entry." });
-      return;
-    }
+    if (!result.ok) return;
     const call = result.data.call;
     setHistoryPreview((prev) => [
       {
@@ -134,280 +156,326 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
     ].slice(0, 10));
   }
 
-  function beginOutgoingCall(call: {
-    direction: "OUTGOING" | "INTERNAL";
-    peerName: string | null;
-    peerNumber: string | null;
-    peerExtension: string | null;
-    contactId?: string;
-    counterpartUserId?: string | null;
-  }) {
-    if (!canPlaceCalls) {
-      setMessage({
-        type: "error",
-        text: "Dialer is not fully configured. Ask admin to set Dialer Domain and extension credentials.",
-      });
-      return;
-    }
-    if (liveCall || incomingCall) {
-      setMessage({ type: "error", text: "Finish the current call first." });
-      return;
-    }
+  function applySpeakerSelection() {
+    const audio = audioRef.current as AudioWithSink | null;
+    if (!audio || typeof audio.setSinkId !== "function") return;
+    void audio.setSinkId(speakerId === "default" ? "" : speakerId).catch(() => {
+      setMessage({ type: "error", text: "Unable to switch speaker output in this browser." });
+    });
+  }
 
+  function bindRemoteAudio(session: Session) {
+    const sdh = session.sessionDescriptionHandler as SdhLike | undefined;
+    const pc = sdh?.peerConnection;
+    const audio = audioRef.current as AudioWithSink | null;
+    if (!pc || !audio) return;
+    const stream = sdh?.remoteMediaStream ?? new MediaStream();
+    pc.getReceivers().forEach((receiver) => {
+      if (receiver.track && !stream.getTracks().includes(receiver.track)) stream.addTrack(receiver.track);
+    });
+    pc.ontrack = (event: RTCTrackEvent) => {
+      event.streams.forEach((incomingStream) => {
+        incomingStream.getTracks().forEach((track) => {
+          if (!stream.getTracks().includes(track)) stream.addTrack(track);
+        });
+      });
+      audio.srcObject = stream;
+      void audio.play().catch(() => {});
+    };
+    audio.srcObject = stream;
+    void audio.play().catch(() => {});
+    if (typeof audio.setSinkId === "function") {
+      void audio.setSinkId(speakerId === "default" ? "" : speakerId).catch(() => {});
+    }
+  }
+
+  async function finalize(runtime: RuntimeCall, forced?: CallStatus) {
+    if (runtime.finalized) return;
+    runtime.finalized = true;
+    runtimeRef.current = null;
+    incomingRef.current = null;
+    setIncomingCall(null);
+    setLiveCall(null);
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    const endedAtMs = Date.now();
+    const status = forced ?? runtime.finalStatus ?? (runtime.answeredAtMs ? "COMPLETED" : runtime.direction === "INCOMING" ? "MISSED" : "FAILED");
+    const durationSec = runtime.answeredAtMs ? Math.max(0, Math.floor((endedAtMs - runtime.answeredAtMs) / 1000)) : 0;
+    await logCall({
+      direction: runtime.direction,
+      status,
+      contactId: runtime.contactId,
+      counterpartUserId: runtime.counterpartUserId ?? null,
+      peerName: runtime.peerName,
+      peerNumber: runtime.peerNumber,
+      peerExtension: runtime.peerExtension,
+      startedAt: new Date(runtime.startedAtMs).toISOString(),
+      answeredAt: runtime.answeredAtMs ? new Date(runtime.answeredAtMs).toISOString() : null,
+      endedAt: new Date(endedAtMs).toISOString(),
+      durationSec,
+    });
+  }
+
+  function hookSession(runtime: RuntimeCall) {
+    runtime.session.stateChange.addListener((state) => {
+      if (state === SessionState.Established) {
+        runtime.answeredAtMs = Date.now();
+        setIncomingCall(null);
+        setLiveCall((prev) => (prev ? { ...prev, answeredAtMs: runtime.answeredAtMs, state: "ACTIVE" } : prev));
+        bindRemoteAudio(runtime.session);
+        if (!tickRef.current) tickRef.current = setInterval(() => setNowMs(Date.now()), 1000);
+      }
+      if (state === SessionState.Terminated) void finalize(runtime);
+    });
+  }
+
+  async function callTarget(target: string, metadata: Omit<RuntimeCall, "session" | "startedAtMs" | "answeredAtMs" | "finalized">) {
+    if (!readyForCalling) {
+      setMessage({ type: "error", text: "Dialer is not registered." });
+      return;
+    }
+    if (runtimeRef.current || incomingRef.current) {
+      setMessage({ type: "error", text: "Finish current call first." });
+      return;
+    }
+    const ua = userAgentRef.current;
+    if (!ua) return;
+    const domain = bootstrap.dialerDomain.domain!;
+    const uri = target.startsWith("sip:") ? target : target.includes("@") ? `sip:${target}` : `sip:${target}@${domain}`;
+    const targetUri = UserAgent.makeURI(uri);
+    if (!targetUri) return;
+
+    const inviter = new Inviter(ua, targetUri, { sessionDescriptionHandlerOptions: { constraints: { audio: true, video: false } } });
     const startedAtMs = Date.now();
+    const runtime: RuntimeCall = { ...metadata, session: inviter, startedAtMs, answeredAtMs: null, finalized: false };
+    runtimeRef.current = runtime;
     setLiveCall({
-      ...call,
+      direction: runtime.direction,
+      peerName: runtime.peerName,
+      peerNumber: runtime.peerNumber,
+      peerExtension: runtime.peerExtension,
       startedAtMs,
       answeredAtMs: null,
       state: "RINGING",
       isMuted: false,
       isOnHold: false,
     });
-    setNowMs(Date.now());
-
-    ringTimeoutRef.current = setTimeout(() => {
-      setLiveCall((current) => {
-        if (!current || current.startedAtMs !== startedAtMs) return current;
-        return {
-          ...current,
-          state: "ACTIVE",
-          answeredAtMs: Date.now(),
-        };
-      });
-    }, 1400);
-  }
-
-  async function endLiveCall(resultStatus: "COMPLETED" | "FAILED" | "REJECTED") {
-    if (!liveCall) return;
-    const endedAtMs = Date.now();
-    const answeredAtMs = liveCall.answeredAtMs;
-    const durationSec = answeredAtMs
-      ? Math.max(0, Math.floor((endedAtMs - answeredAtMs) / 1000))
-      : 0;
-
-    const payload: Parameters<typeof createDialerCallHistory>[0] = {
-      direction: liveCall.direction,
-      status: resultStatus,
-      contactId: liveCall.contactId,
-      counterpartUserId: liveCall.counterpartUserId ?? null,
-      peerName: liveCall.peerName,
-      peerNumber: liveCall.peerNumber,
-      peerExtension: liveCall.peerExtension,
-      startedAt: new Date(liveCall.startedAtMs).toISOString(),
-      answeredAt: answeredAtMs ? new Date(answeredAtMs).toISOString() : null,
-      endedAt: new Date(endedAtMs).toISOString(),
-      durationSec,
-      notes:
-        liveCall.direction === "INTERNAL"
-          ? `Internal call with ${callPeerTitle(liveCall)}`
-          : null,
-    };
-
-    setLiveCall(null);
-    await appendHistory(payload);
-    setMessage({ type: "success", text: "Call saved to history." });
-  }
-
-  async function rejectIncomingCall(asMissed = false) {
-    if (!incomingCall) return;
-    const endedAtMs = Date.now();
-    const status = asMissed ? "MISSED" : "REJECTED";
-    const payload: Parameters<typeof createDialerCallHistory>[0] = {
-      direction: "INCOMING",
-      status,
-      contactId: incomingCall.contactId,
-      counterpartUserId: incomingCall.counterpartUserId ?? null,
-      peerName: incomingCall.peerName,
-      peerNumber: incomingCall.peerNumber,
-      peerExtension: incomingCall.peerExtension,
-      startedAt: new Date(incomingCall.startedAtMs).toISOString(),
-      answeredAt: null,
-      endedAt: new Date(endedAtMs).toISOString(),
-      durationSec: 0,
-    };
-    setIncomingCall(null);
-    await appendHistory(payload);
-    setMessage({
-      type: "success",
-      text: asMissed ? "Incoming call marked as missed." : "Incoming call rejected.",
-    });
-  }
-
-  function acceptIncomingCall() {
-    if (!incomingCall) return;
-    const answeredAt = Date.now();
-    setLiveCall({
-      direction: "INCOMING",
-      peerName: incomingCall.peerName,
-      peerNumber: incomingCall.peerNumber,
-      peerExtension: incomingCall.peerExtension,
-      contactId: incomingCall.contactId,
-      counterpartUserId: incomingCall.counterpartUserId ?? null,
-      startedAtMs: incomingCall.startedAtMs,
-      answeredAtMs: answeredAt,
-      state: "ACTIVE",
-      isMuted: false,
-      isOnHold: false,
-    });
-    setIncomingCall(null);
-  }
-
-  function dialFromInput() {
-    const target = dialInput.trim();
-    if (!target) {
-      setMessage({ type: "error", text: "Enter a phone number or extension first." });
-      return;
+    hookSession(runtime);
+    try {
+      await inviter.invite({ sessionDescriptionHandlerOptions: { constraints: { audio: true, video: false } } });
+    } catch {
+      runtime.finalStatus = "FAILED";
+      await finalize(runtime, "FAILED");
+      setMessage({ type: "error", text: "Call setup failed." });
     }
+  }
 
-    const matchingContact = contacts.find(
-      (contact) => contact.phoneNumber === target || contact.extensionNumber === target,
-    );
+  async function answerIncoming() {
+    const invitation = incomingRef.current;
+    if (!invitation) return;
+    try {
+      await invitation.accept({
+        sessionDescriptionHandlerOptions: {
+          constraints: { audio: true, video: false },
+        },
+      });
+    } catch {
+      const runtime = runtimeRef.current;
+      if (runtime) {
+        runtime.finalStatus = "FAILED";
+        await finalize(runtime, "FAILED");
+      }
+      setMessage({ type: "error", text: "Failed to answer call." });
+    }
+  }
 
-    beginOutgoingCall({
+  async function rejectIncoming(status: "REJECTED" | "MISSED") {
+    const invitation = incomingRef.current;
+    const runtime = runtimeRef.current;
+    if (!invitation || !runtime) return;
+    runtime.finalStatus = status;
+    try {
+      await invitation.reject({
+        statusCode: status === "MISSED" ? 480 : 486,
+        reasonPhrase: status === "MISSED" ? "No Answer" : "Rejected",
+      });
+    } catch {
+      await finalize(runtime, status);
+    }
+  }
+
+  async function hangup() {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    runtime.finalStatus = runtime.answeredAtMs ? "COMPLETED" : "FAILED";
+    try {
+      if (runtime.session.state === SessionState.Established) await runtime.session.bye();
+      else if (runtime.session instanceof Inviter) await runtime.session.cancel();
+      else if (runtime.session instanceof Invitation) await runtime.session.reject({ statusCode: 486 });
+    } catch {
+      await finalize(runtime, runtime.finalStatus);
+    }
+  }
+
+  useEffect(() => {
+    const start = async () => {
+      if (!readyForRegistration) return;
+      const username = bootstrap.me.dialer.providerUsername!;
+      const password = bootstrap.me.dialer.providerPassword!;
+      const domain = bootstrap.dialerDomain.domain!;
+      const candidates = wsCandidates(bootstrap.dialerDomain.websocketHost, domain);
+      setRegisterState("CONNECTING");
+      for (const server of candidates) {
+        const uri = UserAgent.makeURI(`sip:${username}@${domain}`);
+        if (!uri) continue;
+        const ua = new UserAgent({
+          uri,
+          authorizationUsername: username,
+          authorizationPassword: password,
+          displayName: bootstrap.me.dialer.extensionName || bootstrap.me.name,
+          transportOptions: { server },
+          delegate: {
+            onInvite: (invitation: Invitation) => {
+              if (runtimeRef.current || incomingRef.current) {
+                void invitation.reject({ statusCode: 486, reasonPhrase: "Busy" });
+                return;
+              }
+              const ext = invitation.remoteIdentity.uri.user ?? null;
+              const contact = contacts.find((c) => c.extensionNumber === ext || c.phoneNumber === ext);
+              const intercom = bootstrap.intercomAgents.find((a) => a.extensionNumber === ext);
+              const startedAtMs = Date.now();
+              const runtime: RuntimeCall = {
+                session: invitation,
+                direction: intercom ? "INTERNAL" : "INCOMING",
+                peerName: invitation.remoteIdentity.displayName || ext,
+                peerNumber: contact?.phoneNumber ?? null,
+                peerExtension: ext,
+                contactId: contact?.id,
+                counterpartUserId: intercom?.id ?? null,
+                startedAtMs,
+                answeredAtMs: null,
+                finalized: false,
+              };
+              runtimeRef.current = runtime;
+              incomingRef.current = invitation;
+              setIncomingCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+              setLiveCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+              hookSession(runtime);
+            },
+          },
+        });
+        const registerer = new Registerer(ua);
+        registerer.stateChange.addListener((state) => {
+          if (state === RegistererState.Registered) setRegisterState("REGISTERED");
+          if (state === RegistererState.Unregistered || state === RegistererState.Terminated) setRegisterState("DISCONNECTED");
+        });
+        try {
+          await ua.start();
+          await registerer.register();
+          userAgentRef.current = ua;
+          registererRef.current = registerer;
+          setRegisterState("REGISTERED");
+          setRegisterTarget(server);
+          return;
+        } catch {
+          try { await ua.stop(); } catch {}
+        }
+      }
+      setRegisterState("ERROR");
+      setMessage({ type: "error", text: "SIP registration failed. Check WSS host and credentials." });
+    };
+    void start();
+    return () => {
+      const cleanup = async () => {
+        const runtime = runtimeRef.current;
+        if (runtime && !runtime.finalized) await finalize(runtime, "FAILED");
+        const reg = registererRef.current;
+        const ua = userAgentRef.current;
+        registererRef.current = null;
+        userAgentRef.current = null;
+        if (reg) { try { await reg.unregister(); } catch {} }
+        if (ua) { try { await ua.stop(); } catch {} }
+      };
+      void cleanup();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyForRegistration, bootstrap.dialerDomain.domain, bootstrap.dialerDomain.websocketHost, bootstrap.me.dialer.providerUsername, bootstrap.me.dialer.providerPassword, bootstrap.me.dialer.extensionName, bootstrap.me.name]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const load = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        setSpeakerDevices(devices.filter((d) => d.kind === "audiooutput"));
+      } catch {}
+    };
+    void load();
+    const onChange = () => void load();
+    navigator.mediaDevices.addEventListener("devicechange", onChange);
+    return () => navigator.mediaDevices.removeEventListener("devicechange", onChange);
+  }, []);
+
+  useEffect(() => {
+    applySpeakerSelection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speakerId]);
+
+  const duration = liveCall ? fmtDuration(Math.max(0, Math.floor((nowMs - (liveCall.answeredAtMs ?? liveCall.startedAtMs)) / 1000))) : "00:00";
+  const callDisabled = !readyForCalling || Boolean(runtimeRef.current || incomingRef.current);
+
+  const callFromDialInput = () => {
+    const target = dialInput.trim();
+    if (!target) return;
+    const matchingContact = contacts.find((c) => c.phoneNumber === target || c.extensionNumber === target);
+    void callTarget(target, {
       direction: "OUTGOING",
       peerName: matchingContact?.fullName ?? null,
       peerNumber: matchingContact ? matchingContact.phoneNumber : target,
       peerExtension: matchingContact?.extensionNumber ?? null,
       contactId: matchingContact?.id,
-      counterpartUserId: null,
     });
-  }
-
-  function addDigit(value: string) {
-    setDialInput((prev) => `${prev}${value}`);
-  }
-
-  function simulateIncomingCall() {
-    if (incomingCall || liveCall) return;
-
-    if (bootstrap.intercomAgents.length > 0) {
-      const random = bootstrap.intercomAgents[Math.floor(Math.random() * bootstrap.intercomAgents.length)];
-      setIncomingCall({
-        direction: "INCOMING",
-        peerName: random.name,
-        peerNumber: null,
-        peerExtension: random.extensionNumber,
-        counterpartUserId: random.id,
-        startedAtMs: Date.now(),
-      });
-      return;
-    }
-
-    const contact = contacts[0];
-    if (contact) {
-      setIncomingCall({
-        direction: "INCOMING",
-        peerName: contact.fullName,
-        peerNumber: contact.phoneNumber,
-        peerExtension: contact.extensionNumber,
-        contactId: contact.id,
-        startedAtMs: Date.now(),
-      });
-      return;
-    }
-
-    setIncomingCall({
-      direction: "INCOMING",
-      peerName: "Unknown caller",
-      peerNumber: "+0000000000",
-      peerExtension: null,
-      startedAtMs: Date.now(),
-    });
-  }
-
-  const activeCallDuration = liveCall
-    ? formatDuration(
-          Math.max(
-            0,
-          Math.floor((nowMs - (liveCall.answeredAtMs ?? liveCall.startedAtMs)) / 1000),
-        ),
-      )
-    : "00:00";
+  };
 
   return (
     <div className="stack">
+      <audio ref={audioRef} autoPlay playsInline />
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
       <div className="dialer-grid">
         <section className="dialer-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">Connection</h2>
-            <span className={`badge ${canPlaceCalls ? "badge-active" : "badge-locked"}`}>
-              {canPlaceCalls ? "Ready" : "Setup Required"}
-            </span>
+            <span className={`badge ${registerState === "REGISTERED" ? "badge-active" : registerState === "CONNECTING" ? "badge-warning" : "badge-locked"}`}>{registerState}</span>
           </div>
           <div className="dialer-connection-list">
-            <div className="dialer-connection-item">
-              <span>Domain</span>
-              <strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong>
-            </div>
-            <div className="dialer-connection-item">
-              <span>WebSocket</span>
-              <strong>{bootstrap.dialerDomain.websocketHost ?? "Not set"}</strong>
-            </div>
-            <div className="dialer-connection-item">
-              <span>Extension</span>
-              <strong>{bootstrap.me.dialer.extensionNumber ?? "Not assigned"}</strong>
-            </div>
-            <div className="dialer-connection-item">
-              <span>Credential</span>
-              <strong>
-                {bootstrap.me.dialer.providerUsername
-                  ? `${bootstrap.me.dialer.providerUsername}${bootstrap.me.dialer.providerPassword ? " (saved)" : " (missing password)"}`
-                  : "Not configured"}
-              </strong>
-            </div>
+            <div className="dialer-connection-item"><span>Domain</span><strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong></div>
+            <div className="dialer-connection-item"><span>WebSocket</span><strong>{registerTarget ?? bootstrap.dialerDomain.websocketHost ?? "Not set"}</strong></div>
+            <div className="dialer-connection-item"><span>Extension</span><strong>{bootstrap.me.dialer.extensionNumber ?? bootstrap.me.dialer.providerUsername ?? "Not set"}</strong></div>
           </div>
-          <p className="dialer-connection-foot">
-            Domain updated:{" "}
-            {bootstrap.dialerDomain.updatedAt
-              ? formatDateTime(bootstrap.dialerDomain.updatedAt)
-              : "Never"}
-          </p>
+          <p className="dialer-connection-foot">Domain updated: {bootstrap.dialerDomain.updatedAt ? formatDateTime(bootstrap.dialerDomain.updatedAt) : "Never"}</p>
         </section>
 
         <section className="dialer-card dialer-dialpad-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">Keypad</h2>
-            <div className="inline-row">
-              <UIButton variant="secondary" onClick={simulateIncomingCall} disabled={Boolean(incomingCall || liveCall)}>
-                Simulate Incoming
-              </UIButton>
-            </div>
+            <select className="select" value={speakerId} onChange={(event) => setSpeakerId(event.target.value)} style={{ minWidth: 160 }}>
+              <option value="default">Speaker: Default</option>
+              {speakerDevices.map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Speaker"}</option>)}
+            </select>
           </div>
           <div className="dialer-dialer-wrap">
-            <UIInput
-              value={dialInput}
-              onChange={(event) => setDialInput(event.target.value)}
-              placeholder="Enter number or extension"
-              className="dialer-dial-input"
-            />
+            <UIInput value={dialInput} onChange={(event) => setDialInput(event.target.value)} placeholder="Enter number or extension" className="dialer-dial-input" />
             <div className="dialer-key-grid">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
-                <button
-                  key={digit}
-                  type="button"
-                  className="dialer-key"
-                  onClick={() => addDigit(digit)}
-                >
-                  {digit}
-                </button>
+                <button key={digit} type="button" className="dialer-key" onClick={() => setDialInput((prev) => `${prev}${digit}`)}>{digit}</button>
               ))}
             </div>
             <div className="inline-row">
-              <UIButton onClick={dialFromInput} disabled={Boolean(liveCall || incomingCall || logging)}>
-                Call
-              </UIButton>
-              <UIButton
-                variant="secondary"
-                onClick={() => setDialInput((prev) => prev.slice(0, -1))}
-                disabled={dialInput.length === 0}
-              >
-                Backspace
-              </UIButton>
-              <UIButton variant="secondary" onClick={() => setDialInput("")} disabled={dialInput.length === 0}>
-                Clear
-              </UIButton>
+              <UIButton onClick={callFromDialInput} disabled={callDisabled || !dialInput.trim()}>Call</UIButton>
+              <UIButton variant="secondary" onClick={() => setDialInput((prev) => prev.slice(0, -1))} disabled={!dialInput.length}>Backspace</UIButton>
+              <UIButton variant="secondary" onClick={() => setDialInput("")} disabled={!dialInput.length}>Clear</UIButton>
             </div>
           </div>
         </section>
@@ -420,18 +488,12 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
             <span className="badge badge-warning">Ringing</span>
           </div>
           <div className="dialer-incoming-body">
-            <p className="dialer-incoming-title">{callPeerTitle(incomingCall)}</p>
-            <p className="dialer-incoming-sub">
-              {incomingCall.peerNumber || incomingCall.peerExtension || "Unknown source"}
-            </p>
+            <p className="dialer-incoming-title">{peerTitle(incomingCall)}</p>
+            <p className="dialer-incoming-sub">{incomingCall.peerNumber || incomingCall.peerExtension || "Unknown source"}</p>
             <div className="inline-row">
-              <UIButton onClick={acceptIncomingCall}>Answer</UIButton>
-              <UIButton variant="danger" onClick={() => void rejectIncomingCall(false)}>
-                Reject
-              </UIButton>
-              <UIButton variant="secondary" onClick={() => void rejectIncomingCall(true)}>
-                Mark Missed
-              </UIButton>
+              <UIButton onClick={() => void answerIncoming()}>Answer</UIButton>
+              <UIButton variant="danger" onClick={() => void rejectIncoming("REJECTED")}>Reject</UIButton>
+              <UIButton variant="secondary" onClick={() => void rejectIncoming("MISSED")}>Mark Missed</UIButton>
             </div>
           </div>
         </section>
@@ -440,44 +502,31 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
       {liveCall && (
         <section className="dialer-card dialer-live-card">
           <div className="dialer-card-head">
-            <h2 className="dialer-card-title">
-              {liveCall.direction === "INTERNAL" ? "Internal Call" : "Live Call"} | {callPeerTitle(liveCall)}
-            </h2>
-            <span className={`badge ${liveCall.state === "ACTIVE" ? "badge-active" : "badge-warning"}`}>
-              {liveCall.state === "ACTIVE" ? "In Call" : "Connecting"}
-            </span>
+            <h2 className="dialer-card-title">{liveCall.direction === "INTERNAL" ? "Internal Call" : "Live Call"} | {peerTitle(liveCall)}</h2>
+            <span className={`badge ${liveCall.state === "ACTIVE" ? "badge-active" : "badge-warning"}`}>{liveCall.state === "ACTIVE" ? "In Call" : "Connecting"}</span>
           </div>
           <div className="dialer-live-meta">
-            <p className="dialer-live-duration">{activeCallDuration}</p>
+            <p className="dialer-live-duration">{duration}</p>
             <p className="dialer-live-peer">{liveCall.peerNumber || liveCall.peerExtension || "No number"}</p>
           </div>
           <div className="dialer-live-controls">
-            <button
-              type="button"
-              className={`dialer-live-control${liveCall.isMuted ? " active" : ""}`}
-              onClick={() =>
-                setLiveCall((prev) => (prev ? { ...prev, isMuted: !prev.isMuted } : prev))
-              }
-            >
-              {liveCall.isMuted ? "Unmute" : "Mute"}
-            </button>
-            <button
-              type="button"
-              className={`dialer-live-control${liveCall.isOnHold ? " active" : ""}`}
-              onClick={() =>
-                setLiveCall((prev) => (prev ? { ...prev, isOnHold: !prev.isOnHold } : prev))
-              }
-            >
-              {liveCall.isOnHold ? "Resume" : "Hold"}
-            </button>
-            <button
-              type="button"
-              className="dialer-live-end"
-              onClick={() => void endLiveCall("COMPLETED")}
-              disabled={logging}
-            >
-              End Call
-            </button>
+            <button type="button" className={`dialer-live-control${liveCall.isMuted ? " active" : ""}`} onClick={() => {
+              const runtime = runtimeRef.current; if (!runtime) return;
+              const muted = !liveCall.isMuted;
+              const sdh = runtime.session.sessionDescriptionHandler as SdhLike | undefined;
+              if (sdh?.enableSenderTracks) sdh.enableSenderTracks(!muted);
+              setLiveCall((prev) => (prev ? { ...prev, isMuted: muted } : prev));
+            }}>{liveCall.isMuted ? "Unmute" : "Mute"}</button>
+            <button type="button" className={`dialer-live-control${liveCall.isOnHold ? " active" : ""}`} onClick={() => {
+              const runtime = runtimeRef.current; if (!runtime || runtime.session.state !== SessionState.Established) return;
+              const hold = !liveCall.isOnHold;
+              void runtime.session
+                .invite({ sessionDescriptionHandlerOptions: { hold } as unknown as object })
+                .then(() => {
+                setLiveCall((prev) => (prev ? { ...prev, isOnHold: hold } : prev));
+              });
+            }} disabled={liveCall.state !== "ACTIVE"}>{liveCall.isOnHold ? "Resume" : "Hold"}</button>
+            <button type="button" className="dialer-live-end" onClick={() => void hangup()}>End Call</button>
           </div>
         </section>
       )}
@@ -486,14 +535,10 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
         <section className="dialer-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">Intercom Agents</h2>
-            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              {bootstrap.intercomAgents.length} online
-            </span>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{bootstrap.intercomAgents.length} online</span>
           </div>
           {bootstrap.intercomAgents.length === 0 ? (
-            <p className="muted" style={{ margin: 0 }}>
-              No active agent extensions found.
-            </p>
+            <p className="muted" style={{ margin: 0 }}>No active agent extensions found.</p>
           ) : (
             <div className="dialer-agent-list">
               {bootstrap.intercomAgents.map((agent) => (
@@ -506,7 +551,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
                   </div>
                   <UIButton
                     onClick={() =>
-                      beginOutgoingCall({
+                      void callTarget(agent.extensionNumber || "", {
                         direction: "INTERNAL",
                         peerName: agent.name,
                         peerNumber: null,
@@ -514,7 +559,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
                         counterpartUserId: agent.id,
                       })
                     }
-                    disabled={Boolean(liveCall || incomingCall || logging)}
+                    disabled={callDisabled || !agent.extensionNumber}
                   >
                     Call
                   </UIButton>
@@ -527,14 +572,10 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
         <section className="dialer-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">Quick Contacts</h2>
-            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              {contacts.length} saved
-            </span>
+            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{contacts.length} saved</span>
           </div>
           {contacts.length === 0 ? (
-            <p className="muted" style={{ margin: 0 }}>
-              Add contacts from the Contacts tab to speed up dialing.
-            </p>
+            <p className="muted" style={{ margin: 0 }}>Add contacts from the Contacts tab to speed up dialing.</p>
           ) : (
             <div className="dialer-contact-list">
               {contacts.slice(0, 6).map((contact) => (
@@ -548,16 +589,15 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
                   </div>
                   <UIButton
                     onClick={() =>
-                      beginOutgoingCall({
+                      void callTarget(contact.phoneNumber, {
                         direction: "OUTGOING",
                         peerName: contact.fullName,
                         peerNumber: contact.phoneNumber,
                         peerExtension: contact.extensionNumber,
                         contactId: contact.id,
-                        counterpartUserId: null,
                       })
                     }
-                    disabled={Boolean(liveCall || incomingCall || logging)}
+                    disabled={callDisabled}
                   >
                     Call
                   </UIButton>
@@ -574,9 +614,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
           <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Latest {historyPreview.length} calls</span>
         </div>
         {historyPreview.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>
-            No call logs yet.
-          </p>
+          <p className="muted" style={{ margin: 0 }}>No call logs yet.</p>
         ) : (
           <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
             <table className="table">
@@ -607,7 +645,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
                         {call.status}
                       </span>
                     </td>
-                    <td>{formatDuration(call.durationSec)}</td>
+                    <td>{fmtDuration(call.durationSec)}</td>
                     <td>{formatDateTime(call.startedAt)}</td>
                   </tr>
                 ))}
