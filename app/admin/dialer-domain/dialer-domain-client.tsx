@@ -14,7 +14,10 @@ type Props = {
 type Message = { type: "success" | "error"; text: string } | null;
 
 export function AdminDialerDomainClient({ initialConfig }: Props) {
+  const [pbxPlatform, setPbxPlatform] = useState(initialConfig.pbxPlatform ?? "");
   const [domain, setDomain] = useState(initialConfig.domain ?? "");
+  const [sipPort, setSipPort] = useState(initialConfig.sipPort ? String(initialConfig.sipPort) : "");
+  const [sipTransport, setSipTransport] = useState(initialConfig.sipTransport ?? "");
   const [websocketHost, setWebsocketHost] = useState(initialConfig.websocketHost ?? "");
   const [isEnabled, setIsEnabled] = useState(initialConfig.isEnabled);
   const [saving, setSaving] = useState(false);
@@ -27,20 +30,38 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
     setSaving(true);
     setMessage(null);
 
+    const sipPortValue = sipPort.trim();
+    let normalizedSipPort: number | null = null;
+    if (sipPortValue.length > 0) {
+      const parsedPort = Number.parseInt(sipPortValue, 10);
+      if (Number.isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+        setSaving(false);
+        setMessage({ type: "error", text: "SIP Port must be a number between 1 and 65535." });
+        return;
+      }
+      normalizedSipPort = parsedPort;
+    }
+
     const result = await updateDialerDomain({
+      pbxPlatform: pbxPlatform.trim() || null,
       domain: domain.trim() || null,
+      sipPort: normalizedSipPort,
+      sipTransport: sipTransport.trim() || null,
       websocketHost: websocketHost.trim() || null,
       isEnabled,
     });
 
     setSaving(false);
     if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to save dialer domain settings." });
+      setMessage({ type: "error", text: result.message ?? "Failed to save domain settings." });
       return;
     }
 
     setMessage({ type: "success", text: result.data.message });
+    setPbxPlatform(result.data.config.pbxPlatform ?? "");
     setDomain(result.data.config.domain ?? "");
+    setSipPort(result.data.config.sipPort ? String(result.data.config.sipPort) : "");
+    setSipTransport(result.data.config.sipTransport ?? "");
     setWebsocketHost(result.data.config.websocketHost ?? "");
     setIsEnabled(result.data.config.isEnabled);
     setUpdatedAt(result.data.config.updatedAt);
@@ -51,9 +72,9 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Dialer Domain</h1>
+          <h1 className="page-title">Domain Settings</h1>
           <p className="page-subtitle">
-            Configure the provider domain and WebSocket host used by all agent dialers.
+            Configure PBX and WebRTC connection details used by all agent dialers.
           </p>
         </div>
       </header>
@@ -66,16 +87,43 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
             <svg viewBox="0 0 20 20" fill="currentColor">
               <path d="M2 4.75A2.75 2.75 0 0 1 4.75 2h2.5A2.75 2.75 0 0 1 10 4.75v10.5A2.75 2.75 0 0 1 7.25 18h-2.5A2.75 2.75 0 0 1 2 15.25V4.75Zm10 0A2.75 2.75 0 0 1 14.75 2h.5A2.75 2.75 0 0 1 18 4.75v3.5a.75.75 0 0 1-1.5 0v-3.5c0-.69-.56-1.25-1.25-1.25h-.5c-.69 0-1.25.56-1.25 1.25v10.5c0 .69.56 1.25 1.25 1.25h.5c.69 0 1.25-.56 1.25-1.25v-3.5a.75.75 0 0 1 1.5 0v3.5A2.75 2.75 0 0 1 15.25 18h-.5A2.75 2.75 0 0 1 12 15.25V4.75Z" />
             </svg>
-            Provider Connectivity
+            PBX Connectivity
           </h2>
           <span className={`badge ${isEnabled ? "badge-active" : "badge-locked"}`}>
             {isEnabled ? "Enabled" : "Disabled"}
           </span>
         </div>
         <div className="admin-card-body">
-          <form className="field-grid" style={{ maxWidth: 620 }} onSubmit={handleSubmit}>
+          <form className="field-grid" style={{ maxWidth: 720 }} onSubmit={handleSubmit}>
+            <div className="two-col">
+              <label className="field">
+                <span className="label">PBX Platform</span>
+                <UIInput
+                  value={pbxPlatform}
+                  onChange={(event) => setPbxPlatform(event.target.value)}
+                  placeholder="Yeastar"
+                  autoComplete="off"
+                />
+                <span className="hint-text">
+                  Example: Yeastar, 3CX, Asterisk.
+                </span>
+              </label>
+              <label className="field">
+                <span className="label">SIP Transport</span>
+                <UIInput
+                  value={sipTransport}
+                  onChange={(event) => setSipTransport(event.target.value)}
+                  placeholder="TLS"
+                  autoComplete="off"
+                />
+                <span className="hint-text">
+                  Usually TLS for secure SIP.
+                </span>
+              </label>
+            </div>
+
             <label className="field">
-              <span className="label">Dialer Domain</span>
+              <span className="label">SIP Server (Domain)</span>
               <UIInput
                 value={domain}
                 onChange={(event) => setDomain(event.target.value)}
@@ -83,20 +131,36 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
                 autoComplete="off"
               />
               <span className="hint-text">
-                Primary SIP/PBX domain used by extension credentials.
+                Primary SIP/PBX server used by extension credentials.
               </span>
             </label>
 
             <label className="field">
-              <span className="label">WebSocket Host (Optional)</span>
+              <span className="label">SIP Port</span>
               <UIInput
-                value={websocketHost}
-                onChange={(event) => setWebsocketHost(event.target.value)}
-                placeholder="wss.infernallltd.cloud.ezipbx.biz:8089"
+                type="number"
+                value={sipPort}
+                onChange={(event) => setSipPort(event.target.value)}
+                placeholder="5061"
+                min={1}
+                max={65535}
                 autoComplete="off"
               />
               <span className="hint-text">
-                Use when your provider separates SIP domain and WebRTC signaling host.
+                Provider SIP port (for reference and troubleshooting).
+              </span>
+            </label>
+
+            <label className="field">
+              <span className="label">WebSocket Host (Required for browser dialer)</span>
+              <UIInput
+                value={websocketHost}
+                onChange={(event) => setWebsocketHost(event.target.value)}
+                placeholder="wss://infernallltd.cloud.ezipbx.biz/ws"
+                autoComplete="off"
+              />
+              <span className="hint-text">
+                Browser dialer needs WSS signaling endpoint (host/path).
               </span>
             </label>
 
@@ -113,7 +177,7 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
 
             <div className="inline-row">
               <UIButton type="submit" disabled={saving}>
-                {saving ? "Saving..." : "Save Dialer Domain"}
+                {saving ? "Saving..." : "Save Domain Settings"}
               </UIButton>
             </div>
           </form>
@@ -139,6 +203,18 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
             <div className="dialer-meta-item">
               <p className="dialer-meta-label">Current Domain</p>
               <p className="dialer-meta-value">{domain || "Not configured"}</p>
+            </div>
+            <div className="dialer-meta-item">
+              <p className="dialer-meta-label">PBX Platform</p>
+              <p className="dialer-meta-value">{pbxPlatform || "Not configured"}</p>
+            </div>
+            <div className="dialer-meta-item">
+              <p className="dialer-meta-label">SIP Port</p>
+              <p className="dialer-meta-value">{sipPort || "Not configured"}</p>
+            </div>
+            <div className="dialer-meta-item">
+              <p className="dialer-meta-label">SIP Transport</p>
+              <p className="dialer-meta-value">{sipTransport || "Not configured"}</p>
             </div>
             <div className="dialer-meta-item">
               <p className="dialer-meta-label">Current WebSocket Host</p>

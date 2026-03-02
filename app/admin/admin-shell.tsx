@@ -101,7 +101,7 @@ const navItems = [
   { href: "/admin/tenants",    label: "Tenants",     icon: TenantsIcon,    exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
-  { href: "/admin/dialer-domain", label: "Dialer Domain", icon: DialerIcon, exact: false },
+  { href: "/admin/dialer-domain", label: "Dialer Settings", icon: DialerIcon, exact: false },
 ];
 
 export function AdminShell({ user, userId, chatContacts, children }: Props) {

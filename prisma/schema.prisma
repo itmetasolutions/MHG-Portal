@@ -268,7 +268,10 @@ model AgentDialerSetting {
 
 model DialerDomainConfig {
   id            String   @id @default("singleton")
+  pbxPlatform   String?
   domain        String?
+  sipPort       Int?
+  sipTransport  String?
   websocketHost String?
   isEnabled     Boolean  @default(true)
   updatedAt     DateTime @updatedAt

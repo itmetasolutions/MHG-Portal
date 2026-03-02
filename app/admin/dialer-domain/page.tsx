@@ -24,7 +24,10 @@ export default async function AdminDialerDomainPage() {
       where: { id: "singleton" },
       select: {
         id: true,
+        pbxPlatform: true,
         domain: true,
+        sipPort: true,
+        sipTransport: true,
         websocketHost: true,
         isEnabled: true,
         updatedAt: true,
@@ -53,7 +56,10 @@ export default async function AdminDialerDomainPage() {
         config
           ? {
               id: config.id,
+              pbxPlatform: config.pbxPlatform,
               domain: config.domain,
+              sipPort: config.sipPort,
+              sipTransport: config.sipTransport,
               websocketHost: config.websocketHost,
               isEnabled: config.isEnabled,
               updatedAt: config.updatedAt.toISOString(),
@@ -61,7 +67,10 @@ export default async function AdminDialerDomainPage() {
             }
           : {
               id: "singleton",
+              pbxPlatform: null,
               domain: null,
+              sipPort: null,
+              sipTransport: null,
               websocketHost: null,
               isEnabled: true,
               updatedAt: null,

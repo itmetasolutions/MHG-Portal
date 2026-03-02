@@ -165,7 +165,10 @@ export type AuditLogListResponse = {
 
 export type DialerDomainConfigRow = {
   id: string;
+  pbxPlatform: string | null;
   domain: string | null;
+  sipPort: number | null;
+  sipTransport: string | null;
   websocketHost: string | null;
   isEnabled: boolean;
   updatedAt: string | null;
@@ -615,7 +618,10 @@ export function fetchDialerDomain(): Promise<ApiResult<{ config: DialerDomainCon
 }
 
 export function updateDialerDomain(payload: {
+  pbxPlatform?: string | null;
   domain?: string | null;
+  sipPort?: number | null;
+  sipTransport?: string | null;
   websocketHost?: string | null;
   isEnabled?: boolean;
 }): Promise<ApiResult<{ message: string; config: DialerDomainConfigRow }>> {

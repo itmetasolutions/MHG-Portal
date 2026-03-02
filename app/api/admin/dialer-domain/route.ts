@@ -6,14 +6,31 @@ import { db } from "@/server/db";
 
 const dialerDomainSchema = z
   .object({
+    pbxPlatform: z.string().max(120).nullable().optional(),
     domain: z.string().max(255).nullable().optional(),
+    sipPort: z.preprocess((value) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      if (typeof value === "number") return value;
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.length === 0) return null;
+        const parsed = Number.parseInt(trimmed, 10);
+        return Number.isNaN(parsed) ? value : parsed;
+      }
+      return value;
+    }, z.number().int().min(1).max(65535).nullable().optional()),
+    sipTransport: z.string().max(32).nullable().optional(),
     websocketHost: z.string().max(255).nullable().optional(),
     isEnabled: z.boolean().optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
     if (
+      value.pbxPlatform === undefined &&
       value.domain === undefined &&
+      value.sipPort === undefined &&
+      value.sipTransport === undefined &&
       value.websocketHost === undefined &&
       value.isEnabled === undefined
     ) {
@@ -23,6 +40,13 @@ const dialerDomainSchema = z
       });
     }
   });
+
+function normalizeOptionalText(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
 
 function normalizeHost(value: string | null | undefined): string | null | undefined {
   if (value === undefined) return undefined;
@@ -47,7 +71,10 @@ export async function GET(request: NextRequest) {
     where: { id: "singleton" },
     select: {
       id: true,
+      pbxPlatform: true,
       domain: true,
+      sipPort: true,
+      sipTransport: true,
       websocketHost: true,
       isEnabled: true,
       updatedAt: true,
@@ -58,7 +85,10 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     config: config ?? {
       id: "singleton",
+      pbxPlatform: null,
       domain: null,
+      sipPort: null,
+      sipTransport: null,
       websocketHost: null,
       isEnabled: true,
       updatedAt: null,
@@ -88,7 +118,11 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const pbxPlatform = normalizeOptionalText(payload.pbxPlatform);
   const domain = normalizeHost(payload.domain);
+  const sipPort = payload.sipPort === undefined ? undefined : payload.sipPort;
+  const normalizedTransport = normalizeOptionalText(payload.sipTransport);
+  const sipTransport = normalizedTransport ? normalizedTransport.toUpperCase() : normalizedTransport;
   const websocketHost = normalizeHost(payload.websocketHost);
 
   const updated = await db.$transaction(async (tx) => {
@@ -96,7 +130,10 @@ export async function PATCH(request: NextRequest) {
       where: { id: "singleton" },
       select: {
         id: true,
+        pbxPlatform: true,
         domain: true,
+        sipPort: true,
+        sipTransport: true,
         websocketHost: true,
         isEnabled: true,
         updatedAt: true,
@@ -107,20 +144,29 @@ export async function PATCH(request: NextRequest) {
       where: { id: "singleton" },
       create: {
         id: "singleton",
+        pbxPlatform: pbxPlatform ?? null,
         domain: domain ?? null,
+        sipPort: sipPort ?? null,
+        sipTransport: sipTransport ?? null,
         websocketHost: websocketHost ?? null,
         isEnabled: payload.isEnabled ?? true,
         updatedById: auth.user.id,
       },
       update: {
+        pbxPlatform,
         domain,
+        sipPort,
+        sipTransport,
         websocketHost,
         isEnabled: payload.isEnabled,
         updatedById: auth.user.id,
       },
       select: {
         id: true,
+        pbxPlatform: true,
         domain: true,
+        sipPort: true,
+        sipTransport: true,
         websocketHost: true,
         isEnabled: true,
         updatedAt: true,
@@ -137,7 +183,10 @@ export async function PATCH(request: NextRequest) {
         beforeJson: before ?? Prisma.JsonNull,
         afterJson: {
           id: config.id,
+          pbxPlatform: config.pbxPlatform,
           domain: config.domain,
+          sipPort: config.sipPort,
+          sipTransport: config.sipTransport,
           websocketHost: config.websocketHost,
           isEnabled: config.isEnabled,
           updatedAt: config.updatedAt,
@@ -150,7 +199,7 @@ export async function PATCH(request: NextRequest) {
   });
 
   return NextResponse.json({
-    message: "Dialer domain settings updated.",
+    message: "Domain settings updated.",
     config: updated,
   });
 }
