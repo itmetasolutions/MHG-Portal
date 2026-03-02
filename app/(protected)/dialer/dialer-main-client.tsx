@@ -180,19 +180,23 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
     const issues: string[] = [];
     if (!bootstrap.dialerDomain.isEnabled) issues.push("dialer is disabled by admin");
     if (!bootstrap.dialerDomain.domain?.trim()) issues.push("dialer domain is missing");
-    if (!bootstrap.dialerDomain.websocketHost?.trim()) issues.push("WebSocket host is missing");
     if (!bootstrap.me.dialer.providerUsername?.trim()) issues.push("provider username is missing");
     if (!bootstrap.me.dialer.providerPassword?.trim()) issues.push("provider password is missing");
     return issues;
   }, [
     bootstrap.dialerDomain.domain,
     bootstrap.dialerDomain.isEnabled,
-    bootstrap.dialerDomain.websocketHost,
     bootstrap.me.dialer.providerPassword,
     bootstrap.me.dialer.providerUsername,
   ]);
   const readyForRegistration = setupIssues.length === 0;
   const readyForCalling = readyForRegistration && registerState === "REGISTERED";
+  const websocketDisplay = useMemo(() => {
+    if (registerTarget) return registerTarget;
+    if (bootstrap.dialerDomain.websocketHost?.trim()) return bootstrap.dialerDomain.websocketHost;
+    if (bootstrap.dialerDomain.domain?.trim()) return `auto: wss://${bootstrap.dialerDomain.domain}/ws`;
+    return "Not set";
+  }, [registerTarget, bootstrap.dialerDomain.websocketHost, bootstrap.dialerDomain.domain]);
 
   function clearReconnectTimer() {
     if (!reconnectTimerRef.current) return;
@@ -505,9 +509,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       setRegisterState("ERROR");
       setMessage({
         type: "error",
-        text: bootstrap.dialerDomain.websocketHost
-          ? "SIP registration failed. Check WSS host, extension/AOR, and credentials."
-          : "SIP registration failed. Set the WebSocket host in Dialer Domain, then verify extension/AOR and credentials.",
+        text: "SIP registration failed. Check provider WebSocket support, domain, extension/AOR, and credentials.",
       });
       scheduleReconnect();
     };
@@ -702,7 +704,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
         </div>
         <div className="dialer-connection-list">
           <div className="dialer-connection-item"><span>Domain</span><strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong></div>
-          <div className="dialer-connection-item"><span>WebSocket</span><strong>{registerTarget ?? bootstrap.dialerDomain.websocketHost ?? "Not set"}</strong></div>
+          <div className="dialer-connection-item"><span>WebSocket</span><strong>{websocketDisplay}</strong></div>
           <div className="dialer-connection-item"><span>Extension</span><strong>{bootstrap.me.dialer.extensionNumber ?? bootstrap.me.dialer.providerUsername ?? "Not set"}</strong></div>
         </div>
         <p className="dialer-connection-foot">Domain updated: {bootstrap.dialerDomain.updatedAt ? formatDateTime(bootstrap.dialerDomain.updatedAt) : "Never"}</p>

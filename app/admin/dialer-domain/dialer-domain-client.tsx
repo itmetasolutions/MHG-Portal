@@ -152,7 +152,7 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
             </label>
 
             <label className="field">
-              <span className="label">WebSocket Host (Required for browser dialer)</span>
+              <span className="label">WebSocket Host (Optional)</span>
               <UIInput
                 value={websocketHost}
                 onChange={(event) => setWebsocketHost(event.target.value)}
@@ -160,7 +160,7 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
                 autoComplete="off"
               />
               <span className="hint-text">
-                Browser dialer needs WSS signaling endpoint (host/path).
+                If left empty, dialer will auto-try wss://server/ws.
               </span>
             </label>
 
