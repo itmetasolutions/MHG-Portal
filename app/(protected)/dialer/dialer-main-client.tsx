@@ -105,6 +105,27 @@ function wsCandidates(websocketHost: string | null, domain: string | null): stri
   return [...out];
 }
 
+function registrationUriCandidates(providerUsername: string, extensionNumber: string | null, domain: string): string[] {
+  const out = new Set<string>();
+  const username = providerUsername.trim();
+  const extension = extensionNumber?.trim();
+
+  if (extension) {
+    if (extension.includes("@")) out.add(`sip:${extension}`);
+    else out.add(`sip:${extension}@${domain}`);
+  }
+
+  if (username.includes("@")) {
+    out.add(`sip:${username}`);
+    const userPart = username.split("@")[0]?.trim();
+    if (userPart) out.add(`sip:${userPart}@${domain}`);
+  } else {
+    out.add(`sip:${username}@${domain}`);
+  }
+
+  return [...out];
+}
+
 export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
@@ -326,65 +347,77 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls }: Props) {
       const password = bootstrap.me.dialer.providerPassword!;
       const domain = bootstrap.dialerDomain.domain!;
       const candidates = wsCandidates(bootstrap.dialerDomain.websocketHost, domain);
+      const uriCandidates = registrationUriCandidates(
+        username,
+        bootstrap.me.dialer.extensionNumber,
+        domain,
+      );
       setRegisterState("CONNECTING");
       for (const server of candidates) {
-        const uri = UserAgent.makeURI(`sip:${username}@${domain}`);
-        if (!uri) continue;
-        const ua = new UserAgent({
-          uri,
-          authorizationUsername: username,
-          authorizationPassword: password,
-          displayName: bootstrap.me.dialer.extensionName || bootstrap.me.name,
-          transportOptions: { server },
-          delegate: {
-            onInvite: (invitation: Invitation) => {
-              if (runtimeRef.current || incomingRef.current) {
-                void invitation.reject({ statusCode: 486, reasonPhrase: "Busy" });
-                return;
-              }
-              const ext = invitation.remoteIdentity.uri.user ?? null;
-              const contact = contacts.find((c) => c.extensionNumber === ext || c.phoneNumber === ext);
-              const intercom = bootstrap.intercomAgents.find((a) => a.extensionNumber === ext);
-              const startedAtMs = Date.now();
-              const runtime: RuntimeCall = {
-                session: invitation,
-                direction: intercom ? "INTERNAL" : "INCOMING",
-                peerName: invitation.remoteIdentity.displayName || ext,
-                peerNumber: contact?.phoneNumber ?? null,
-                peerExtension: ext,
-                contactId: contact?.id,
-                counterpartUserId: intercom?.id ?? null,
-                startedAtMs,
-                answeredAtMs: null,
-                finalized: false,
-              };
-              runtimeRef.current = runtime;
-              incomingRef.current = invitation;
-              setIncomingCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
-              setLiveCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
-              hookSession(runtime);
+        for (const uriCandidate of uriCandidates) {
+          const uri = UserAgent.makeURI(uriCandidate);
+          if (!uri) continue;
+          const ua = new UserAgent({
+            uri,
+            authorizationUsername: username,
+            authorizationPassword: password,
+            displayName: bootstrap.me.dialer.extensionName || bootstrap.me.name,
+            transportOptions: { server },
+            delegate: {
+              onInvite: (invitation: Invitation) => {
+                if (runtimeRef.current || incomingRef.current) {
+                  void invitation.reject({ statusCode: 486, reasonPhrase: "Busy" });
+                  return;
+                }
+                const ext = invitation.remoteIdentity.uri.user ?? null;
+                const contact = contacts.find((c) => c.extensionNumber === ext || c.phoneNumber === ext);
+                const intercom = bootstrap.intercomAgents.find((a) => a.extensionNumber === ext);
+                const startedAtMs = Date.now();
+                const runtime: RuntimeCall = {
+                  session: invitation,
+                  direction: intercom ? "INTERNAL" : "INCOMING",
+                  peerName: invitation.remoteIdentity.displayName || ext,
+                  peerNumber: contact?.phoneNumber ?? null,
+                  peerExtension: ext,
+                  contactId: contact?.id,
+                  counterpartUserId: intercom?.id ?? null,
+                  startedAtMs,
+                  answeredAtMs: null,
+                  finalized: false,
+                };
+                runtimeRef.current = runtime;
+                incomingRef.current = invitation;
+                setIncomingCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+                setLiveCall({ ...runtime, state: "RINGING", isMuted: false, isOnHold: false });
+                hookSession(runtime);
+              },
             },
-          },
-        });
-        const registerer = new Registerer(ua);
-        registerer.stateChange.addListener((state) => {
-          if (state === RegistererState.Registered) setRegisterState("REGISTERED");
-          if (state === RegistererState.Unregistered || state === RegistererState.Terminated) setRegisterState("DISCONNECTED");
-        });
-        try {
-          await ua.start();
-          await registerer.register();
-          userAgentRef.current = ua;
-          registererRef.current = registerer;
-          setRegisterState("REGISTERED");
-          setRegisterTarget(server);
-          return;
-        } catch {
-          try { await ua.stop(); } catch {}
+          });
+          const registerer = new Registerer(ua);
+          registerer.stateChange.addListener((state) => {
+            if (state === RegistererState.Registered) setRegisterState("REGISTERED");
+            if (state === RegistererState.Unregistered || state === RegistererState.Terminated) setRegisterState("DISCONNECTED");
+          });
+          try {
+            await ua.start();
+            await registerer.register();
+            userAgentRef.current = ua;
+            registererRef.current = registerer;
+            setRegisterState("REGISTERED");
+            setRegisterTarget(server);
+            return;
+          } catch {
+            try { await ua.stop(); } catch {}
+          }
         }
       }
       setRegisterState("ERROR");
-      setMessage({ type: "error", text: "SIP registration failed. Check WSS host and credentials." });
+      setMessage({
+        type: "error",
+        text: bootstrap.dialerDomain.websocketHost
+          ? "SIP registration failed. Check WSS host, extension/AOR, and credentials."
+          : "SIP registration failed. Set the WebSocket host in Dialer Domain, then verify extension/AOR and credentials.",
+      });
     };
     void start();
     return () => {
