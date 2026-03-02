@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Prisma, PropertyStatus } from "@prisma/client";
+import { PropertyStatus } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { formatDate } from "@/lib/format";
@@ -16,7 +16,7 @@ export default async function PropertiesPage() {
   const session = await getAuthSession();
   if (!session) return null;
 
-  const where: Prisma.PropertyWhereInput = { ownerAgentId: session.userId, status: { not: "CLOSED" } };
+  const where = { ownerAgentId: session.userId };
 
   const [total, byStatus, properties] = await Promise.all([
     db.property.count({ where }),
@@ -49,9 +49,9 @@ export default async function PropertiesPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">My Properties</h1>
-          <p className="page-subtitle">All active properties available for rent.</p>
+          <p className="page-subtitle">All your properties including closed ones.</p>
         </div>
-        <Link className="btn btn-primary" href="/landlords/new">
+        <Link className="btn btn-primary" href="/properties/new">
           + Add Property
         </Link>
       </header>
@@ -86,7 +86,7 @@ export default async function PropertiesPage() {
         </div>
         {properties.length === 0 ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            No properties yet. <Link href="/landlords/new" style={{ color: "var(--brand-gold)" }}>Add one →</Link>
+            No properties yet. <Link href="/properties/new" style={{ color: "var(--brand-gold)" }}>Add one →</Link>
           </div>
         ) : (
           <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>

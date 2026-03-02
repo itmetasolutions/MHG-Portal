@@ -17,13 +17,17 @@ export default async function ProtectedLayout({
     redirect("/admin");
   }
 
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      agentDisplayName: true,
-      isActive: true,
-    },
-  });
+  const [user, contacts] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.userId },
+      select: { agentDisplayName: true, isActive: true },
+    }),
+    db.user.findMany({
+      where: { isActive: true, id: { not: session.userId } },
+      select: { id: true, agentDisplayName: true, email: true, role: true },
+      orderBy: [{ role: "asc" }, { agentDisplayName: "asc" }],
+    }),
+  ]);
 
   if (!user || !user.isActive) {
     redirect("/login");
@@ -31,10 +35,14 @@ export default async function ProtectedLayout({
 
   return (
     <AgentShell
-      user={{
-        name: user.agentDisplayName,
-        email: session.email,
-      }}
+      user={{ name: user.agentDisplayName, email: session.email }}
+      userId={session.userId}
+      chatContacts={contacts.map((c) => ({
+        id: c.id,
+        name: c.agentDisplayName,
+        email: c.email,
+        role: c.role as string,
+      }))}
     >
       {children}
     </AgentShell>

@@ -13,22 +13,28 @@ export default async function AdminLayout({
     return <>{children}</>;
   }
 
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      id: true,
-      role: true,
-      isActive: true,
-      agentDisplayName: true,
-    },
-  });
+  const [user, agents] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, role: true, isActive: true, agentDisplayName: true },
+    }),
+    db.user.findMany({
+      where: { role: UserRole.AGENT, isActive: true },
+      select: { id: true, agentDisplayName: true, email: true },
+      orderBy: { agentDisplayName: "asc" },
+    }),
+  ]);
 
   if (!user || !user.isActive || user.role !== UserRole.ADMIN) {
     return <>{children}</>;
   }
 
   return (
-    <AdminShell user={{ name: user.agentDisplayName, email: session.email }}>
+    <AdminShell
+      user={{ name: user.agentDisplayName, email: session.email }}
+      userId={session.userId}
+      chatContacts={agents.map((a) => ({ id: a.id, name: a.agentDisplayName, email: a.email }))}
+    >
       {children}
     </AdminShell>
   );

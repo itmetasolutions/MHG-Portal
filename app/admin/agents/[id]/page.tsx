@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
+import { SalesFilterBar } from "@/components/sales-filter-bar";
+import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +15,21 @@ const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string 
   DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
 };
 
+function firstVal(v: string | string[] | undefined): string | undefined {
+  if (!v) return undefined;
+  return Array.isArray(v) ? v[0] : v;
+}
+
 type Props = {
-  params: {
-    id: string;
+  params: { id: string };
+  searchParams?: {
+    period?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
   };
 };
 
-export default async function AdminAgentDetailPage({ params }: Props) {
+export default async function AdminAgentDetailPage({ params, searchParams }: Props) {
   const session = await getAuthSession();
   if (!session) redirect("/admin/login");
 
@@ -30,90 +40,99 @@ export default async function AdminAgentDetailPage({ params }: Props) {
   if (!admin || !admin.isActive) redirect("/admin/login");
   if (admin.role !== UserRole.ADMIN) redirect("/dashboard");
 
-  const agent = await db.user.findFirst({
-    where: {
-      id: params.id,
-      role: UserRole.AGENT,
-    },
-    select: {
-      id: true,
-      email: true,
-      agentDisplayName: true,
-      isActive: true,
-      createdAt: true,
-      _count: {
-        select: {
-          ownedLandlords: true,
-          ownedProperties: true,
-        },
-      },
-      ownedProperties: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          propertyRef: true,
-          addressLine1: true,
-          city: true,
-          postcode: true,
-          propertyType: true,
-          beds: true,
-          baths: true,
-          status: true,
-          createdAt: true,
-          landlord: { select: { id: true, landlordName: true } },
-          sales: {
-            select: {
-              id: true,
-              finalAmount: true,
-              commissionAmount: true,
-              profit: true,
-              closedAt: true,
-              tenant: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
-                  phone: true,
-                  moveInDate: true,
-                  rentAmount: true,
-                  depositAmount: true,
-                },
-              },
-            },
+  // Period filter
+  const requestedPeriod = firstVal(searchParams?.period);
+  const period: PeriodKey = isPeriodKey(requestedPeriod) ? requestedPeriod : "month";
+  const from = firstVal(searchParams?.from);
+  const to = firstVal(searchParams?.to);
+  const salesRange = parsePeriodToDateRange(period, from, to);
+  const salesRangeLabel = formatPeriodRange(salesRange);
+
+  const salesWhere = {
+    closedByUserId: params.id,
+    ...(salesRange ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } } : {}),
+  };
+
+  const [agent, sales, landlords] = await Promise.all([
+    db.user.findFirst({
+      where: { id: params.id, role: UserRole.AGENT },
+      select: {
+        id: true,
+        email: true,
+        agentDisplayName: true,
+        isActive: true,
+        createdAt: true,
+        _count: { select: { ownedLandlords: true, ownedProperties: true } },
+        ownedProperties: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            propertyRef: true,
+            addressLine1: true,
+            city: true,
+            postcode: true,
+            propertyType: true,
+            beds: true,
+            baths: true,
+            status: true,
+            createdAt: true,
+            landlord: { select: { id: true, landlordName: true } },
           },
         },
       },
-      ownedLandlords: {
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          landlordName: true,
-          landlordNumber: true,
-          email: true,
-          phoneE164: true,
-          createdAt: true,
-          _count: { select: { properties: true } },
+    }),
+    db.sale.findMany({
+      where: salesWhere,
+      orderBy: [{ closedAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        finalAmount: true,
+        commissionAmount: true,
+        profit: true,
+        closedAt: true,
+        property: {
+          select: {
+            id: true,
+            propertyRef: true,
+            addressLine1: true,
+            city: true,
+            postcode: true,
+          },
+        },
+        tenant: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            moveInDate: true,
+            rentAmount: true,
+            depositAmount: true,
+          },
         },
       },
-    },
-  });
+    }),
+    db.landlord.findMany({
+      where: { ownerAgentId: params.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        landlordName: true,
+        landlordNumber: true,
+        email: true,
+        phoneE164: true,
+        createdAt: true,
+        _count: { select: { properties: true } },
+      },
+    }),
+  ]);
 
   if (!agent) notFound();
 
-  const soldProperties = agent.ownedProperties.filter((property) => property.sales.length > 0);
-  const tenantProperties = soldProperties.filter((property) => property.sales[0]?.tenant != null);
-  const totalRevenue = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sales[0]?.finalAmount ?? 0),
-    0,
-  );
-  const totalCommission = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sales[0]?.commissionAmount ?? 0),
-    0,
-  );
-  const totalProfit = soldProperties.reduce(
-    (sum, property) => sum + Number(property.sales[0]?.profit ?? 0),
-    0,
-  );
+  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.finalAmount), 0);
+  const totalCommission = sales.reduce((sum, s) => sum + Number(s.commissionAmount), 0);
+  const totalProfit = sales.reduce((sum, s) => sum + Number(s.profit), 0);
+  const tenantSales = sales.filter((s) => s.tenant != null);
 
   return (
     <div className="stack">
@@ -133,7 +152,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
           </Link>
           <h1 className="page-title">{agent.agentDisplayName}</h1>
           <p className="page-subtitle">
-            {agent.email} - {agent.isActive ? "Active" : "Disabled"} - Joined{" "}
+            {agent.email} · {agent.isActive ? "Active" : "Disabled"} · Joined{" "}
             {formatDate(agent.createdAt)}
           </p>
         </div>
@@ -145,164 +164,91 @@ export default async function AdminAgentDetailPage({ params }: Props) {
         </span>
       </header>
 
+      {/* Sales period filter */}
+      <div className="panel" style={{ padding: "1rem 1.1rem" }}>
+        <SalesFilterBar
+          period={period}
+          from={from}
+          to={to}
+          rangeLabel={salesRangeLabel}
+          salesCount={sales.length}
+        />
+      </div>
+
+      {/* Stats */}
       <div className="admin-stats-grid-wide">
         <div className="admin-stat-card">
           <p className="admin-stat-label">Landlords</p>
           <p className="admin-stat-value">{agent._count.ownedLandlords}</p>
-          <p className="admin-stat-sub">Registered</p>
+          <p className="admin-stat-sub">All time</p>
         </div>
         <div className="admin-stat-card">
           <p className="admin-stat-label">Properties</p>
           <p className="admin-stat-value">{agent._count.ownedProperties}</p>
-          <p className="admin-stat-sub">{soldProperties.length} sold</p>
+          <p className="admin-stat-sub">All time</p>
         </div>
         <div className="admin-stat-card">
           <p className="admin-stat-label">Sales Closed</p>
-          <p
-            className="admin-stat-value"
-            style={{ color: soldProperties.length > 0 ? "#4ade80" : undefined }}
-          >
-            {soldProperties.length}
+          <p className="admin-stat-value" style={{ color: sales.length > 0 ? "#4ade80" : undefined }}>
+            {sales.length}
           </p>
-          <p className="admin-stat-sub">Completed sales</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
         <div className="admin-stat-card">
           <p className="admin-stat-label">Tenants</p>
-          <p
-            className="admin-stat-value"
-            style={{ color: tenantProperties.length > 0 ? "var(--brand-gold)" : undefined }}
-          >
-            {tenantProperties.length}
+          <p className="admin-stat-value" style={{ color: tenantSales.length > 0 ? "var(--brand-gold)" : undefined }}>
+            {tenantSales.length}
           </p>
-          <p className="admin-stat-sub">Tenant records</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
         <div className="admin-stat-card" style={{ borderTopColor: "var(--brand-gold)" }}>
           <p className="admin-stat-label">Commission</p>
           <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
             {totalCommission > 0 ? formatCurrency(totalCommission) : "-"}
           </p>
-          <p className="admin-stat-sub">Total earned</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
         <div className="admin-stat-card" style={{ borderTopColor: "var(--success)" }}>
           <p className="admin-stat-label">Revenue</p>
           <p className="admin-stat-value" style={{ color: "#4ade80", fontSize: "1.8rem" }}>
             {totalRevenue > 0 ? formatCurrency(totalRevenue) : "-"}
           </p>
-          <p className="admin-stat-sub">Total sale amounts</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
         <div className="admin-stat-card" style={{ borderTopColor: "#06b6d4" }}>
           <p className="admin-stat-label">Net Profit</p>
           <p className="admin-stat-value" style={{ color: "#22d3ee", fontSize: "1.8rem" }}>
             {totalProfit > 0 ? formatCurrency(totalProfit) : "-"}
           </p>
-          <p className="admin-stat-sub">After all costs</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
         <div className="admin-stat-card">
           <p className="admin-stat-label">Avg Sale Value</p>
           <p className="admin-stat-value" style={{ fontSize: "1.8rem" }}>
-            {soldProperties.length > 0
-              ? formatCurrency(Math.round(totalRevenue / soldProperties.length))
-              : "-"}
+            {sales.length > 0 ? formatCurrency(Math.round(totalRevenue / sales.length)) : "-"}
           </p>
-          <p className="admin-stat-sub">Per closed sale</p>
+          <p className="admin-stat-sub">{salesRangeLabel}</p>
         </div>
       </div>
 
+      {/* Closed Sales — period-filtered */}
       <div className="admin-card">
         <div className="admin-card-header">
           <h2 className="admin-card-title">
             <svg viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z"
-                clipRule="evenodd"
-              />
+              <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
             </svg>
-            Properties
+            Closed Sales
           </h2>
           <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-            {agent._count.ownedProperties} total
+            {sales.length} · {salesRangeLabel}
           </span>
         </div>
-        {agent.ownedProperties.length === 0 ? (
+        {sales.length === 0 ? (
           <div className="admin-card-body">
-            <p className="muted" style={{ margin: 0, textAlign: "center" }}>
-              No properties yet.
-            </p>
+            <p className="muted" style={{ margin: 0, textAlign: "center" }}>No sales closed for this period.</p>
           </div>
         ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Address</th>
-                  <th>Type / Beds</th>
-                  <th>Landlord</th>
-                  <th>Status</th>
-                  <th>Sale Amount</th>
-                  <th>Added</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agent.ownedProperties.map((property) => (
-                  <tr key={property.id}>
-                    <td>
-                      <strong style={{ display: "block", color: "var(--text)" }}>
-                        {property.addressLine1 ?? property.propertyRef}
-                      </strong>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[property.city, property.postcode].filter(Boolean).join(", ")}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {property.propertyType ?? "-"}
-                      {property.beds != null ? ` - ${property.beds} bed` : ""}
-                      {property.baths != null ? ` / ${property.baths} bath` : ""}
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {property.landlord.landlordName}
-                    </td>
-                    <td>
-                      <span className={`badge ${STATUS_CONFIG[property.status].badgeClass}`}>
-                        {STATUS_CONFIG[property.status].label}
-                      </span>
-                    </td>
-                    <td
-                      style={{
-                        fontWeight: 700,
-                        color: property.sales.length > 0 ? "#4ade80" : "var(--text-subtle)",
-                      }}
-                    >
-                      {property.sales.length > 0 ? formatCurrency(Number(property.sales[0].finalAmount)) : "-"}
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(property.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {soldProperties.length > 0 && (
-        <div className="admin-card">
-          <div className="admin-card-header">
-            <h2 className="admin-card-title">
-              <svg viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Closed Sales
-            </h2>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-              {soldProperties.length} sales
-            </span>
-          </div>
           <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
             <table className="table">
               <thead>
@@ -316,40 +262,41 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {soldProperties.map((property) => (
-                  <tr key={property.id}>
+                {sales.map((sale) => (
+                  <tr key={sale.id}>
                     <td>
                       <strong style={{ display: "block", color: "var(--text)" }}>
-                        {property.addressLine1 ?? property.propertyRef}
+                        {sale.property.addressLine1 ?? sale.property.propertyRef}
                       </strong>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[property.city, property.postcode].filter(Boolean).join(", ")}
+                        {[sale.property.city, sale.property.postcode].filter(Boolean).join(", ")}
                       </span>
                     </td>
                     <td style={{ fontWeight: 700, color: "#4ade80" }}>
-                      {formatCurrency(Number(property.sales[0].finalAmount))}
+                      {formatCurrency(Number(sale.finalAmount))}
                     </td>
                     <td style={{ fontWeight: 700, color: "var(--brand-gold)" }}>
-                      {formatCurrency(Number(property.sales[0].commissionAmount))}
+                      {formatCurrency(Number(sale.commissionAmount))}
                     </td>
                     <td style={{ fontWeight: 600, color: "#22d3ee" }}>
-                      {formatCurrency(Number(property.sales[0].profit))}
+                      {formatCurrency(Number(sale.profit))}
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {property.sales[0].tenant?.fullName ?? "-"}
+                      {sale.tenant?.fullName ?? "-"}
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(property.sales[0].closedAt)}
+                      {formatDate(sale.closedAt)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {tenantProperties.length > 0 && (
+      {/* Tenants — period-filtered */}
+      {tenantSales.length > 0 && (
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">
@@ -359,7 +306,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
               Tenants
             </h2>
             <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-              {tenantProperties.length} records
+              {tenantSales.length} · {salesRangeLabel}
             </span>
           </div>
           <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
@@ -374,10 +321,10 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {tenantProperties.map((property) => {
-                  const tenant = property.sales[0].tenant!;
+                {tenantSales.map((sale) => {
+                  const tenant = sale.tenant!;
                   return (
-                    <tr key={property.id}>
+                    <tr key={sale.id}>
                       <td style={{ fontWeight: 600, color: "var(--text)" }}>{tenant.fullName}</td>
                       <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
                         {tenant.email && <span style={{ display: "block" }}>{tenant.email}</span>}
@@ -385,10 +332,10 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                       </td>
                       <td>
                         <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--text)" }}>
-                          {property.addressLine1 ?? property.propertyRef}
+                          {sale.property.addressLine1 ?? sale.property.propertyRef}
                         </strong>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                          {[property.city, property.postcode].filter(Boolean).join(", ")}
+                          {[sale.property.city, sale.property.postcode].filter(Boolean).join(", ")}
                         </span>
                       </td>
                       <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
@@ -409,13 +356,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                           <span className="muted">-</span>
                         )}
                         {tenant.depositAmount && (
-                          <span
-                            style={{
-                              display: "block",
-                              color: "var(--text-muted)",
-                              fontSize: "0.75rem",
-                            }}
-                          >
+                          <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
                             dep: GBP {Number(tenant.depositAmount).toLocaleString("en-GB")}
                           </span>
                         )}
@@ -429,15 +370,76 @@ export default async function AdminAgentDetailPage({ params }: Props) {
         </div>
       )}
 
+      {/* Properties — all time */}
       <div className="admin-card">
         <div className="admin-card-header">
           <h2 className="admin-card-title">
             <svg viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z"
-                clipRule="evenodd"
-              />
+              <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z" clipRule="evenodd" />
+            </svg>
+            Properties
+          </h2>
+          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+            {agent._count.ownedProperties} total
+          </span>
+        </div>
+        {agent.ownedProperties.length === 0 ? (
+          <div className="admin-card-body">
+            <p className="muted" style={{ margin: 0, textAlign: "center" }}>No properties yet.</p>
+          </div>
+        ) : (
+          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Address</th>
+                  <th>Type / Beds</th>
+                  <th>Landlord</th>
+                  <th>Status</th>
+                  <th>Added</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agent.ownedProperties.map((property) => (
+                  <tr key={property.id}>
+                    <td>
+                      <strong style={{ display: "block", color: "var(--text)" }}>
+                        {property.addressLine1 ?? property.propertyRef}
+                      </strong>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        {[property.city, property.postcode].filter(Boolean).join(", ")}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                      {property.propertyType ?? "-"}
+                      {property.beds != null ? ` · ${property.beds} bed` : ""}
+                      {property.baths != null ? ` / ${property.baths} bath` : ""}
+                    </td>
+                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                      {property.landlord.landlordName}
+                    </td>
+                    <td>
+                      <span className={`badge ${STATUS_CONFIG[property.status].badgeClass}`}>
+                        {STATUS_CONFIG[property.status].label}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {formatDate(property.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Landlords — all time */}
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <h2 className="admin-card-title">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
             </svg>
             Landlords
           </h2>
@@ -445,11 +447,9 @@ export default async function AdminAgentDetailPage({ params }: Props) {
             {agent._count.ownedLandlords} total
           </span>
         </div>
-        {agent.ownedLandlords.length === 0 ? (
+        {landlords.length === 0 ? (
           <div className="admin-card-body">
-            <p className="muted" style={{ margin: 0, textAlign: "center" }}>
-              No landlords yet.
-            </p>
+            <p className="muted" style={{ margin: 0, textAlign: "center" }}>No landlords yet.</p>
           </div>
         ) : (
           <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
@@ -465,7 +465,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {agent.ownedLandlords.map((landlord) => (
+                {landlords.map((landlord) => (
                   <tr key={landlord.id}>
                     <td style={{ fontWeight: 600, color: "var(--text)" }}>{landlord.landlordName}</td>
                     <td>
@@ -479,11 +479,7 @@ export default async function AdminAgentDetailPage({ params }: Props) {
                       {landlord._count.properties}
                     </td>
                     <td>
-                      <span
-                        className={`badge ${
-                          landlord._count.properties > 0 ? "badge-active" : "badge-passive"
-                        }`}
-                      >
+                      <span className={`badge ${landlord._count.properties > 0 ? "badge-active" : "badge-passive"}`}>
                         {landlord._count.properties > 0 ? "Active" : "Passive"}
                       </span>
                     </td>

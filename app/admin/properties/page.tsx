@@ -24,13 +24,10 @@ export default async function AdminPropertiesPage() {
   if (!user || !user.isActive) redirect("/admin/login");
   if (user.role !== UserRole.ADMIN) redirect("/dashboard");
 
-  const activeWhere = { status: { not: "CLOSED" as const } };
-
   const [total, byStatus, properties] = await Promise.all([
-    db.property.count({ where: activeWhere }),
-    db.property.groupBy({ by: ["status"], where: activeWhere, _count: { id: true } }),
+    db.property.count({}),
+    db.property.groupBy({ by: ["status"], _count: { id: true } }),
     db.property.findMany({
-      where: activeWhere,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
@@ -57,7 +54,7 @@ export default async function AdminPropertiesPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">All Properties</h1>
-          <p className="page-subtitle">{total} active properties available for rent</p>
+          <p className="page-subtitle">{total} properties (including closed)</p>
         </div>
       </header>
 

@@ -2959,3 +2959,372 @@ a.admin-stat-card {
     grid-column: span 1;
   }
 }
+
+/* =====================================================================
+   Floating Chat Widget
+   ===================================================================== */
+
+.fchat-fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--brand-gold);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, background 0.15s ease;
+  color: #111118;
+  flex-shrink: 0;
+}
+
+.fchat-fab:hover {
+  background: var(--brand-gold-dark, #a07832);
+  transform: scale(1.08);
+}
+
+.fchat-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.fchat-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  border: 2px solid var(--surface, #111118);
+}
+
+.fchat-fab-badge-inline {
+  position: static;
+  margin-left: 0.4rem;
+  border: none;
+  font-size: 0.65rem;
+}
+
+/* Popup window */
+.fchat-popup {
+  position: fixed;
+  bottom: 5.5rem;
+  right: 1.5rem;
+  z-index: 1001;
+  width: 340px;
+  max-height: 520px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #111118);
+  border: 1px solid var(--border, #23232e);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.fchat-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface2, #18181f);
+  border-bottom: 1px solid var(--border, #23232e);
+  flex-shrink: 0;
+}
+
+.fchat-popup-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text, #f0ead8);
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.fchat-back-btn,
+.fchat-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #8a7e68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.1s;
+  flex-shrink: 0;
+}
+
+.fchat-back-btn:hover,
+.fchat-close-btn:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+  color: var(--text, #f0ead8);
+}
+
+.fchat-close-btn {
+  margin-left: auto;
+}
+
+.fchat-popup-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--brand-gold);
+  color: #111118;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fchat-popup-contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fchat-popup-contact-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text, #f0ead8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fchat-popup-contact-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted, #8a7e68);
+}
+
+/* Contact list */
+.fchat-contact-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.fchat-empty {
+  text-align: center;
+  color: var(--text-muted, #8a7e68);
+  font-size: 0.82rem;
+  padding: 2rem 1rem;
+}
+
+.fchat-contact-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.fchat-contact-item:hover {
+  background: var(--hover, rgba(255, 255, 255, 0.04));
+}
+
+.fchat-contact-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2, #18181f);
+  border: 1px solid var(--border, #23232e);
+  color: var(--brand-gold, #c9a84c);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fchat-contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fchat-contact-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text, #f0ead8);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.fchat-contact-role {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--brand-gold, #c9a84c);
+  color: #111118;
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.fchat-contact-preview {
+  font-size: 0.72rem;
+  color: var(--text-muted, #8a7e68);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.fchat-contact-preview-empty {
+  font-style: italic;
+}
+
+.fchat-contact-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.fchat-contact-time {
+  font-size: 0.68rem;
+  color: var(--text-muted, #8a7e68);
+}
+
+.fchat-unread-dot {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--brand-gold, #c9a84c);
+  color: #111118;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* Messages area */
+.fchat-messages-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fchat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.75rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fchat-messages-empty {
+  color: var(--text-muted, #8a7e68);
+  font-size: 0.78rem;
+  text-align: center;
+  margin: auto 0;
+  padding: 1rem;
+}
+
+.fchat-bubble-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.fchat-bubble-row-me {
+  justify-content: flex-end;
+}
+
+.fchat-bubble {
+  max-width: 75%;
+  border-radius: 12px;
+  padding: 0.45rem 0.65rem;
+}
+
+.fchat-bubble-them {
+  background: var(--surface2, #18181f);
+  border: 1px solid var(--border, #23232e);
+  border-bottom-left-radius: 4px;
+}
+
+.fchat-bubble-me {
+  background: var(--brand-gold, #c9a84c);
+  color: #111118;
+  border-bottom-right-radius: 4px;
+}
+
+.fchat-bubble-text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.fchat-bubble-me .fchat-bubble-text {
+  color: #111118;
+}
+
+.fchat-bubble-time {
+  display: block;
+  font-size: 0.65rem;
+  margin-top: 3px;
+  opacity: 0.65;
+}
+
+/* Input bar */
+.fchat-input-bar {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--border, #23232e);
+  flex-shrink: 0;
+}
+
+.fchat-input {
+  flex: 1;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  min-width: 0;
+}
+
+.fchat-send-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .fchat-popup {
+    right: 0.75rem;
+    bottom: 5rem;
+    width: calc(100vw - 1.5rem);
+    max-width: 340px;
+  }
+  .fchat-fab {
+    bottom: 1rem;
+    right: 1rem;
+  }
+}

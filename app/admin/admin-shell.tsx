@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
+import { FloatingChat } from "@/components/floating-chat";
 
 type AdminUser = {
   name: string;
   email: string;
 };
 
+type ChatContact = { id: string; name: string; email: string };
+
 type Props = {
   user: AdminUser;
+  userId: string;
+  chatContacts: ChatContact[];
   children: React.ReactNode;
 };
 
@@ -70,13 +75,6 @@ function AuditIcon() {
   );
 }
 
-function ChatIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 4.014 1 5.426v5.148c0 1.413.993 2.67 2.43 2.902.848.137 1.705.248 2.57.331v3.443a.75.75 0 0 0 1.28.53l3.58-3.579a.78.78 0 0 1 .527-.224 41.202 41.202 0 0 0 5.183-.5c1.437-.232 2.43-1.49 2.43-2.903V5.426c0-1.413-.993-2.67-2.43-2.902A41.289 41.289 0 0 0 10 2Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM8 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm5 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-    </svg>
-  );
-}
 
 function CommissionIcon() {
   return (
@@ -94,11 +92,10 @@ const navItems = [
   { href: "/admin/sales",      label: "Sales",       icon: SalesIcon,      exact: false },
   { href: "/admin/tenants",    label: "Tenants",     icon: TenantsIcon,    exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
-  { href: "/admin/chat",       label: "Chat",        icon: ChatIcon,       exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
 ];
 
-export function AdminShell({ user, children }: Props) {
+export function AdminShell({ user, userId, chatContacts, children }: Props) {
   const pathname = usePathname();
 
   const initials = user.name
@@ -203,6 +200,8 @@ export function AdminShell({ user, children }: Props) {
         {/* Page content */}
         <div className="admin-page">{children}</div>
       </div>
+
+      <FloatingChat userId={userId} contacts={chatContacts} isAdmin />
     </div>
   );
 }
