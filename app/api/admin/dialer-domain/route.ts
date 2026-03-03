@@ -6,6 +6,8 @@ import { db } from "@/server/db";
 
 const dialerDomainSchema = z
   .object({
+    dialerMode: z.enum(["SIP", "LINKUS"]).optional(),
+    linkusWebClientUrl: z.string().max(255).nullable().optional(),
     pbxPlatform: z.string().max(120).nullable().optional(),
     domain: z.string().max(255).nullable().optional(),
     sipPort: z.preprocess((value) => {
@@ -27,6 +29,8 @@ const dialerDomainSchema = z
   .strict()
   .superRefine((value, ctx) => {
     if (
+      value.dialerMode === undefined &&
+      value.linkusWebClientUrl === undefined &&
       value.pbxPlatform === undefined &&
       value.domain === undefined &&
       value.sipPort === undefined &&
@@ -60,6 +64,15 @@ function normalizeHost(value: string | null | undefined): string | null | undefi
   return normalized.length > 0 ? normalized : null;
 }
 
+function normalizeWebUrl(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const normalized = value.trim().replace(/\/+$/, "");
+  if (normalized.length === 0) return null;
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  return `https://${normalized}`;
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;
@@ -71,6 +84,8 @@ export async function GET(request: NextRequest) {
     where: { id: "singleton" },
     select: {
       id: true,
+      dialerMode: true,
+      linkusWebClientUrl: true,
       pbxPlatform: true,
       domain: true,
       sipPort: true,
@@ -85,6 +100,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     config: config ?? {
       id: "singleton",
+      dialerMode: "SIP",
+      linkusWebClientUrl: null,
       pbxPlatform: null,
       domain: null,
       sipPort: null,
@@ -118,6 +135,8 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  const dialerMode = payload.dialerMode;
+  const linkusWebClientUrl = normalizeWebUrl(payload.linkusWebClientUrl);
   const pbxPlatform = normalizeOptionalText(payload.pbxPlatform);
   const domain = normalizeHost(payload.domain);
   const sipPort = payload.sipPort === undefined ? undefined : payload.sipPort;
@@ -130,6 +149,8 @@ export async function PATCH(request: NextRequest) {
       where: { id: "singleton" },
       select: {
         id: true,
+        dialerMode: true,
+        linkusWebClientUrl: true,
         pbxPlatform: true,
         domain: true,
         sipPort: true,
@@ -144,6 +165,8 @@ export async function PATCH(request: NextRequest) {
       where: { id: "singleton" },
       create: {
         id: "singleton",
+        dialerMode: dialerMode ?? "SIP",
+        linkusWebClientUrl: linkusWebClientUrl ?? null,
         pbxPlatform: pbxPlatform ?? null,
         domain: domain ?? null,
         sipPort: sipPort ?? null,
@@ -153,6 +176,8 @@ export async function PATCH(request: NextRequest) {
         updatedById: auth.user.id,
       },
       update: {
+        dialerMode,
+        linkusWebClientUrl,
         pbxPlatform,
         domain,
         sipPort,
@@ -163,6 +188,8 @@ export async function PATCH(request: NextRequest) {
       },
       select: {
         id: true,
+        dialerMode: true,
+        linkusWebClientUrl: true,
         pbxPlatform: true,
         domain: true,
         sipPort: true,
@@ -183,6 +210,8 @@ export async function PATCH(request: NextRequest) {
         beforeJson: before ?? Prisma.JsonNull,
         afterJson: {
           id: config.id,
+          dialerMode: config.dialerMode,
+          linkusWebClientUrl: config.linkusWebClientUrl,
           pbxPlatform: config.pbxPlatform,
           domain: config.domain,
           sipPort: config.sipPort,

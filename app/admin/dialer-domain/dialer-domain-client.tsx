@@ -14,6 +14,8 @@ type Props = {
 type Message = { type: "success" | "error"; text: string } | null;
 
 export function AdminDialerDomainClient({ initialConfig }: Props) {
+  const [dialerMode, setDialerMode] = useState<"SIP" | "LINKUS">(initialConfig.dialerMode ?? "SIP");
+  const [linkusWebClientUrl, setLinkusWebClientUrl] = useState(initialConfig.linkusWebClientUrl ?? "");
   const [pbxPlatform, setPbxPlatform] = useState(initialConfig.pbxPlatform ?? "");
   const [domain, setDomain] = useState(initialConfig.domain ?? "");
   const [sipPort, setSipPort] = useState(initialConfig.sipPort ? String(initialConfig.sipPort) : "");
@@ -43,6 +45,8 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
     }
 
     const result = await updateDialerDomain({
+      dialerMode,
+      linkusWebClientUrl: linkusWebClientUrl.trim() || null,
       pbxPlatform: pbxPlatform.trim() || null,
       domain: domain.trim() || null,
       sipPort: normalizedSipPort,
@@ -58,6 +62,8 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
     }
 
     setMessage({ type: "success", text: result.data.message });
+    setDialerMode(result.data.config.dialerMode);
+    setLinkusWebClientUrl(result.data.config.linkusWebClientUrl ?? "");
     setPbxPlatform(result.data.config.pbxPlatform ?? "");
     setDomain(result.data.config.domain ?? "");
     setSipPort(result.data.config.sipPort ? String(result.data.config.sipPort) : "");
@@ -89,12 +95,28 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
             </svg>
             PBX Connectivity
           </h2>
-          <span className={`badge ${isEnabled ? "badge-active" : "badge-locked"}`}>
-            {isEnabled ? "Enabled" : "Disabled"}
-          </span>
+          <div className="inline-row">
+            <span className={`badge ${dialerMode === "LINKUS" ? "badge-warning" : "badge-active"}`}>
+              {dialerMode === "LINKUS" ? "Linkus Mode" : "SIP Mode"}
+            </span>
+            <span className={`badge ${isEnabled ? "badge-active" : "badge-locked"}`}>
+              {isEnabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
         </div>
         <div className="admin-card-body">
           <form className="field-grid" style={{ maxWidth: 720 }} onSubmit={handleSubmit}>
+            <label className="field">
+              <span className="label">Dialer Engine Mode</span>
+              <select className="select" value={dialerMode} onChange={(event) => setDialerMode(event.target.value as "SIP" | "LINKUS")}>
+                <option value="SIP">Portal SIP Engine (Current)</option>
+                <option value="LINKUS">Linkus-only Mode</option>
+              </select>
+              <span className="hint-text">
+                Keep SIP mode available for future use, or switch to Linkus-only handoff mode.
+              </span>
+            </label>
+
             <div className="two-col">
               <label className="field">
                 <span className="label">PBX Platform</span>
@@ -109,60 +131,78 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
                 </span>
               </label>
               <label className="field">
-                <span className="label">SIP Transport</span>
+                <span className="label">SIP Server (Domain)</span>
                 <UIInput
-                  value={sipTransport}
-                  onChange={(event) => setSipTransport(event.target.value)}
-                  placeholder="TLS"
+                  value={domain}
+                  onChange={(event) => setDomain(event.target.value)}
+                  placeholder="infernallltd.cloud.ezipbx.biz"
                   autoComplete="off"
                 />
                 <span className="hint-text">
-                  Usually TLS for secure SIP.
+                  Primary PBX server domain.
                 </span>
               </label>
             </div>
 
-            <label className="field">
-              <span className="label">SIP Server (Domain)</span>
-              <UIInput
-                value={domain}
-                onChange={(event) => setDomain(event.target.value)}
-                placeholder="infernallltd.cloud.ezipbx.biz"
-                autoComplete="off"
-              />
-              <span className="hint-text">
-                Primary SIP/PBX server used by extension credentials.
-              </span>
-            </label>
+            {dialerMode === "LINKUS" ? (
+              <label className="field">
+                <span className="label">Linkus Web Client URL (Optional)</span>
+                <UIInput
+                  value={linkusWebClientUrl}
+                  onChange={(event) => setLinkusWebClientUrl(event.target.value)}
+                  placeholder="https://infernallltd.cloud.ezipbx.biz/linkus"
+                  autoComplete="off"
+                />
+                <span className="hint-text">
+                  Used by Linkus-only mode to open provider web dialer directly.
+                </span>
+              </label>
+            ) : (
+              <>
+                <div className="two-col">
+                  <label className="field">
+                    <span className="label">SIP Transport</span>
+                    <UIInput
+                      value={sipTransport}
+                      onChange={(event) => setSipTransport(event.target.value)}
+                      placeholder="TLS"
+                      autoComplete="off"
+                    />
+                    <span className="hint-text">
+                      Usually TLS for secure SIP.
+                    </span>
+                  </label>
+                  <label className="field">
+                    <span className="label">SIP Port</span>
+                    <UIInput
+                      type="number"
+                      value={sipPort}
+                      onChange={(event) => setSipPort(event.target.value)}
+                      placeholder="5061"
+                      min={1}
+                      max={65535}
+                      autoComplete="off"
+                    />
+                    <span className="hint-text">
+                      Provider SIP port (for reference and troubleshooting).
+                    </span>
+                  </label>
+                </div>
 
-            <label className="field">
-              <span className="label">SIP Port</span>
-              <UIInput
-                type="number"
-                value={sipPort}
-                onChange={(event) => setSipPort(event.target.value)}
-                placeholder="5061"
-                min={1}
-                max={65535}
-                autoComplete="off"
-              />
-              <span className="hint-text">
-                Provider SIP port (for reference and troubleshooting).
-              </span>
-            </label>
-
-            <label className="field">
-              <span className="label">WebSocket Host (Optional)</span>
-              <UIInput
-                value={websocketHost}
-                onChange={(event) => setWebsocketHost(event.target.value)}
-                placeholder="wss://infernallltd.cloud.ezipbx.biz/ws"
-                autoComplete="off"
-              />
-              <span className="hint-text">
-                If left empty, dialer will auto-try wss://server/ws.
-              </span>
-            </label>
+                <label className="field">
+                  <span className="label">WebSocket Host (Optional)</span>
+                  <UIInput
+                    value={websocketHost}
+                    onChange={(event) => setWebsocketHost(event.target.value)}
+                    placeholder="wss://infernallltd.cloud.ezipbx.biz/ws"
+                    autoComplete="off"
+                  />
+                  <span className="hint-text">
+                    If left empty, dialer will auto-try wss://server/ws.
+                  </span>
+                </label>
+              </>
+            )}
 
             <label className="inline-row" style={{ alignItems: "center", gap: "0.65rem" }}>
               <input
@@ -201,6 +241,10 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
               </p>
             </div>
             <div className="dialer-meta-item">
+              <p className="dialer-meta-label">Dialer Mode</p>
+              <p className="dialer-meta-value">{dialerMode}</p>
+            </div>
+            <div className="dialer-meta-item">
               <p className="dialer-meta-label">Current Domain</p>
               <p className="dialer-meta-value">{domain || "Not configured"}</p>
             </div>
@@ -208,18 +252,27 @@ export function AdminDialerDomainClient({ initialConfig }: Props) {
               <p className="dialer-meta-label">PBX Platform</p>
               <p className="dialer-meta-value">{pbxPlatform || "Not configured"}</p>
             </div>
-            <div className="dialer-meta-item">
-              <p className="dialer-meta-label">SIP Port</p>
-              <p className="dialer-meta-value">{sipPort || "Not configured"}</p>
-            </div>
-            <div className="dialer-meta-item">
-              <p className="dialer-meta-label">SIP Transport</p>
-              <p className="dialer-meta-value">{sipTransport || "Not configured"}</p>
-            </div>
-            <div className="dialer-meta-item">
-              <p className="dialer-meta-label">Current WebSocket Host</p>
-              <p className="dialer-meta-value">{websocketHost || "Not configured"}</p>
-            </div>
+            {dialerMode === "LINKUS" ? (
+              <div className="dialer-meta-item">
+                <p className="dialer-meta-label">Linkus Web URL</p>
+                <p className="dialer-meta-value">{linkusWebClientUrl || "Not configured"}</p>
+              </div>
+            ) : (
+              <>
+                <div className="dialer-meta-item">
+                  <p className="dialer-meta-label">SIP Port</p>
+                  <p className="dialer-meta-value">{sipPort || "Not configured"}</p>
+                </div>
+                <div className="dialer-meta-item">
+                  <p className="dialer-meta-label">SIP Transport</p>
+                  <p className="dialer-meta-value">{sipTransport || "Not configured"}</p>
+                </div>
+                <div className="dialer-meta-item">
+                  <p className="dialer-meta-label">Current WebSocket Host</p>
+                  <p className="dialer-meta-value">{websocketHost || "Not configured"}</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

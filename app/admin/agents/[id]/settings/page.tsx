@@ -16,7 +16,7 @@ export default async function AdminAgentSettingsPage({ params }: Props) {
     redirect("/admin/login");
   }
 
-  const [user, agent] = await Promise.all([
+  const [user, agent, dialerConfig] = await Promise.all([
     db.user.findUnique({
       where: { id: session.userId },
       select: {
@@ -44,6 +44,12 @@ export default async function AdminAgentSettingsPage({ params }: Props) {
         },
       },
     }),
+    db.dialerDomainConfig.findUnique({
+      where: { id: "singleton" },
+      select: {
+        dialerMode: true,
+      },
+    }),
   ]);
 
   if (!user || !user.isActive) {
@@ -60,6 +66,7 @@ export default async function AdminAgentSettingsPage({ params }: Props) {
 
   return (
     <AdminAgentSettingsClient
+      dialerMode={(dialerConfig?.dialerMode as "SIP" | "LINKUS") ?? "SIP"}
       initialAgent={{
         id: agent.id,
         email: agent.email,

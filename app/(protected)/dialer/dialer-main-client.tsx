@@ -151,6 +151,28 @@ function authUsernameCandidates(providerUsername: string, extensionNumber: strin
   return [...out].filter(Boolean);
 }
 
+function normalizeWebUrl(value: string): string {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function linkusLaunchUrl(linkusWebClientUrl: string | null, domain: string | null, target: string): string | null {
+  const base = linkusWebClientUrl?.trim() || domain?.trim();
+  if (!base) return null;
+  try {
+    const url = new URL(normalizeWebUrl(base));
+    if (target.trim()) {
+      // Common keys used by web dialers; ignored safely if unsupported by provider.
+      url.searchParams.set("number", target.trim());
+      url.searchParams.set("dial", target.trim());
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
@@ -175,28 +197,38 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
   const isMountedRef = useRef(true);
   const shuttingDownRef = useRef(false);
   const didAutoCallRef = useRef(false);
+  const isLinkusMode = bootstrap.dialerDomain.dialerMode === "LINKUS";
 
   const setupIssues = useMemo(() => {
     const issues: string[] = [];
     if (!bootstrap.dialerDomain.isEnabled) issues.push("dialer is disabled by admin");
-    if (!bootstrap.dialerDomain.domain?.trim()) issues.push("dialer domain is missing");
-    if (!bootstrap.me.dialer.providerUsername?.trim()) issues.push("provider username is missing");
-    if (!bootstrap.me.dialer.providerPassword?.trim()) issues.push("provider password is missing");
+    if (isLinkusMode) {
+      if (!bootstrap.dialerDomain.linkusWebClientUrl?.trim() && !bootstrap.dialerDomain.domain?.trim()) {
+        issues.push("add Linkus Web URL or server domain");
+      }
+    } else {
+      if (!bootstrap.dialerDomain.domain?.trim()) issues.push("dialer domain is missing");
+      if (!bootstrap.me.dialer.providerUsername?.trim()) issues.push("provider username is missing");
+      if (!bootstrap.me.dialer.providerPassword?.trim()) issues.push("provider password is missing");
+    }
     return issues;
   }, [
+    isLinkusMode,
+    bootstrap.dialerDomain.linkusWebClientUrl,
     bootstrap.dialerDomain.domain,
     bootstrap.dialerDomain.isEnabled,
     bootstrap.me.dialer.providerPassword,
     bootstrap.me.dialer.providerUsername,
   ]);
   const readyForRegistration = setupIssues.length === 0;
-  const readyForCalling = readyForRegistration && registerState === "REGISTERED";
+  const readyForCalling = isLinkusMode ? readyForRegistration : readyForRegistration && registerState === "REGISTERED";
   const websocketDisplay = useMemo(() => {
+    if (isLinkusMode) return bootstrap.dialerDomain.linkusWebClientUrl || "auto: Linkus via server domain";
     if (registerTarget) return registerTarget;
     if (bootstrap.dialerDomain.websocketHost?.trim()) return bootstrap.dialerDomain.websocketHost;
     if (bootstrap.dialerDomain.domain?.trim()) return `auto: wss://${bootstrap.dialerDomain.domain}/ws`;
     return "Not set";
-  }, [registerTarget, bootstrap.dialerDomain.websocketHost, bootstrap.dialerDomain.domain]);
+  }, [isLinkusMode, registerTarget, bootstrap.dialerDomain.linkusWebClientUrl, bootstrap.dialerDomain.websocketHost, bootstrap.dialerDomain.domain]);
 
   function clearReconnectTimer() {
     if (!reconnectTimerRef.current) return;
@@ -205,6 +237,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
   }
 
   function scheduleReconnect() {
+    if (isLinkusMode) return;
     if (!isMountedRef.current || shuttingDownRef.current || !readyForRegistration) return;
     if (reconnectTimerRef.current) return;
     const attempt = reconnectAttemptRef.current + 1;
@@ -334,13 +367,43 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
 
   async function callTarget(target: string, metadata: Omit<RuntimeCall, "session" | "startedAtMs" | "answeredAtMs" | "finalized">) {
     if (!readyForCalling) {
-      setMessage({ type: "error", text: "Dialer is not registered." });
+      setMessage({ type: "error", text: isLinkusMode ? "Dialer is not ready." : "Dialer is not registered." });
       return;
     }
     if (runtimeRef.current || incomingRef.current) {
       setMessage({ type: "error", text: "Finish current call first." });
       return;
     }
+
+    if (isLinkusMode) {
+      const launch = linkusLaunchUrl(bootstrap.dialerDomain.linkusWebClientUrl, bootstrap.dialerDomain.domain, target);
+      if (!launch) {
+        setMessage({ type: "error", text: "Linkus launch URL is missing. Set Linkus URL or domain in Dialer Settings." });
+        return;
+      }
+      const popup = window.open(launch, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        setMessage({ type: "error", text: "Popup blocked. Allow popups, then click Call again." });
+        return;
+      }
+      setMessage({ type: "success", text: "Linkus opened in a new tab. Continue the call there." });
+      const startedAt = new Date().toISOString();
+      await logCall({
+        direction: metadata.direction,
+        status: "RINGING",
+        contactId: metadata.contactId,
+        counterpartUserId: metadata.counterpartUserId ?? null,
+        peerName: metadata.peerName,
+        peerNumber: metadata.peerNumber,
+        peerExtension: metadata.peerExtension,
+        startedAt,
+        endedAt: startedAt,
+        durationSec: 0,
+        notes: "Call handed off to Linkus web client.",
+      });
+      return;
+    }
+
     const ua = userAgentRef.current;
     if (!ua) return;
     const domain = bootstrap.dialerDomain.domain!;
@@ -423,6 +486,14 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
   useEffect(() => {
     const start = async () => {
       if (!readyForRegistration) return;
+      if (isLinkusMode) {
+        clearReconnectTimer();
+        reconnectAttemptRef.current = 0;
+        setRegisterTarget(null);
+        setRegisterState("REGISTERED");
+        setMessage(null);
+        return;
+      }
       shuttingDownRef.current = false;
       const username = normalizeSipIdentity(bootstrap.me.dialer.providerUsername!);
       const password = bootstrap.me.dialer.providerPassword!;
@@ -516,6 +587,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
     void start();
     return () => {
       const cleanup = async () => {
+        if (isLinkusMode) return;
         shuttingDownRef.current = true;
         const runtime = runtimeRef.current;
         if (runtime && !runtime.finalized) await finalize(runtime, "FAILED");
@@ -529,7 +601,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       void cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registrationCycle, readyForRegistration, bootstrap.dialerDomain.domain, bootstrap.dialerDomain.websocketHost, bootstrap.me.dialer.providerUsername, bootstrap.me.dialer.providerPassword, bootstrap.me.dialer.extensionNumber, bootstrap.me.dialer.extensionName, bootstrap.me.name]);
+  }, [registrationCycle, readyForRegistration, isLinkusMode, bootstrap.dialerDomain.domain, bootstrap.dialerDomain.websocketHost, bootstrap.me.dialer.providerUsername, bootstrap.me.dialer.providerPassword, bootstrap.me.dialer.extensionNumber, bootstrap.me.dialer.extensionName, bootstrap.me.name]);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -576,7 +648,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
   };
 
   useEffect(() => {
-    if (!autoCall || didAutoCallRef.current || !initialDialTarget || !readyForCalling) return;
+    if (!autoCall || didAutoCallRef.current || !initialDialTarget || !readyForCalling || isLinkusMode) return;
     if (runtimeRef.current || incomingRef.current) return;
     const target = initialDialTarget.trim();
     if (!target) return;
@@ -590,7 +662,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       contactId: matchingContact?.id,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoCall, initialDialTarget, readyForCalling, contacts]);
+  }, [autoCall, initialDialTarget, readyForCalling, contacts, isLinkusMode]);
 
   return (
     <div className="stack">
@@ -703,14 +775,15 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
           </span>
         </div>
         <div className="dialer-connection-list">
+          <div className="dialer-connection-item"><span>Mode</span><strong>{isLinkusMode ? "LINKUS" : "SIP"}</strong></div>
           <div className="dialer-connection-item"><span>Domain</span><strong>{bootstrap.dialerDomain.domain ?? "Not set"}</strong></div>
-          <div className="dialer-connection-item"><span>WebSocket</span><strong>{websocketDisplay}</strong></div>
+          <div className="dialer-connection-item"><span>{isLinkusMode ? "Linkus URL" : "WebSocket"}</span><strong>{websocketDisplay}</strong></div>
           <div className="dialer-connection-item"><span>Extension</span><strong>{bootstrap.me.dialer.extensionNumber ?? bootstrap.me.dialer.providerUsername ?? "Not set"}</strong></div>
         </div>
         <p className="dialer-connection-foot">Domain updated: {bootstrap.dialerDomain.updatedAt ? formatDateTime(bootstrap.dialerDomain.updatedAt) : "Never"}</p>
       </section>
 
-      {incomingCall && (
+      {!isLinkusMode && incomingCall && (
         <section className="dialer-card dialer-incoming-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">Incoming Call</h2>
@@ -728,7 +801,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
         </section>
       )}
 
-      {liveCall && (
+      {!isLinkusMode && liveCall && (
         <section className="dialer-card dialer-live-card">
           <div className="dialer-card-head">
             <h2 className="dialer-card-title">{liveCall.direction === "INTERNAL" ? "Internal Call" : "Live Call"} | {peerTitle(liveCall)}</h2>

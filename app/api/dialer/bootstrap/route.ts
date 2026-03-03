@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     db.dialerDomainConfig.findUnique({
       where: { id: "singleton" },
       select: {
+        dialerMode: true,
+        linkusWebClientUrl: true,
         domain: true,
         websocketHost: true,
         isEnabled: true,
@@ -66,6 +68,8 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     dialerDomain: {
+      dialerMode: (dialerDomain?.dialerMode as "SIP" | "LINKUS") ?? "SIP",
+      linkusWebClientUrl: dialerDomain?.linkusWebClientUrl ?? null,
       domain: dialerDomain?.domain ?? null,
       websocketHost: dialerDomain?.websocketHost ?? null,
       isEnabled: dialerDomain?.isEnabled ?? true,

@@ -165,6 +165,8 @@ export type AuditLogListResponse = {
 
 export type DialerDomainConfigRow = {
   id: string;
+  dialerMode: "SIP" | "LINKUS";
+  linkusWebClientUrl: string | null;
   pbxPlatform: string | null;
   domain: string | null;
   sipPort: number | null;
@@ -251,6 +253,8 @@ export type DialerCallHistoryRow = {
 
 export type DialerBootstrapResponse = {
   dialerDomain: {
+    dialerMode: "SIP" | "LINKUS";
+    linkusWebClientUrl: string | null;
     domain: string | null;
     websocketHost: string | null;
     isEnabled: boolean;
@@ -618,6 +622,8 @@ export function fetchDialerDomain(): Promise<ApiResult<{ config: DialerDomainCon
 }
 
 export function updateDialerDomain(payload: {
+  dialerMode?: "SIP" | "LINKUS";
+  linkusWebClientUrl?: string | null;
   pbxPlatform?: string | null;
   domain?: string | null;
   sipPort?: number | null;

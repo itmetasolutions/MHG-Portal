@@ -27,6 +27,8 @@ export default async function DialerPage({ searchParams }: DialerPageProps) {
     db.dialerDomainConfig.findUnique({
       where: { id: "singleton" },
       select: {
+        dialerMode: true,
+        linkusWebClientUrl: true,
         domain: true,
         websocketHost: true,
         isEnabled: true,
@@ -139,6 +141,8 @@ export default async function DialerPage({ searchParams }: DialerPageProps) {
       <DialerMainClient
         bootstrap={{
           dialerDomain: {
+            dialerMode: (dialerDomain?.dialerMode as "SIP" | "LINKUS") ?? "SIP",
+            linkusWebClientUrl: dialerDomain?.linkusWebClientUrl ?? null,
             domain: dialerDomain?.domain ?? null,
             websocketHost: dialerDomain?.websocketHost ?? null,
             isEnabled: dialerDomain?.isEnabled ?? true,

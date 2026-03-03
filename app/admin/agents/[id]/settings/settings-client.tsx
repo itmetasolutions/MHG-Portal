@@ -10,11 +10,12 @@ import { formatDate, formatDateTime } from "@/lib/format";
 
 type Props = {
   initialAgent: AdminAgentDialerSettings;
+  dialerMode: "SIP" | "LINKUS";
 };
 
 type Message = { type: "success" | "error"; text: string } | null;
 
-export function AdminAgentSettingsClient({ initialAgent }: Props) {
+export function AdminAgentSettingsClient({ initialAgent, dialerMode }: Props) {
   const [baseline, setBaseline] = useState(initialAgent);
   const [name, setName] = useState(initialAgent.agentDisplayName);
   const [email, setEmail] = useState(initialAgent.email);
@@ -32,6 +33,7 @@ export function AdminAgentSettingsClient({ initialAgent }: Props) {
   const [message, setMessage] = useState<Message>(null);
   const [hasProviderPassword, setHasProviderPassword] = useState(initialAgent.dialer.hasProviderPassword);
   const [dialerUpdatedAt, setDialerUpdatedAt] = useState(initialAgent.dialer.updatedAt);
+  const isSipMode = dialerMode === "SIP";
 
   const hasUnsavedChanges = useMemo(() => {
     return (
@@ -39,9 +41,9 @@ export function AdminAgentSettingsClient({ initialAgent }: Props) {
       email.trim().toLowerCase() !== baseline.email.toLowerCase() ||
       isActive !== baseline.isActive ||
       newPassword.length > 0 ||
-      providerUsername.trim() !== (baseline.dialer.providerUsername ?? "") ||
-      providerPassword.length > 0 ||
-      clearProviderPassword ||
+      (isSipMode && providerUsername.trim() !== (baseline.dialer.providerUsername ?? "")) ||
+      (isSipMode && providerPassword.length > 0) ||
+      (isSipMode && clearProviderPassword) ||
       extensionNumber.trim() !== (baseline.dialer.extensionNumber ?? "") ||
       extensionName.trim() !== (baseline.dialer.extensionName ?? "") ||
       autoDetectExtension !== baseline.dialer.autoDetectExtension
@@ -60,6 +62,7 @@ export function AdminAgentSettingsClient({ initialAgent }: Props) {
     extensionName,
     extensionNumber,
     isActive,
+    isSipMode,
     name,
     newPassword,
     providerPassword,
@@ -75,19 +78,23 @@ export function AdminAgentSettingsClient({ initialAgent }: Props) {
       email: email.trim(),
       agentDisplayName: name.trim(),
       isActive,
-      providerUsername: providerUsername.trim() || null,
       extensionNumber: extensionNumber.trim() || null,
       extensionName: extensionName.trim() || null,
       autoDetectExtension,
     };
+    if (isSipMode) {
+      payload.providerUsername = providerUsername.trim() || null;
+    }
 
     if (newPassword.trim().length > 0) {
       payload.newPassword = newPassword;
     }
-    if (providerPassword.trim().length > 0) {
-      payload.providerPassword = providerPassword;
-    } else if (clearProviderPassword) {
-      payload.providerPassword = null;
+    if (isSipMode) {
+      if (providerPassword.trim().length > 0) {
+        payload.providerPassword = providerPassword;
+      } else if (clearProviderPassword) {
+        payload.providerPassword = null;
+      }
     }
 
     const result = await updateAdminAgentDialerSettings(initialAgent.id, payload);
@@ -197,48 +204,61 @@ export function AdminAgentSettingsClient({ initialAgent }: Props) {
               </svg>
               Dialer Extension Settings
             </h2>
-            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              Last updated: {dialerUpdatedAt ? formatDateTime(dialerUpdatedAt) : "Never"}
-            </span>
+            <div className="inline-row">
+              <span className={`badge ${isSipMode ? "badge-active" : "badge-warning"}`}>
+                {isSipMode ? "SIP Mode" : "Linkus Mode"}
+              </span>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                Last updated: {dialerUpdatedAt ? formatDateTime(dialerUpdatedAt) : "Never"}
+              </span>
+            </div>
           </div>
           <div className="admin-card-body">
             <div className="field-grid" style={{ maxWidth: 760 }}>
-              <div className="two-col">
-                <label className="field">
-                  <span className="label">Provider Username</span>
-                  <UIInput
-                    value={providerUsername}
-                    onChange={(event) => setProviderUsername(event.target.value)}
-                    placeholder="Extension SIP username"
-                    autoComplete="off"
-                  />
-                </label>
-                <label className="field">
-                  <span className="label">Provider Password</span>
-                  <UIInput
-                    type="password"
-                    value={providerPassword}
-                    onChange={(event) => {
-                      setProviderPassword(event.target.value);
-                      if (event.target.value.length > 0) setClearProviderPassword(false);
-                    }}
-                    placeholder={hasProviderPassword ? "Saved (enter to replace)" : "Set extension password"}
-                    autoComplete="new-password"
-                  />
-                </label>
-              </div>
+              {isSipMode ? (
+                <>
+                  <div className="two-col">
+                    <label className="field">
+                      <span className="label">Provider Username</span>
+                      <UIInput
+                        value={providerUsername}
+                        onChange={(event) => setProviderUsername(event.target.value)}
+                        placeholder="Extension SIP username"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="label">Provider Password</span>
+                      <UIInput
+                        type="password"
+                        value={providerPassword}
+                        onChange={(event) => {
+                          setProviderPassword(event.target.value);
+                          if (event.target.value.length > 0) setClearProviderPassword(false);
+                        }}
+                        placeholder={hasProviderPassword ? "Saved (enter to replace)" : "Set extension password"}
+                        autoComplete="new-password"
+                      />
+                    </label>
+                  </div>
 
-              <label className="inline-row" style={{ alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={clearProviderPassword}
-                  onChange={(event) => setClearProviderPassword(event.target.checked)}
-                  disabled={providerPassword.length > 0 || !hasProviderPassword}
-                />
-                <span style={{ fontSize: "0.83rem", color: "var(--text-muted)" }}>
-                  Clear saved provider password
-                </span>
-              </label>
+                  <label className="inline-row" style={{ alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={clearProviderPassword}
+                      onChange={(event) => setClearProviderPassword(event.target.checked)}
+                      disabled={providerPassword.length > 0 || !hasProviderPassword}
+                    />
+                    <span style={{ fontSize: "0.83rem", color: "var(--text-muted)" }}>
+                      Clear saved provider password
+                    </span>
+                  </label>
+                </>
+              ) : (
+                <p className="hint-text" style={{ marginTop: 0 }}>
+                  Linkus mode is active. Provider SIP username/password are managed in the provider app.
+                </p>
+              )}
 
               <div className="two-col">
                 <label className="field">

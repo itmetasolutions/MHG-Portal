@@ -24,6 +24,8 @@ export default async function AdminDialerDomainPage() {
       where: { id: "singleton" },
       select: {
         id: true,
+        dialerMode: true,
+        linkusWebClientUrl: true,
         pbxPlatform: true,
         domain: true,
         sipPort: true,
@@ -56,6 +58,8 @@ export default async function AdminDialerDomainPage() {
         config
           ? {
               id: config.id,
+              dialerMode: config.dialerMode as "SIP" | "LINKUS",
+              linkusWebClientUrl: config.linkusWebClientUrl,
               pbxPlatform: config.pbxPlatform,
               domain: config.domain,
               sipPort: config.sipPort,
@@ -67,6 +71,8 @@ export default async function AdminDialerDomainPage() {
             }
           : {
               id: "singleton",
+              dialerMode: "SIP",
+              linkusWebClientUrl: null,
               pbxPlatform: null,
               domain: null,
               sipPort: null,
