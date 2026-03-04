@@ -196,6 +196,17 @@ export function AdminShell({ user, userId, chatContacts, children }: Props) {
 
         {/* Page content */}
         <div className="admin-page">{children}</div>
+
+        <div className="shell-credit-wrap">
+          <a
+            className="shell-credit-pill"
+            href="https://itmetasolutions.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Design &amp; Development by IT Meta Solutions
+          </a>
+        </div>
       </div>
 
       <FloatingChat userId={userId} contacts={chatContacts} isAdmin />
