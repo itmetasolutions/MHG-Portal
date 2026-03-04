@@ -222,6 +222,16 @@ a {
   font-size: 0.8rem;
 }
 
+.footer-link {
+  color: var(--text-subtle);
+  font-size: 0.8rem;
+  transition: color 120ms;
+}
+
+.footer-link:hover {
+  color: var(--brand-gold);
+}
+
 /* ─── Landing Page ──────────────────────────────────────────────────────── */
 .landing-page {
   position: relative;

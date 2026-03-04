@@ -100,6 +100,14 @@ export function AppShell({ session, children }: Props) {
           <span className="footer-copy">
             &copy; {new Date().getFullYear()} More Homes Group. All rights reserved.
           </span>
+          <a
+            className="footer-link"
+            href="https://itmetasolutions.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Design &amp; Development by IT Meta Solutions
+          </a>
           <span className="footer-tag">Letting Agency Portal</span>
         </div>
       </footer>
