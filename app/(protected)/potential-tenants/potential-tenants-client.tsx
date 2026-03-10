@@ -114,7 +114,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
           <div style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
             No potential tenants yet.<br />
             <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-              Click "Add New Potential Tenant" to get started.
+              Click &quot;Add New Potential Tenant&quot; to get started.
             </span>
           </div>
         ) : (
