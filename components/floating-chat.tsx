@@ -7,6 +7,7 @@ type Contact = {
   name: string;
   email: string;
   role?: string;
+  profilePicture?: string | null;
 };
 
 type Message = {
@@ -201,7 +202,11 @@ export function FloatingChat({ userId, contacts, isAdmin = false }: Props) {
                     <path fillRule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clipRule="evenodd" />
                   </svg>
                 </button>
-                <div className="fchat-popup-avatar">{getInitials(selected.name)}</div>
+                <div className="fchat-popup-avatar">
+                  {selected.profilePicture
+                    ? <img src={selected.profilePicture} alt={selected.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    : getInitials(selected.name)}
+                </div>
                 <div className="fchat-popup-contact-info">
                   <div className="fchat-popup-contact-name">{selected.name}</div>
                   <div className="fchat-popup-contact-meta">{selected.role ?? selected.email}</div>
@@ -238,7 +243,11 @@ export function FloatingChat({ userId, contacts, isAdmin = false }: Props) {
                   className="fchat-contact-item"
                   onClick={() => setSelected(contact)}
                 >
-                  <div className="fchat-contact-avatar">{getInitials(contact.name)}</div>
+                  <div className="fchat-contact-avatar">
+                    {contact.profilePicture
+                      ? <img src={contact.profilePicture} alt={contact.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                      : getInitials(contact.name)}
+                  </div>
                   <div className="fchat-contact-info">
                     <div className="fchat-contact-name">
                       {contact.name}

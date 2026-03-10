@@ -7,6 +7,7 @@ type Contact = {
   name: string | null;
   email: string;
   role: string;
+  profilePicture?: string | null;
 };
 
 type Message = {
@@ -191,7 +192,9 @@ export function AgentMessagesClient({ agentId, contacts }: Props) {
               onClick={() => setSelectedContact(user)}
             >
               <div className="chat-agent-avatar">
-                {getInitials(user.name)}
+                {user.profilePicture
+                  ? <img src={user.profilePicture} alt={user.name ?? ""} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  : getInitials(user.name)}
               </div>
               <div className="chat-agent-info">
                 <div className="chat-agent-name">
@@ -241,7 +244,9 @@ export function AgentMessagesClient({ agentId, contacts }: Props) {
             <div className="chat-pane-header">
               <div className="chat-pane-header-info">
                 <div className="chat-pane-avatar">
-                  {getInitials(selectedContact.name)}
+                  {selectedContact.profilePicture
+                    ? <img src={selectedContact.profilePicture} alt={selectedContact.name ?? ""} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    : getInitials(selectedContact.name)}
                 </div>
                 <div>
                   <div className="chat-pane-name">

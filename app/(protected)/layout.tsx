@@ -24,7 +24,7 @@ export default async function ProtectedLayout({
     }),
     db.user.findMany({
       where: { isActive: true, id: { not: session.userId } },
-      select: { id: true, agentDisplayName: true, email: true, role: true },
+      select: { id: true, agentDisplayName: true, email: true, role: true, profilePicture: true },
       orderBy: [{ role: "asc" }, { agentDisplayName: "asc" }],
     }),
   ]);
@@ -42,6 +42,7 @@ export default async function ProtectedLayout({
         name: c.agentDisplayName,
         email: c.email,
         role: c.role as string,
+        profilePicture: c.profilePicture,
       }))}
     >
       {children}

@@ -20,7 +20,7 @@ export default async function AdminLayout({
     }),
     db.user.findMany({
       where: { role: UserRole.AGENT, isActive: true },
-      select: { id: true, agentDisplayName: true, email: true },
+      select: { id: true, agentDisplayName: true, email: true, profilePicture: true },
       orderBy: { agentDisplayName: "asc" },
     }),
   ]);
@@ -33,7 +33,7 @@ export default async function AdminLayout({
     <AdminShell
       user={{ name: user.agentDisplayName, email: session.email, profilePicture: user.profilePicture }}
       userId={session.userId}
-      chatContacts={agents.map((a) => ({ id: a.id, name: a.agentDisplayName, email: a.email }))}
+      chatContacts={agents.map((a) => ({ id: a.id, name: a.agentDisplayName, email: a.email, profilePicture: a.profilePicture }))}
     >
       {children}
     </AdminShell>

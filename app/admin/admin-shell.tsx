@@ -11,7 +11,7 @@ type AdminUser = {
   profilePicture?: string | null;
 };
 
-type ChatContact = { id: string; name: string; email: string };
+type ChatContact = { id: string; name: string; email: string; profilePicture?: string | null };
 
 type Props = {
   user: AdminUser;

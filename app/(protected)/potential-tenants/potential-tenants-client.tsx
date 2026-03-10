@@ -88,7 +88,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
   }
 
   return (
-    <>
+    <div className="stack">
       <header className="page-header">
         <div>
           <h1 className="page-title">Potential Tenants</h1>
@@ -299,6 +299,6 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

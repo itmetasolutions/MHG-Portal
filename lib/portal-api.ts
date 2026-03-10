@@ -128,6 +128,7 @@ export type AgentRow = {
   id: string;
   email: string;
   agentDisplayName: string;
+  profilePicture?: string | null;
   isActive: boolean;
   createdAt: string;
   _count?: {

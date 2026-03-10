@@ -35,6 +35,7 @@ export default async function AdminAgentsPage() {
       id: true,
       email: true,
       agentDisplayName: true,
+      profilePicture: true,
       isActive: true,
       createdAt: true,
       _count: {
@@ -63,6 +64,7 @@ export default async function AdminAgentsPage() {
         id: agent.id,
         email: agent.email,
         agentDisplayName: agent.agentDisplayName,
+        profilePicture: agent.profilePicture,
         isActive: agent.isActive,
         createdAt: agent.createdAt.toISOString(),
         ownedLandlords: agent._count.ownedLandlords,

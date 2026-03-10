@@ -13,7 +13,7 @@ type AgentUser = {
   profilePicture?: string | null;
 };
 
-type ChatContact = { id: string; name: string; email: string; role?: string };
+type ChatContact = { id: string; name: string; email: string; role?: string; profilePicture?: string | null };
 
 type Props = {
   user: AgentUser;

@@ -14,6 +14,7 @@ type AgentRow = {
   id: string;
   email: string;
   agentDisplayName: string;
+  profilePicture?: string | null;
   isActive: boolean;
   createdAt: string;
   ownedLandlords: number;
@@ -52,7 +53,7 @@ function validate(form: CreateFormState): Record<string, string> {
   return errors;
 }
 
-function AgentInitials({ name, email }: { name: string; email: string }) {
+function AgentInitials({ name, email, profilePicture }: { name: string; email: string; profilePicture?: string | null }) {
   const src = name || email;
   const chars = src
     .split(" ")
@@ -75,9 +76,12 @@ function AgentInitials({ name, email }: { name: string; email: string }) {
         fontWeight: 700,
         color: "var(--brand-gold)",
         flexShrink: 0,
+        overflow: "hidden",
       }}
     >
-      {chars}
+      {profilePicture
+        ? <img src={profilePicture} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : chars}
     </div>
   );
 }
@@ -144,6 +148,7 @@ export function AgentsAdminClient({ initialAgents }: Props) {
       id: a.id,
       email: a.email,
       agentDisplayName: a.agentDisplayName,
+      profilePicture: a.profilePicture,
       isActive: a.isActive,
       createdAt: new Date(a.createdAt).toISOString(),
       ownedLandlords: a._count?.ownedLandlords ?? 0,
@@ -473,6 +478,7 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                             <AgentInitials
                               name={agent.agentDisplayName}
                               email={agent.email}
+                              profilePicture={agent.profilePicture}
                             />
                             <div>
                               <strong style={{ color: "var(--brand-gold)" }}>{agent.agentDisplayName}</strong>

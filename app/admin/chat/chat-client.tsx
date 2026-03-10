@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, FormEvent } from "react";
 
-type Agent = { id: string; name: string; email: string };
+type Agent = { id: string; name: string; email: string; profilePicture?: string | null };
 
 type Message = {
   id: string;
@@ -194,7 +194,9 @@ export function AdminChatClient({ adminId, agents }: Props) {
               onClick={() => setSelectedAgent(agent)}
             >
               <div className="chat-agent-avatar">
-                {getInitials(agent.name)}
+                {agent.profilePicture
+                  ? <img src={agent.profilePicture} alt={agent.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                  : getInitials(agent.name)}
               </div>
               <div className="chat-agent-info">
                 <div className="chat-agent-name">
@@ -241,7 +243,9 @@ export function AdminChatClient({ adminId, agents }: Props) {
             <div className="chat-pane-header">
               <div className="chat-pane-header-info">
                 <div className="chat-pane-avatar">
-                  {getInitials(selectedAgent.name)}
+                  {selectedAgent.profilePicture
+                    ? <img src={selectedAgent.profilePicture} alt={selectedAgent.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+                    : getInitials(selectedAgent.name)}
                 </div>
                 <div>
                   <div className="chat-pane-name">{selectedAgent.name}</div>

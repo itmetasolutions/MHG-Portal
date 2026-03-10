@@ -19,7 +19,7 @@ export default async function AdminChatPage() {
 
   const agents = await db.user.findMany({
     where: { role: UserRole.AGENT, isActive: true },
-    select: { id: true, agentDisplayName: true, email: true },
+    select: { id: true, agentDisplayName: true, email: true, profilePicture: true },
     orderBy: { agentDisplayName: "asc" },
   });
 
@@ -30,6 +30,7 @@ export default async function AdminChatPage() {
         id: a.id,
         name: a.agentDisplayName,
         email: a.email,
+        profilePicture: a.profilePicture,
       }))}
     />
   );

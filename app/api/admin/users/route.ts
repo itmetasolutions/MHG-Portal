@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
       id: true,
       email: true,
       agentDisplayName: true,
+      profilePicture: true,
       isActive: true,
       createdAt: true,
       _count: {

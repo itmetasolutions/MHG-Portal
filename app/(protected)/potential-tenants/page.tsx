@@ -40,9 +40,5 @@ export default async function PotentialTenantsPage() {
     createdAt: t.createdAt.toISOString(),
   }));
 
-  return (
-    <div className="stack">
-      <PotentialTenantsClient initialTenants={serialized} />
-    </div>
-  );
+  return <PotentialTenantsClient initialTenants={serialized} />;
 }
