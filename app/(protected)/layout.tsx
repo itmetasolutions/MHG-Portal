@@ -20,7 +20,7 @@ export default async function ProtectedLayout({
   const [user, contacts] = await Promise.all([
     db.user.findUnique({
       where: { id: session.userId },
-      select: { agentDisplayName: true, isActive: true },
+      select: { agentDisplayName: true, profilePicture: true, isActive: true },
     }),
     db.user.findMany({
       where: { isActive: true, id: { not: session.userId } },
@@ -35,7 +35,7 @@ export default async function ProtectedLayout({
 
   return (
     <AgentShell
-      user={{ name: user.agentDisplayName, email: session.email }}
+      user={{ name: user.agentDisplayName, email: session.email, profilePicture: user.profilePicture }}
       userId={session.userId}
       chatContacts={contacts.map((c) => ({
         id: c.id,

@@ -55,6 +55,7 @@ model User {
   passwordHash     String
   role             UserRole
   agentDisplayName String
+  profilePicture   String?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 

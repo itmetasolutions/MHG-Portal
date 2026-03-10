@@ -10,6 +10,7 @@ import { FloatingChat } from "@/components/floating-chat";
 type AgentUser = {
   name: string;
   email: string;
+  profilePicture?: string | null;
 };
 
 type ChatContact = { id: string; name: string; email: string; role?: string };
@@ -73,17 +74,6 @@ function TenantsIcon() {
   );
 }
 
-function ProfileIcon() {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0H3Z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
 
 function DialerIcon() {
   return (
@@ -145,7 +135,6 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
   { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
   { href: "/potential-tenants", label: "Potential Tenants", icon: PotentialTenantsIcon, exact: false },
-  { href: "/profile", label: "Profile", icon: ProfileIcon, exact: false },
 ];
 
 export function AgentShell({ user, userId, chatContacts, children }: Props) {
@@ -222,13 +211,18 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
         </nav>
 
         <div className="agent-sidebar-footer">
-          <div className="agent-user-card">
-            <div className="agent-user-avatar">{initials}</div>
+          <Link href="/profile" className="agent-user-card" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer" }}>
+            {user.profilePicture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.profilePicture} alt="Profile" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--brand-gold)" }} />
+            ) : (
+              <div className="agent-user-avatar">{initials}</div>
+            )}
             <div className="agent-user-info">
               <div className="agent-user-name">{user.name || "Agent"}</div>
               <div className="agent-user-email">{user.email}</div>
             </div>
-          </div>
+          </Link>
           <NavLogoutButton />
         </div>
       </aside>

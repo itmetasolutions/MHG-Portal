@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       id: true,
       email: true,
       agentDisplayName: true,
+      profilePicture: true,
       role: true,
       isActive: true,
       createdAt: true,
@@ -102,6 +103,28 @@ export async function PATCH(request: NextRequest) {
     });
 
     return Response.json({ message: "Password changed successfully." });
+  }
+
+  // Update profile picture
+  if ("profilePicture" in body) {
+    const pic = body.profilePicture;
+    if (pic !== null && typeof pic !== "string") {
+      return Response.json({ message: "Invalid profilePicture value." }, { status: 400 });
+    }
+    if (typeof pic === "string") {
+      if (!pic.startsWith("data:image/")) {
+        return Response.json({ message: "Profile picture must be a valid image data URL." }, { status: 400 });
+      }
+      // Limit to ~2MB base64
+      if (pic.length > 2_800_000) {
+        return Response.json({ message: "Profile picture must be smaller than 2 MB." }, { status: 400 });
+      }
+    }
+    await db.user.update({
+      where: { id: session.userId },
+      data: { profilePicture: pic },
+    });
+    return Response.json({ message: "Profile picture updated." });
   }
 
   return Response.json({ message: "Nothing to update." }, { status: 400 });

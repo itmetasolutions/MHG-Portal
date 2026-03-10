@@ -8,6 +8,7 @@ import { FloatingChat } from "@/components/floating-chat";
 type AdminUser = {
   name: string;
   email: string;
+  profilePicture?: string | null;
 };
 
 type ChatContact = { id: string; name: string; email: string };
@@ -162,13 +163,18 @@ export function AdminShell({ user, userId, chatContacts, children }: Props) {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <div className="admin-user-card">
-            <div className="admin-user-avatar">{initials}</div>
+          <Link href="/admin/profile" className="admin-user-card" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer" }}>
+            {user.profilePicture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.profilePicture} alt="Profile" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--brand-gold)" }} />
+            ) : (
+              <div className="admin-user-avatar">{initials}</div>
+            )}
             <div className="admin-user-info">
               <div className="admin-user-name">{user.name || "Admin"}</div>
               <div className="admin-user-email">{user.email}</div>
             </div>
-          </div>
+          </Link>
           <NavLogoutButton />
         </div>
       </aside>

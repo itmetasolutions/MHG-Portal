@@ -89,8 +89,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
 
   return (
     <>
-      {/* Header row with Add button */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+      <header className="page-header">
         <div>
           <h1 className="page-title">Potential Tenants</h1>
           <p className="page-subtitle">
@@ -100,7 +99,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
         <button className="btn btn-primary" onClick={openModal}>
           + Add New Potential Tenant
         </button>
-      </div>
+      </header>
 
       {/* Table */}
       <div className="panel">

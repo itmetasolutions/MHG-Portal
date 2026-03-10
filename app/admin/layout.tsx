@@ -16,7 +16,7 @@ export default async function AdminLayout({
   const [user, agents] = await Promise.all([
     db.user.findUnique({
       where: { id: session.userId },
-      select: { id: true, role: true, isActive: true, agentDisplayName: true },
+      select: { id: true, role: true, isActive: true, agentDisplayName: true, profilePicture: true },
     }),
     db.user.findMany({
       where: { role: UserRole.AGENT, isActive: true },
@@ -31,7 +31,7 @@ export default async function AdminLayout({
 
   return (
     <AdminShell
-      user={{ name: user.agentDisplayName, email: session.email }}
+      user={{ name: user.agentDisplayName, email: session.email, profilePicture: user.profilePicture }}
       userId={session.userId}
       chatContacts={agents.map((a) => ({ id: a.id, name: a.agentDisplayName, email: a.email }))}
     >

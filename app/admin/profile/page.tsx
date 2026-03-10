@@ -1,12 +1,14 @@
+import { UserRole } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { ProfileClient } from "./profile-client";
+import { ProfileClient } from "@/app/(protected)/profile/profile-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProfilePage() {
+export default async function AdminProfilePage() {
   const session = await getAuthSession();
-  if (!session) return null;
+  if (!session) redirect("/admin/login");
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
@@ -27,7 +29,8 @@ export default async function ProfilePage() {
     },
   });
 
-  if (!user) return null;
+  if (!user || !user.isActive) redirect("/admin/login");
+  if (user.role !== UserRole.ADMIN) redirect("/dashboard");
 
   return (
     <ProfileClient
