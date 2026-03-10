@@ -74,6 +74,7 @@ model User {
   dialerCalls        DialerCall[]             @relation("DialerCallAgent")
   dialerCounterCalls DialerCall[]             @relation("DialerCallCounterpart")
   dialerDomainUpdates DialerDomainConfig[]    @relation("DialerDomainUpdatedBy")
+  potentialTenants    PotentialTenant[]       @relation("PotentialTenantAddedBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -356,6 +357,24 @@ model DialerCall {
   @@index([agentUserId, direction, status])
   @@index([counterpartUserId])
   @@index([contactId])
+}
+
+model PotentialTenant {
+  id           String   @id @default(uuid()) @db.Uuid
+  addedByAgent User     @relation("PotentialTenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  addedByAgentId String @db.Uuid
+  fullName     String
+  email        String?
+  phone        String?
+  interestedIn String?
+  budget       String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([addedByAgentId, createdAt])
+  @@index([createdAt])
+  @@index([fullName])
 }
 
 // Singleton commission configuration (always upserted with id = "singleton")
