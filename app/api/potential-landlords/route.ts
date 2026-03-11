@@ -12,11 +12,11 @@ const createSchema = z.object({
 
 const LOCK_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
 
-export function getLockExpiry(createdAt: Date): Date {
+function getLockExpiry(createdAt: Date): Date {
   return new Date(createdAt.getTime() + LOCK_DURATION_MS);
 }
 
-export function isLockActive(createdAt: Date): boolean {
+function isLockActive(createdAt: Date): boolean {
   return getLockExpiry(createdAt) > new Date();
 }
 
