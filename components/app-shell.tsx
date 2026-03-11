@@ -33,7 +33,8 @@ export function AppShell({ session, children }: Props) {
     pathname?.startsWith("/profile") ||
     pathname?.startsWith("/dialer") ||
     pathname?.startsWith("/messages") ||
-    pathname?.startsWith("/potential-tenants");
+    pathname?.startsWith("/potential-tenants") ||
+    pathname?.startsWith("/potential-landlords");
 
   if (session && isProtectedPath) {
     return <>{children}</>;
