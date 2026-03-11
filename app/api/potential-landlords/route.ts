@@ -16,9 +16,6 @@ function getLockExpiry(createdAt: Date): Date {
   return new Date(createdAt.getTime() + LOCK_DURATION_MS);
 }
 
-function isLockActive(createdAt: Date): boolean {
-  return getLockExpiry(createdAt) > new Date();
-}
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
