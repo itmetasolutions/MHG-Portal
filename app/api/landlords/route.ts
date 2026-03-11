@@ -310,6 +310,32 @@ export async function POST(request: NextRequest) {
     return conflictResponse(existingLandlord);
   }
 
+  // Check for active potential-landlord lock held by a different agent
+  const lockCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const potentialLock = await db.potentialLandlord.findFirst({
+    where: {
+      phoneLast10: normalizedPhone.phoneLast10,
+      createdAt: { gte: lockCutoff },
+      NOT: { addedByAgentId: ownerAgentId },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      addedByAgent: { select: { agentDisplayName: true } },
+    },
+  });
+
+  if (potentialLock) {
+    const lockExpiry = new Date(potentialLock.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return NextResponse.json(
+      {
+        error: "POTENTIAL_LANDLORD_LOCKED",
+        message: `This landlord is currently locked by ${potentialLock.addedByAgent.agentDisplayName} until ${lockExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. You cannot add their property yet.`,
+      },
+      { status: 409 },
+    );
+  }
+
   try {
     const landlord = await db.$transaction(async (tx) => {
       const created = await tx.landlord.create({

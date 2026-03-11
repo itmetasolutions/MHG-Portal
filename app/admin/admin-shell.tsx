@@ -93,6 +93,14 @@ function PotentialTenantsIcon() {
   );
 }
 
+function PotentialLandlordsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function DialerIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -108,7 +116,8 @@ const navItems = [
   { href: "/admin/properties", label: "Properties",  icon: PropertiesIcon, exact: false },
   { href: "/admin/sales",      label: "Sales",       icon: SalesIcon,      exact: false },
   { href: "/admin/tenants",             label: "Tenants",            icon: TenantsIcon,            exact: false },
-  { href: "/admin/potential-tenants",   label: "Potential Tenants",  icon: PotentialTenantsIcon,   exact: false },
+  { href: "/admin/potential-tenants",    label: "Potential Tenants",   icon: PotentialTenantsIcon,    exact: false },
+  { href: "/admin/potential-landlords", label: "Potential Landlords", icon: PotentialLandlordsIcon,  exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
   { href: "/admin/dialer-domain", label: "Dialer Settings", icon: DialerIcon, exact: false },
