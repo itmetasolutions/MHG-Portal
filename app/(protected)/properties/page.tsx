@@ -107,10 +107,10 @@ export default async function PropertiesPage() {
                   <tr key={prop.id}>
                     <td>
                       <Link
-                        href={`/landlords/${prop.landlord.id}`}
+                        href={`/properties/${prop.id}`}
                         style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
                       >
-                        {prop.addressLine1}
+                        {prop.addressLine1 || prop.propertyRef}
                       </Link>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                         {[prop.city, prop.postcode].filter(Boolean).join(", ")}

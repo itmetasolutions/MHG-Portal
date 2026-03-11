@@ -117,15 +117,20 @@ export default async function AdminPropertiesPage() {
                 {properties.map((prop) => (
                   <tr key={prop.id}>
                     <td>
-                      <strong style={{ display: "block", color: "var(--text)" }}>
-                        {prop.addressLine1}
-                      </strong>
+                      <Link
+                        href={`/admin/properties/${prop.id}`}
+                        style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block", textDecoration: "none" }}
+                      >
+                        {prop.addressLine1 || prop.propertyRef}
+                      </Link>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                         {[prop.city, prop.postcode].filter(Boolean).join(", ")}
                       </span>
                     </td>
                     <td>
-                      <code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code>
+                      <Link href={`/admin/properties/${prop.id}`} style={{ color: "var(--text-muted)", textDecoration: "none" }}>
+                        <code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code>
+                      </Link>
                     </td>
                     <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                       {prop.propertyType ?? "—"}

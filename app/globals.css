@@ -466,6 +466,32 @@ a {
   padding: 1.25rem;
 }
 
+/* ─── Detail Grid (property / record detail pages) ─────────────────────── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem 2rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.detail-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 /* ─── Stats Grid ─────────────────────────────────────────────────────────── */
 .grid-cards {
   display: grid;

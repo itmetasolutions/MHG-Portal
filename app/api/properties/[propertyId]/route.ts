@@ -27,6 +27,17 @@ const agentUpdateSchema = z
     status: z.nativeEnum(PropertyStatus).optional(),
     landlordDemand: z.coerce.number().positive().nullable().optional(),
     expectedCommissionPct: z.coerce.number().min(0).max(100).nullable().optional(),
+    totalRooms: z.coerce.number().int().min(0).nullable().optional(),
+    availableRooms: z.coerce.number().int().min(0).nullable().optional(),
+    rentPerMonth: z.coerce.number().positive().nullable().optional(),
+    depositAmount: z.coerce.number().min(0).nullable().optional(),
+    isFurnished: z.boolean().nullable().optional(),
+    personsAllowed: z.coerce.number().int().min(0).nullable().optional(),
+    petsAllowed: z.boolean().nullable().optional(),
+    dssAllowed: z.boolean().nullable().optional(),
+    childrenAllowed: z.boolean().nullable().optional(),
+    availabilityDate: z.string().datetime({ offset: true }).nullable().optional(),
+    livingLandlord: z.boolean().nullable().optional(),
   })
   .strict();
 
@@ -58,6 +69,17 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   status: true,
   landlordDemand: true,
   expectedCommissionPct: true,
+  totalRooms: true,
+  availableRooms: true,
+  rentPerMonth: true,
+  depositAmount: true,
+  isFurnished: true,
+  personsAllowed: true,
+  petsAllowed: true,
+  dssAllowed: true,
+  childrenAllowed: true,
+  availabilityDate: true,
+  livingLandlord: true,
   createdAt: true,
   updatedAt: true,
   landlord: {
@@ -319,6 +341,55 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     String(payload.expectedCommissionPct) !== String(currentProperty.expectedCommissionPct)
   ) {
     updateData.expectedCommissionPct = payload.expectedCommissionPct;
+    hasChanges = true;
+  }
+  if (payload.totalRooms !== undefined && payload.totalRooms !== currentProperty.totalRooms) {
+    updateData.totalRooms = payload.totalRooms;
+    hasChanges = true;
+  }
+  if (payload.availableRooms !== undefined && payload.availableRooms !== currentProperty.availableRooms) {
+    updateData.availableRooms = payload.availableRooms;
+    hasChanges = true;
+  }
+  if (payload.rentPerMonth !== undefined && String(payload.rentPerMonth) !== String(currentProperty.rentPerMonth)) {
+    updateData.rentPerMonth = payload.rentPerMonth;
+    hasChanges = true;
+  }
+  if (payload.depositAmount !== undefined && String(payload.depositAmount) !== String(currentProperty.depositAmount)) {
+    updateData.depositAmount = payload.depositAmount;
+    hasChanges = true;
+  }
+  if (payload.isFurnished !== undefined && payload.isFurnished !== currentProperty.isFurnished) {
+    updateData.isFurnished = payload.isFurnished;
+    hasChanges = true;
+  }
+  if (payload.personsAllowed !== undefined && payload.personsAllowed !== currentProperty.personsAllowed) {
+    updateData.personsAllowed = payload.personsAllowed;
+    hasChanges = true;
+  }
+  if (payload.petsAllowed !== undefined && payload.petsAllowed !== currentProperty.petsAllowed) {
+    updateData.petsAllowed = payload.petsAllowed;
+    hasChanges = true;
+  }
+  if (payload.dssAllowed !== undefined && payload.dssAllowed !== currentProperty.dssAllowed) {
+    updateData.dssAllowed = payload.dssAllowed;
+    hasChanges = true;
+  }
+  if (payload.childrenAllowed !== undefined && payload.childrenAllowed !== currentProperty.childrenAllowed) {
+    updateData.childrenAllowed = payload.childrenAllowed;
+    hasChanges = true;
+  }
+  if (
+    payload.availabilityDate !== undefined &&
+    (payload.availabilityDate === null
+      ? currentProperty.availabilityDate !== null
+      : String(payload.availabilityDate) !== String(currentProperty.availabilityDate))
+  ) {
+    updateData.availabilityDate = payload.availabilityDate ? new Date(payload.availabilityDate) : null;
+    hasChanges = true;
+  }
+  if (payload.livingLandlord !== undefined && payload.livingLandlord !== currentProperty.livingLandlord) {
+    updateData.livingLandlord = payload.livingLandlord;
     hasChanges = true;
   }
 

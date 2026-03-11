@@ -94,6 +94,17 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [newDemand, setNewDemand] = useState("");
   const [newStatus, setNewStatus] = useState<PropertyStatus>("DRAFT");
   const [newVacancyType, setNewVacancyType] = useState<VacancyType>("SINGLE");
+  const [newTotalRooms, setNewTotalRooms] = useState("");
+  const [newAvailableRooms, setNewAvailableRooms] = useState("");
+  const [newRentPerMonth, setNewRentPerMonth] = useState("");
+  const [newDepositAmount, setNewDepositAmount] = useState("");
+  const [newIsFurnished, setNewIsFurnished] = useState<"" | "true" | "false">("");
+  const [newPersonsAllowed, setNewPersonsAllowed] = useState("");
+  const [newPetsAllowed, setNewPetsAllowed] = useState<"" | "true" | "false">("");
+  const [newDssAllowed, setNewDssAllowed] = useState<"" | "true" | "false">("");
+  const [newChildrenAllowed, setNewChildrenAllowed] = useState<"" | "true" | "false">("");
+  const [newAvailabilityDate, setNewAvailabilityDate] = useState("");
+  const [newLivingLandlord, setNewLivingLandlord] = useState<"" | "true" | "false">("");
   const [newRooms, setNewRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
 
   const [editId, setEditId] = useState<string | null>(null);
@@ -170,6 +181,17 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       status: newStatus,
       vacancyType: newVacancyType,
       landlordDemand: newVacancyType === "SINGLE" && newDemand.trim() ? Number(newDemand) : undefined,
+      totalRooms: newTotalRooms.trim() ? Number(newTotalRooms) : null,
+      availableRooms: newAvailableRooms.trim() ? Number(newAvailableRooms) : null,
+      rentPerMonth: newRentPerMonth.trim() ? Number(newRentPerMonth) : null,
+      depositAmount: newDepositAmount.trim() ? Number(newDepositAmount) : null,
+      isFurnished: newIsFurnished !== "" ? newIsFurnished === "true" : null,
+      personsAllowed: newPersonsAllowed.trim() ? Number(newPersonsAllowed) : null,
+      petsAllowed: newPetsAllowed !== "" ? newPetsAllowed === "true" : null,
+      dssAllowed: newDssAllowed !== "" ? newDssAllowed === "true" : null,
+      childrenAllowed: newChildrenAllowed !== "" ? newChildrenAllowed === "true" : null,
+      availabilityDate: newAvailabilityDate ? new Date(newAvailabilityDate).toISOString() : null,
+      livingLandlord: newLivingLandlord !== "" ? newLivingLandlord === "true" : null,
       rooms: newVacancyType === "MULTIPLE" ? normalizedRooms : undefined,
     });
     setCreating(false);
@@ -186,6 +208,17 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     setNewDemand("");
     setNewStatus("DRAFT");
     setNewVacancyType("SINGLE");
+    setNewTotalRooms("");
+    setNewAvailableRooms("");
+    setNewRentPerMonth("");
+    setNewDepositAmount("");
+    setNewIsFurnished("");
+    setNewPersonsAllowed("");
+    setNewPetsAllowed("");
+    setNewDssAllowed("");
+    setNewChildrenAllowed("");
+    setNewAvailabilityDate("");
+    setNewLivingLandlord("");
     setNewRooms([createEmptyRoom()]);
     setMessage({ type: "success", text: "Property created." });
     await load();
@@ -324,7 +357,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                 />
               </label>
               <label className="field">
-                <span className="label">Address Line 1</span>
+                <span className="label">Property Full Address</span>
                 <UIInput value={newAddressLine1} onChange={(event) => setNewAddressLine1(event.target.value)} />
               </label>
             </div>
@@ -349,13 +382,132 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                 </UISelect>
               </label>
               <label className="field">
-                <span className="label">Property Type</span>
+                <span className="label">Property Category</span>
                 <UISelect value={newVacancyType} onChange={(e) => setNewVacancyType(e.target.value as VacancyType)}>
                   <option value="SINGLE">Private Property</option>
                   <option value="MULTIPLE">Shared Property</option>
                 </UISelect>
               </label>
             </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Total Number of Rooms</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={newTotalRooms}
+                  onChange={(event) => setNewTotalRooms(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Available Rooms</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={newAvailableRooms}
+                  onChange={(event) => setNewAvailableRooms(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+            </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Rent per Month (GBP)</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={newRentPerMonth}
+                  onChange={(event) => setNewRentPerMonth(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Deposit Amount (GBP)</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={newDepositAmount}
+                  onChange={(event) => setNewDepositAmount(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+            </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Property Furnished</span>
+                <UISelect value={newIsFurnished} onChange={(e) => setNewIsFurnished(e.target.value as "" | "true" | "false")}>
+                  <option value="">Not specified</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </UISelect>
+              </label>
+              <label className="field">
+                <span className="label">Number of Persons Allowed</span>
+                <UIInput
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={newPersonsAllowed}
+                  onChange={(event) => setNewPersonsAllowed(event.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+            </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Pets Allowed</span>
+                <UISelect value={newPetsAllowed} onChange={(e) => setNewPetsAllowed(e.target.value as "" | "true" | "false")}>
+                  <option value="">Not specified</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </UISelect>
+              </label>
+              <label className="field">
+                <span className="label">DSS Allowed</span>
+                <UISelect value={newDssAllowed} onChange={(e) => setNewDssAllowed(e.target.value as "" | "true" | "false")}>
+                  <option value="">Not specified</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </UISelect>
+              </label>
+            </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Children Allowed</span>
+                <UISelect value={newChildrenAllowed} onChange={(e) => setNewChildrenAllowed(e.target.value as "" | "true" | "false")}>
+                  <option value="">Not specified</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </UISelect>
+              </label>
+              <label className="field">
+                <span className="label">Living Landlord</span>
+                <UISelect value={newLivingLandlord} onChange={(e) => setNewLivingLandlord(e.target.value as "" | "true" | "false")}>
+                  <option value="">Not specified</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </UISelect>
+              </label>
+            </div>
+
+            <label className="field">
+              <span className="label">Property Availability Date</span>
+              <UIInput
+                type="date"
+                value={newAvailabilityDate}
+                onChange={(event) => setNewAvailabilityDate(event.target.value)}
+              />
+            </label>
 
             {newVacancyType === "SINGLE" ? (
               <label className="field">
@@ -612,19 +764,24 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                               </UIButton>
                             </>
                           ) : (
-                            <UIButton
-                              variant="secondary"
-                              onClick={() => {
-                                setEditId(property.id);
-                                setEditPropertyRef(property.propertyRef);
-                                setEditStatus(property.status);
-                                setEditCity(property.city ?? "");
-                                setEditPostcode(property.postcode ?? "");
-                                setEditDemand(property.landlordDemand ?? "");
-                              }}
-                            >
-                              Edit
-                            </UIButton>
+                            <>
+                              <Link className="btn btn-secondary" href={`/properties/${property.id}`}>
+                                View
+                              </Link>
+                              <UIButton
+                                variant="secondary"
+                                onClick={() => {
+                                  setEditId(property.id);
+                                  setEditPropertyRef(property.propertyRef);
+                                  setEditStatus(property.status);
+                                  setEditCity(property.city ?? "");
+                                  setEditPostcode(property.postcode ?? "");
+                                  setEditDemand(property.landlordDemand ?? "");
+                                }}
+                              >
+                                Edit
+                              </UIButton>
+                            </>
                           )}
 
                           {canCloseSale ? (

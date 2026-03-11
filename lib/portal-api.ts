@@ -116,6 +116,17 @@ export type PropertyRow = {
   vacancyType?: VacancyType;
   landlordDemand: string | null;
   expectedCommissionPct: string | null;
+  totalRooms: number | null;
+  availableRooms: number | null;
+  rentPerMonth: string | null;
+  depositAmount: string | null;
+  isFurnished: boolean | null;
+  personsAllowed: number | null;
+  petsAllowed: boolean | null;
+  dssAllowed: boolean | null;
+  childrenAllowed: boolean | null;
+  availabilityDate: string | null;
+  livingLandlord: boolean | null;
   createdAt: string;
   updatedAt: string;
   sales?: SaleRow[];
@@ -325,6 +336,17 @@ export type PropertyDraftPayload = {
   vacancyType?: VacancyType;
   landlordDemand?: number | string | null;
   expectedCommissionPct?: number | string | null;
+  totalRooms?: number | null;
+  availableRooms?: number | null;
+  rentPerMonth?: number | null;
+  depositAmount?: number | null;
+  isFurnished?: boolean | null;
+  personsAllowed?: number | null;
+  petsAllowed?: boolean | null;
+  dssAllowed?: boolean | null;
+  childrenAllowed?: boolean | null;
+  availabilityDate?: string | null;
+  livingLandlord?: boolean | null;
   rooms?: RoomDraftInput[];
 };
 
