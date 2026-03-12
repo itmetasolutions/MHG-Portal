@@ -127,6 +127,7 @@ model Property {
   vacancyType           VacancyType    @default(SINGLE)
   landlordDemand        Decimal?       @db.Decimal(14, 2)
   expectedCommissionPct Decimal?       @db.Decimal(5, 2)
+  expectedCommissionAmt Decimal?       @db.Decimal(14, 2)
   totalRooms            Int?
   availableRooms        Int?
   rentPerMonth          Decimal?       @db.Decimal(14, 2)

@@ -134,12 +134,12 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  const closableStatuses: PropertyStatus[] = ["AVAILABLE"];
+  const closableStatuses: PropertyStatus[] = ["AVAILABLE", "DRAFT"];
   if (!closableStatuses.includes(property.status)) {
     return NextResponse.json(
       {
         error: "INVALID_PROPERTY_STATUS",
-        message: "Property must be AVAILABLE to close sale.",
+        message: "Property must be AVAILABLE or DRAFT to close sale.",
       },
       { status: 400 },
     );

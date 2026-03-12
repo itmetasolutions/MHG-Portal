@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
 import { formatDate } from "@/lib/format";
+import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,7 @@ export default async function AdminPropertiesPage() {
                   <th>Agent</th>
                   <th>Status</th>
                   <th>Added</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -158,6 +160,13 @@ export default async function AdminPropertiesPage() {
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {formatDate(prop.createdAt)}
+                    </td>
+                    <td>
+                      <AdminDeleteButton
+                        label="Delete"
+                        confirmMessage={`Permanently delete "${prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
+                        deleteUrl={`/api/properties/${prop.id}`}
+                      />
                     </td>
                   </tr>
                 ))}

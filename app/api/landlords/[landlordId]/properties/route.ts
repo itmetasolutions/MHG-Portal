@@ -30,6 +30,7 @@ const createPropertySchema = z
     vacancyType: z.nativeEnum(VacancyType).optional(),
     landlordDemand: z.coerce.number().positive().nullable().optional(),
     expectedCommissionPct: z.coerce.number().min(0).max(9999).nullable().optional(),
+    expectedCommissionAmt: z.coerce.number().min(0).nullable().optional(),
     totalRooms: z.coerce.number().int().min(0).nullable().optional(),
     availableRooms: z.coerce.number().int().min(0).nullable().optional(),
     rentPerMonth: z.coerce.number().positive().nullable().optional(),
@@ -88,6 +89,7 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   vacancyType: true,
   landlordDemand: true,
   expectedCommissionPct: true,
+  expectedCommissionAmt: true,
   totalRooms: true,
   availableRooms: true,
   rentPerMonth: true,
@@ -176,6 +178,7 @@ function normalizePropertyForCreate(payload: z.infer<typeof createPropertySchema
     vacancyType,
     landlordDemand: vacancyType === "SINGLE" ? payload.landlordDemand ?? null : null,
     expectedCommissionPct: vacancyType === "SINGLE" ? payload.expectedCommissionPct ?? null : null,
+    expectedCommissionAmt: vacancyType === "SINGLE" ? payload.expectedCommissionAmt ?? null : null,
     rooms,
   };
 }
@@ -385,6 +388,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         vacancyType: normalized.vacancyType,
         landlordDemand: normalized.landlordDemand,
         expectedCommissionPct: normalized.expectedCommissionPct,
+        expectedCommissionAmt: normalized.expectedCommissionAmt,
         totalRooms: payload.totalRooms ?? null,
         availableRooms: payload.availableRooms ?? null,
         rentPerMonth: payload.rentPerMonth ?? null,

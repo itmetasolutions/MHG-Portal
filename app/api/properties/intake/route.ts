@@ -41,6 +41,7 @@ const intakeSchema = z
         vacancyType: z.nativeEnum(VacancyType).optional(),
         landlordDemand: z.coerce.number().positive().nullable().optional(),
         expectedCommissionPct: z.coerce.number().min(0).max(9999).nullable().optional(),
+        expectedCommissionAmt: z.coerce.number().min(0).nullable().optional(),
         totalRooms: z.coerce.number().int().min(0).nullable().optional(),
         availableRooms: z.coerce.number().int().min(0).nullable().optional(),
         rentPerMonth: z.coerce.number().positive().nullable().optional(),
@@ -85,6 +86,7 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   vacancyType: true,
   landlordDemand: true,
   expectedCommissionPct: true,
+  expectedCommissionAmt: true,
   createdAt: true,
   updatedAt: true,
   rooms: {
@@ -161,6 +163,7 @@ function normalizePropertyForCreate(property: z.infer<typeof intakeSchema>["prop
     vacancyType,
     landlordDemand: vacancyType === "SINGLE" ? property.landlordDemand ?? null : null,
     expectedCommissionPct: vacancyType === "SINGLE" ? property.expectedCommissionPct ?? null : null,
+    expectedCommissionAmt: vacancyType === "SINGLE" ? property.expectedCommissionAmt ?? null : null,
     rooms,
   };
 }
@@ -206,6 +209,7 @@ async function createPropertyWithinTx(tx: Prisma.TransactionClient, params: {
       vacancyType: normalized.vacancyType,
       landlordDemand: normalized.landlordDemand,
       expectedCommissionPct: normalized.expectedCommissionPct,
+      expectedCommissionAmt: normalized.expectedCommissionAmt,
       totalRooms: params.property.totalRooms ?? null,
       availableRooms: params.property.availableRooms ?? null,
       rentPerMonth: params.property.rentPerMonth ?? null,

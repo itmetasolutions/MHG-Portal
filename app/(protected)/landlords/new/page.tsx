@@ -77,6 +77,8 @@ export default function AddPropertyPage() {
   const [numberOfRooms, setNumberOfRooms] = useState("");
   const [landlordDemand, setLandlordDemand] = useState("");
   const [commissionPct, setCommissionPct] = useState("");
+  const [commissionAmt, setCommissionAmt] = useState("");
+  const [commissionType, setCommissionType] = useState<"pct" | "amt">("pct");
   const [propertyRef, setPropertyRef] = useState("");
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [vacancyType, setVacancyType] = useState<VacancyType>("SINGLE");
@@ -245,7 +247,9 @@ export default function AddPropertyPage() {
         vacancyType,
         landlordDemand: vacancyType === "SINGLE" && landlordDemand !== "" ? Number(landlordDemand) : undefined,
         expectedCommissionPct:
-          vacancyType === "SINGLE" && commissionPct !== "" ? Number(commissionPct) : undefined,
+          vacancyType === "SINGLE" && commissionType === "pct" && commissionPct !== "" ? Number(commissionPct) : undefined,
+        expectedCommissionAmt:
+          vacancyType === "SINGLE" && commissionType === "amt" && commissionAmt !== "" ? Number(commissionAmt) : undefined,
         totalRooms: totalRooms.trim() ? Number(totalRooms) : null,
         availableRooms: availableRooms.trim() ? Number(availableRooms) : null,
         rentPerMonth: rentPerMonth.trim() ? Number(rentPerMonth) : null,
@@ -288,7 +292,7 @@ export default function AddPropertyPage() {
         </UIButton>
       </header>
 
-      <UICard style={{ maxWidth: 980 }}>
+      <UICard>
         <UICardBody>
           <form className="field-grid" onSubmit={handleSubmit}>
             <div className="form-section-divider">
@@ -618,17 +622,59 @@ export default function AddPropertyPage() {
                         />
                       </label>
                       <label className="field">
-                        <span className="label">Expected Commission (%)</span>
-                        <UIInput
-                          type="number"
-                          value={commissionPct}
-                          onChange={(e) => setCommissionPct(e.target.value)}
-                          min={0}
-                          max={9999}
-                          step="0.1"
-                          placeholder="e.g. 10"
-                          disabled={saving}
-                        />
+                        <span className="label">
+                          Expected Commission
+                          <span style={{ display: "inline-flex", gap: "0.25rem", marginLeft: "0.5rem" }}>
+                            <button
+                              type="button"
+                              onClick={() => setCommissionType("pct")}
+                              disabled={saving}
+                              style={{
+                                fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem",
+                                border: "1px solid var(--border)",
+                                borderRadius: "0.25rem",
+                                background: commissionType === "pct" ? "var(--brand-gold)" : "transparent",
+                                color: commissionType === "pct" ? "#000" : "var(--text-muted)",
+                                cursor: "pointer",
+                              }}
+                            >%</button>
+                            <button
+                              type="button"
+                              onClick={() => setCommissionType("amt")}
+                              disabled={saving}
+                              style={{
+                                fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem",
+                                border: "1px solid var(--border)",
+                                borderRadius: "0.25rem",
+                                background: commissionType === "amt" ? "var(--brand-gold)" : "transparent",
+                                color: commissionType === "amt" ? "#000" : "var(--text-muted)",
+                                cursor: "pointer",
+                              }}
+                            >£</button>
+                          </span>
+                        </span>
+                        {commissionType === "pct" ? (
+                          <UIInput
+                            type="number"
+                            value={commissionPct}
+                            onChange={(e) => setCommissionPct(e.target.value)}
+                            min={0}
+                            max={9999}
+                            step="0.1"
+                            placeholder="e.g. 10"
+                            disabled={saving}
+                          />
+                        ) : (
+                          <UIInput
+                            type="number"
+                            value={commissionAmt}
+                            onChange={(e) => setCommissionAmt(e.target.value)}
+                            min={0}
+                            step="0.01"
+                            placeholder="e.g. 500"
+                            disabled={saving}
+                          />
+                        )}
                       </label>
                     </div>
 

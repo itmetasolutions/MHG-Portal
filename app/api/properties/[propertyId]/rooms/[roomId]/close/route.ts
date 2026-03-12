@@ -93,10 +93,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "ROOM_ALREADY_CLOSED", message: "This room is already closed." }, { status: 409 });
   }
 
-  const closablePropertyStatuses = ["AVAILABLE"];
+  const closablePropertyStatuses = ["AVAILABLE", "DRAFT"];
   if (!closablePropertyStatuses.includes(room.property.status)) {
     return NextResponse.json(
-      { error: "INVALID_PROPERTY_STATUS", message: "Property must be AVAILABLE to close a room sale." },
+      { error: "INVALID_PROPERTY_STATUS", message: "Property must be AVAILABLE or DRAFT to close a room sale." },
       { status: 400 },
     );
   }

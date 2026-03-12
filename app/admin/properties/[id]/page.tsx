@@ -50,6 +50,7 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
       vacancyType: true,
       landlordDemand: true,
       expectedCommissionPct: true,
+      expectedCommissionAmt: true,
       totalRooms: true,
       availableRooms: true,
       rentPerMonth: true,
@@ -301,7 +302,11 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
             <div className="detail-item">
               <span className="detail-label">Expected Commission</span>
               <span className="detail-value">
-                {property.expectedCommissionPct != null ? `${property.expectedCommissionPct}%` : "—"}
+                {property.expectedCommissionAmt != null
+                  ? money(property.expectedCommissionAmt)
+                  : property.expectedCommissionPct != null
+                  ? `${property.expectedCommissionPct}%`
+                  : "—"}
               </span>
             </div>
           </div>

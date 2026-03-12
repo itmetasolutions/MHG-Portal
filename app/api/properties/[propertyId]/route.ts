@@ -27,6 +27,7 @@ const agentUpdateSchema = z
     status: z.nativeEnum(PropertyStatus).optional(),
     landlordDemand: z.coerce.number().positive().nullable().optional(),
     expectedCommissionPct: z.coerce.number().min(0).max(100).nullable().optional(),
+    expectedCommissionAmt: z.coerce.number().min(0).nullable().optional(),
     totalRooms: z.coerce.number().int().min(0).nullable().optional(),
     availableRooms: z.coerce.number().int().min(0).nullable().optional(),
     rentPerMonth: z.coerce.number().positive().nullable().optional(),
@@ -69,6 +70,7 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   status: true,
   landlordDemand: true,
   expectedCommissionPct: true,
+  expectedCommissionAmt: true,
   totalRooms: true,
   availableRooms: true,
   rentPerMonth: true,
@@ -341,6 +343,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     String(payload.expectedCommissionPct) !== String(currentProperty.expectedCommissionPct)
   ) {
     updateData.expectedCommissionPct = payload.expectedCommissionPct;
+    hasChanges = true;
+  }
+  if (
+    payload.expectedCommissionAmt !== undefined &&
+    String(payload.expectedCommissionAmt) !== String(currentProperty.expectedCommissionAmt)
+  ) {
+    updateData.expectedCommissionAmt = payload.expectedCommissionAmt;
     hasChanges = true;
   }
   if (payload.totalRooms !== undefined && payload.totalRooms !== currentProperty.totalRooms) {

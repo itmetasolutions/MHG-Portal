@@ -30,7 +30,9 @@ type CloseSaleForm = {
   roomId?: string;
   roomName?: string;
   finalAmount: string;
+  commissionType: "pct" | "amt";
   commissionPct: string;
+  commissionAmt: string;
   otherCosts: string;
   tenantName: string;
   tenantEmail: string;
@@ -110,9 +112,26 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [editId, setEditId] = useState<string | null>(null);
   const [editPropertyRef, setEditPropertyRef] = useState("");
   const [editStatus, setEditStatus] = useState<PropertyStatus>("DRAFT");
+  const [editAddressLine1, setEditAddressLine1] = useState("");
+  const [editAddressLine2, setEditAddressLine2] = useState("");
   const [editCity, setEditCity] = useState("");
+  const [editCounty, setEditCounty] = useState("");
   const [editPostcode, setEditPostcode] = useState("");
   const [editDemand, setEditDemand] = useState("");
+  const [editCommissionType, setEditCommissionType] = useState<"pct" | "amt">("pct");
+  const [editCommissionPct, setEditCommissionPct] = useState("");
+  const [editCommissionAmt, setEditCommissionAmt] = useState("");
+  const [editTotalRooms, setEditTotalRooms] = useState("");
+  const [editAvailableRooms, setEditAvailableRooms] = useState("");
+  const [editRentPerMonth, setEditRentPerMonth] = useState("");
+  const [editDepositAmount, setEditDepositAmount] = useState("");
+  const [editIsFurnished, setEditIsFurnished] = useState<"true" | "false">("true");
+  const [editPersonsAllowed, setEditPersonsAllowed] = useState("");
+  const [editPetsAllowed, setEditPetsAllowed] = useState<"true" | "false">("true");
+  const [editDssAllowed, setEditDssAllowed] = useState<"true" | "false">("true");
+  const [editChildrenAllowed, setEditChildrenAllowed] = useState<"true" | "false">("true");
+  const [editAvailabilityDate, setEditAvailabilityDate] = useState("");
+  const [editLivingLandlord, setEditLivingLandlord] = useState<"true" | "false">("false");
   const [editBusy, setEditBusy] = useState(false);
 
   const [closingSale, setClosingSale] = useState<CloseSaleForm | null>(null);
@@ -230,18 +249,31 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     const property = properties.find((row) => row.id === editId);
     if (!property) return;
 
+    const isSingle = (property.vacancyType ?? "SINGLE") === "SINGLE";
+
     setEditBusy(true);
     const result = await updateProperty(editId, {
-      propertyRef: editPropertyRef.trim(),
+      propertyRef: editPropertyRef.trim() || undefined,
+      addressLine1: editAddressLine1.trim() || null,
+      addressLine2: editAddressLine2.trim() || null,
       city: editCity.trim() || null,
+      county: editCounty.trim() || null,
       postcode: editPostcode.trim() || null,
       status: editStatus,
-      landlordDemand:
-        (property.vacancyType ?? "SINGLE") === "SINGLE"
-          ? editDemand.trim()
-            ? Number(editDemand)
-            : null
-          : null,
+      landlordDemand: isSingle && editDemand.trim() ? Number(editDemand) : null,
+      expectedCommissionPct: isSingle && editCommissionType === "pct" && editCommissionPct.trim() ? Number(editCommissionPct) : null,
+      expectedCommissionAmt: isSingle && editCommissionType === "amt" && editCommissionAmt.trim() ? Number(editCommissionAmt) : null,
+      totalRooms: editTotalRooms.trim() ? Number(editTotalRooms) : null,
+      availableRooms: editAvailableRooms.trim() ? Number(editAvailableRooms) : null,
+      rentPerMonth: editRentPerMonth.trim() ? Number(editRentPerMonth) : null,
+      depositAmount: editDepositAmount.trim() ? Number(editDepositAmount) : null,
+      isFurnished: editIsFurnished === "true",
+      personsAllowed: editPersonsAllowed.trim() ? Number(editPersonsAllowed) : null,
+      petsAllowed: editPetsAllowed === "true",
+      dssAllowed: editDssAllowed === "true",
+      childrenAllowed: editChildrenAllowed === "true",
+      availabilityDate: editAvailabilityDate ? new Date(editAvailabilityDate).toISOString() : null,
+      livingLandlord: editLivingLandlord === "true",
     });
     setEditBusy(false);
 
@@ -259,7 +291,6 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     if (!closingSale) return;
 
     const finalAmount = Number(closingSale.finalAmount);
-    const commissionPct = Number(closingSale.commissionPct);
     const otherCosts = closingSale.otherCosts.trim() ? Number(closingSale.otherCosts) : undefined;
 
     if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
@@ -267,9 +298,20 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       return;
     }
 
-    if (!Number.isFinite(commissionPct) || commissionPct < 0) {
-      setMessage({ type: "error", text: "Commission % must be zero or positive." });
-      return;
+    let commissionPct: number;
+    if (closingSale.commissionType === "amt") {
+      const commissionAmt = Number(closingSale.commissionAmt);
+      if (!Number.isFinite(commissionAmt) || commissionAmt < 0) {
+        setMessage({ type: "error", text: "Commission amount must be zero or positive." });
+        return;
+      }
+      commissionPct = finalAmount > 0 ? (commissionAmt / finalAmount) * 100 : 0;
+    } else {
+      commissionPct = Number(closingSale.commissionPct);
+      if (!Number.isFinite(commissionPct) || commissionPct < 0) {
+        setMessage({ type: "error", text: "Commission % must be zero or positive." });
+        return;
+      }
     }
 
     if (!closingSale.tenantName.trim()) {
@@ -621,58 +663,25 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                   const canCloseSale =
                     vacancy === "SINGLE" &&
                     sales.length === 0 &&
-                    property.status === "AVAILABLE";
+                    (property.status === "AVAILABLE" || property.status === "DRAFT");
 
                   return (
                     <tr key={property.id}>
-                      <td>
-                        {editing ? (
-                          <UIInput value={editPropertyRef} onChange={(event) => setEditPropertyRef(event.target.value)} />
-                        ) : (
-                          property.propertyRef
-                        )}
-                      </td>
+                      <td>{property.propertyRef}</td>
                       <td>
                         <span className={`badge ${vacancy === "MULTIPLE" ? "badge-offer" : "badge-active"}`}>
                           {vacancy === "MULTIPLE" ? "Shared" : "Private"}
                         </span>
                       </td>
                       <td>
-                        {editing ? (
-                          <UISelect value={editStatus} onChange={(event) => setEditStatus(event.target.value as PropertyStatus)}>
-                            <option value="DRAFT">Draft</option>
-                            <option value="AVAILABLE">Available</option>
-                            <option value="CLOSED" disabled>
-                              Closed (auto on sale close)
-                            </option>
-                          </UISelect>
-                        ) : (
-                          <span className={`badge ${STATUS_CONFIG[property.status]?.badgeClass ?? "badge-draft"}`}>
-                            {STATUS_CONFIG[property.status]?.label ?? property.status}
-                          </span>
-                        )}
+                        <span className={`badge ${STATUS_CONFIG[property.status]?.badgeClass ?? "badge-draft"}`}>
+                          {STATUS_CONFIG[property.status]?.label ?? property.status}
+                        </span>
                       </td>
-                      <td>
-                        {editing ? (
-                          <div className="inline-row">
-                            <UIInput value={editCity} onChange={(event) => setEditCity(event.target.value)} />
-                            <UIInput value={editPostcode} onChange={(event) => setEditPostcode(event.target.value)} />
-                          </div>
-                        ) : (
-                          `${property.city ?? "-"} / ${property.postcode ?? "-"}`
-                        )}
-                      </td>
+                      <td>{`${property.city ?? "-"} / ${property.postcode ?? "-"}`}</td>
                       <td>
                         {vacancy === "MULTIPLE" ? (
                           <span className="muted">Per room</span>
-                        ) : editing ? (
-                          <UIInput
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={editDemand}
-                            onChange={(event) => setEditDemand(event.target.value)}
-                          />
                         ) : property.landlordDemand ? (
                           `\u00A3${property.landlordDemand}`
                         ) : (
@@ -698,7 +707,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                               const canCloseRoom =
                                 !room.sale &&
                                 room.status !== "CLOSED" &&
-                                property.status === "AVAILABLE";
+                                (property.status === "AVAILABLE" || property.status === "DRAFT");
                               return (
                                 <div key={room.id} className="room-chip">
                                   <div className="room-chip-head">
@@ -722,7 +731,9 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                           roomId: room.id,
                                           roomName: room.roomName,
                                           finalAmount: "",
+                                          commissionType: "pct",
                                           commissionPct: room.expectedCommissionPct ?? "",
+                                          commissionAmt: "",
                                           otherCosts: "",
                                           tenantName: "",
                                           tenantEmail: "",
@@ -750,16 +761,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                       <td>{formatDate(property.createdAt)}</td>
                       <td>
                         <div className="inline-row">
-                          {editing ? (
-                            <>
-                              <UIButton onClick={() => void saveEdit()} disabled={editBusy}>
-                                {editBusy ? "Saving..." : "Save"}
-                              </UIButton>
-                              <UIButton variant="secondary" onClick={() => setEditId(null)} disabled={editBusy}>
-                                Cancel
-                              </UIButton>
-                            </>
-                          ) : (
+                          {!editing && (
                             <>
                               <Link className="btn btn-secondary" href={`/properties/${property.id}`}>
                                 View
@@ -770,9 +772,36 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                   setEditId(property.id);
                                   setEditPropertyRef(property.propertyRef);
                                   setEditStatus(property.status);
+                                  setEditAddressLine1(property.addressLine1 ?? "");
+                                  setEditAddressLine2(property.addressLine2 ?? "");
                                   setEditCity(property.city ?? "");
+                                  setEditCounty(property.county ?? "");
                                   setEditPostcode(property.postcode ?? "");
                                   setEditDemand(property.landlordDemand ?? "");
+                                  if (property.expectedCommissionAmt != null) {
+                                    setEditCommissionType("amt");
+                                    setEditCommissionAmt(String(property.expectedCommissionAmt));
+                                    setEditCommissionPct("");
+                                  } else {
+                                    setEditCommissionType("pct");
+                                    setEditCommissionPct(property.expectedCommissionPct ?? "");
+                                    setEditCommissionAmt("");
+                                  }
+                                  setEditTotalRooms(property.totalRooms != null ? String(property.totalRooms) : "");
+                                  setEditAvailableRooms(property.availableRooms != null ? String(property.availableRooms) : "");
+                                  setEditRentPerMonth(property.rentPerMonth ?? "");
+                                  setEditDepositAmount(property.depositAmount ?? "");
+                                  setEditIsFurnished(property.isFurnished === false ? "false" : "true");
+                                  setEditPersonsAllowed(property.personsAllowed != null ? String(property.personsAllowed) : "");
+                                  setEditPetsAllowed(property.petsAllowed === false ? "false" : "true");
+                                  setEditDssAllowed(property.dssAllowed === false ? "false" : "true");
+                                  setEditChildrenAllowed(property.childrenAllowed === false ? "false" : "true");
+                                  setEditAvailabilityDate(
+                                    property.availabilityDate
+                                      ? new Date(property.availabilityDate).toISOString().slice(0, 10)
+                                      : ""
+                                  );
+                                  setEditLivingLandlord(property.livingLandlord === true ? "true" : "false");
                                 }}
                               >
                                 Edit
@@ -787,7 +816,9 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                 setClosingSale({
                                   propertyId: property.id,
                                   finalAmount: "",
+                                  commissionType: property.expectedCommissionAmt != null ? "amt" : "pct",
                                   commissionPct: property.expectedCommissionPct ?? "",
+                                  commissionAmt: property.expectedCommissionAmt ?? "",
                                   otherCosts: "",
                                   tenantName: "",
                                   tenantEmail: "",
@@ -822,6 +853,165 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
         </UICardBody>
       </UICard>
 
+      {editId ? (
+        <UICard>
+          <UICardBody>
+            <div className="stack">
+              <h3 style={{ margin: 0, color: "var(--brand-gold)" }}>Edit Property</h3>
+
+              <div className="form-section-divider"><span className="form-section-label">Address</span></div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Property Reference</span>
+                  <UIInput value={editPropertyRef} onChange={(e) => setEditPropertyRef(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">Status</span>
+                  <UISelect value={editStatus} onChange={(e) => setEditStatus(e.target.value as PropertyStatus)} disabled={editBusy}>
+                    <option value="DRAFT">Draft</option>
+                    <option value="AVAILABLE">Available</option>
+                  </UISelect>
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Address Line 1</span>
+                  <UIInput value={editAddressLine1} onChange={(e) => setEditAddressLine1(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">Address Line 2 (optional)</span>
+                  <UIInput value={editAddressLine2} onChange={(e) => setEditAddressLine2(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">City</span>
+                  <UIInput value={editCity} onChange={(e) => setEditCity(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">Postcode</span>
+                  <UIInput value={editPostcode} onChange={(e) => setEditPostcode(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">County (optional)</span>
+                  <UIInput value={editCounty} onChange={(e) => setEditCounty(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+
+              <div className="form-section-divider"><span className="form-section-label">Property Details</span></div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Total Rooms</span>
+                  <UIInput type="number" min={0} step="1" value={editTotalRooms} onChange={(e) => setEditTotalRooms(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">Available Rooms</span>
+                  <UIInput type="number" min={0} step="1" value={editAvailableRooms} onChange={(e) => setEditAvailableRooms(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Rent per Month (GBP)</span>
+                  <UIInput type="number" min={0} step="0.01" value={editRentPerMonth} onChange={(e) => setEditRentPerMonth(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">Deposit Amount (GBP)</span>
+                  <UIInput type="number" min={0} step="0.01" value={editDepositAmount} onChange={(e) => setEditDepositAmount(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Furnished</span>
+                  <UISelect value={editIsFurnished} onChange={(e) => setEditIsFurnished(e.target.value as "true" | "false")} disabled={editBusy}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </UISelect>
+                </label>
+                <label className="field">
+                  <span className="label">Persons Allowed</span>
+                  <UIInput type="number" min={1} step="1" value={editPersonsAllowed} onChange={(e) => setEditPersonsAllowed(e.target.value)} disabled={editBusy} />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Pets Allowed</span>
+                  <UISelect value={editPetsAllowed} onChange={(e) => setEditPetsAllowed(e.target.value as "true" | "false")} disabled={editBusy}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </UISelect>
+                </label>
+                <label className="field">
+                  <span className="label">DSS Allowed</span>
+                  <UISelect value={editDssAllowed} onChange={(e) => setEditDssAllowed(e.target.value as "true" | "false")} disabled={editBusy}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </UISelect>
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Children Allowed</span>
+                  <UISelect value={editChildrenAllowed} onChange={(e) => setEditChildrenAllowed(e.target.value as "true" | "false")} disabled={editBusy}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </UISelect>
+                </label>
+                <label className="field">
+                  <span className="label">Living Landlord</span>
+                  <UISelect value={editLivingLandlord} onChange={(e) => setEditLivingLandlord(e.target.value as "true" | "false")} disabled={editBusy}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </UISelect>
+                </label>
+              </div>
+              <label className="field" style={{ maxWidth: 280 }}>
+                <span className="label">Availability Date</span>
+                <UIInput type="date" value={editAvailabilityDate} onChange={(e) => setEditAvailabilityDate(e.target.value)} disabled={editBusy} />
+              </label>
+
+              <div className="form-section-divider"><span className="form-section-label">Financial</span></div>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Landlord Demand (GBP)</span>
+                  <UIInput type="number" min={0} step="0.01" value={editDemand} onChange={(e) => setEditDemand(e.target.value)} disabled={editBusy} />
+                </label>
+                <label className="field">
+                  <span className="label">
+                    Expected Commission
+                    <span style={{ display: "inline-flex", gap: "0.25rem", marginLeft: "0.5rem" }}>
+                      <button type="button" onClick={() => setEditCommissionType("pct")} disabled={editBusy}
+                        style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem", border: "1px solid var(--border)", borderRadius: "0.25rem",
+                          background: editCommissionType === "pct" ? "var(--brand-gold)" : "transparent",
+                          color: editCommissionType === "pct" ? "#000" : "var(--text-muted)", cursor: "pointer" }}>%</button>
+                      <button type="button" onClick={() => setEditCommissionType("amt")} disabled={editBusy}
+                        style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem", border: "1px solid var(--border)", borderRadius: "0.25rem",
+                          background: editCommissionType === "amt" ? "var(--brand-gold)" : "transparent",
+                          color: editCommissionType === "amt" ? "#000" : "var(--text-muted)", cursor: "pointer" }}>£</button>
+                    </span>
+                  </span>
+                  {editCommissionType === "pct" ? (
+                    <UIInput type="number" min={0} max={9999} step="0.1" value={editCommissionPct} onChange={(e) => setEditCommissionPct(e.target.value)} placeholder="e.g. 10" disabled={editBusy} />
+                  ) : (
+                    <UIInput type="number" min={0} step="0.01" value={editCommissionAmt} onChange={(e) => setEditCommissionAmt(e.target.value)} placeholder="e.g. 500" disabled={editBusy} />
+                  )}
+                </label>
+              </div>
+
+              <div className="inline-row">
+                <UIButton onClick={() => void saveEdit()} disabled={editBusy}>
+                  {editBusy ? "Saving..." : "Save Changes"}
+                </UIButton>
+                <UIButton variant="secondary" onClick={() => setEditId(null)} disabled={editBusy}>
+                  Cancel
+                </UIButton>
+              </div>
+            </div>
+          </UICardBody>
+        </UICard>
+      ) : null}
+
       {closingSale ? (
         <UICard>
           <UICardBody>
@@ -847,17 +1037,40 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                   />
                 </label>
                 <label className="field">
-                  <span className="label">Commission % *</span>
-                  <UIInput
-                    type="number"
-                    min={0}
-                    max={100}
-                    step="0.01"
-                    value={closingSale.commissionPct}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, commissionPct: event.target.value } : prev))
-                    }
-                  />
+                  <span className="label">
+                    Commission *
+                    <span style={{ display: "inline-flex", gap: "0.25rem", marginLeft: "0.5rem" }}>
+                      <button type="button"
+                        onClick={() => setClosingSale((prev) => prev ? { ...prev, commissionType: "pct" } : prev)}
+                        style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem", border: "1px solid var(--border)", borderRadius: "0.25rem",
+                          background: closingSale.commissionType === "pct" ? "var(--brand-gold)" : "transparent",
+                          color: closingSale.commissionType === "pct" ? "#000" : "var(--text-muted)", cursor: "pointer" }}>%</button>
+                      <button type="button"
+                        onClick={() => setClosingSale((prev) => prev ? { ...prev, commissionType: "amt" } : prev)}
+                        style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem", border: "1px solid var(--border)", borderRadius: "0.25rem",
+                          background: closingSale.commissionType === "amt" ? "var(--brand-gold)" : "transparent",
+                          color: closingSale.commissionType === "amt" ? "#000" : "var(--text-muted)", cursor: "pointer" }}>£</button>
+                    </span>
+                  </span>
+                  {closingSale.commissionType === "pct" ? (
+                    <UIInput
+                      type="number" min={0} max={9999} step="0.01"
+                      value={closingSale.commissionPct}
+                      onChange={(event) =>
+                        setClosingSale((prev) => (prev ? { ...prev, commissionPct: event.target.value } : prev))
+                      }
+                      placeholder="e.g. 10"
+                    />
+                  ) : (
+                    <UIInput
+                      type="number" min={0} step="0.01"
+                      value={closingSale.commissionAmt}
+                      onChange={(event) =>
+                        setClosingSale((prev) => (prev ? { ...prev, commissionAmt: event.target.value } : prev))
+                      }
+                      placeholder="e.g. 500"
+                    />
+                  )}
                 </label>
                 <label className="field">
                   <span className="label">Other Costs (GBP, optional)</span>
