@@ -424,12 +424,44 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE() {
-  return NextResponse.json(
-    {
-      error: "METHOD_NOT_ALLOWED",
-      message: "DELETE is not allowed for landlords.",
-    },
-    { status: 405 },
-  );
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const auth = await requireUser(request);
+  if (!auth.ok) return auth.response;
+
+  const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
+  if (!roleCheck.ok) return roleCheck.response;
+
+  const idParse = landlordIdSchema.safeParse(params.landlordId);
+  if (!idParse.success) {
+    return NextResponse.json(
+      { error: "INVALID_LANDLORD_ID", message: "Invalid landlord id." },
+      { status: 400 },
+    );
+  }
+
+  const landlord = await db.landlord.findUnique({
+    where: { id: idParse.data },
+    select: { id: true, landlordName: true, phoneLast10: true, ownerAgentId: true },
+  });
+
+  if (!landlord) {
+    return NextResponse.json({ error: "NOT_FOUND", message: "Landlord not found." }, { status: 404 });
+  }
+
+  await db.$transaction([
+    db.landlord.delete({ where: { id: landlord.id } }),
+    db.auditLog.create({
+      data: {
+        userId: auth.user.id,
+        entityType: "LANDLORD",
+        entityId: landlord.id,
+        action: "DELETE_LANDLORD",
+        metadata: { landlordName: landlord.landlordName, phoneLast10: landlord.phoneLast10 },
+        beforeJson: landlord,
+        afterJson: Prisma.JsonNull,
+      },
+    }),
+  ]);
+
+  return NextResponse.json({ ok: true });
 }

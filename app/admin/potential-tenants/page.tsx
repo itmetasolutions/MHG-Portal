@@ -2,6 +2,7 @@ import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
+import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,7 @@ export default async function AdminPotentialTenantsPage() {
                   <th>Notes</th>
                   <th>Added By</th>
                   <th>Date</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -107,6 +109,13 @@ export default async function AdminPotentialTenantsPage() {
                       {new Date(t.createdAt).toLocaleDateString("en-GB", {
                         day: "numeric", month: "short", year: "numeric",
                       })}
+                    </td>
+                    <td>
+                      <AdminDeleteButton
+                        label="Delete"
+                        confirmMessage={`Permanently delete potential tenant "${t.fullName}"? This cannot be undone.`}
+                        deleteUrl={`/api/potential-tenants?id=${t.id}`}
+                      />
                     </td>
                   </tr>
                 ))}

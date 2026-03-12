@@ -98,13 +98,13 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
   const [newAvailableRooms, setNewAvailableRooms] = useState("");
   const [newRentPerMonth, setNewRentPerMonth] = useState("");
   const [newDepositAmount, setNewDepositAmount] = useState("");
-  const [newIsFurnished, setNewIsFurnished] = useState<"" | "true" | "false">("");
+  const [newIsFurnished, setNewIsFurnished] = useState<"true" | "false">("true");
   const [newPersonsAllowed, setNewPersonsAllowed] = useState("");
-  const [newPetsAllowed, setNewPetsAllowed] = useState<"" | "true" | "false">("");
-  const [newDssAllowed, setNewDssAllowed] = useState<"" | "true" | "false">("");
-  const [newChildrenAllowed, setNewChildrenAllowed] = useState<"" | "true" | "false">("");
+  const [newPetsAllowed, setNewPetsAllowed] = useState<"true" | "false">("true");
+  const [newDssAllowed, setNewDssAllowed] = useState<"true" | "false">("true");
+  const [newChildrenAllowed, setNewChildrenAllowed] = useState<"true" | "false">("true");
   const [newAvailabilityDate, setNewAvailabilityDate] = useState("");
-  const [newLivingLandlord, setNewLivingLandlord] = useState<"" | "true" | "false">("");
+  const [newLivingLandlord, setNewLivingLandlord] = useState<"true" | "false">("false");
   const [newRooms, setNewRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
 
   const [editId, setEditId] = useState<string | null>(null);
@@ -185,13 +185,13 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       availableRooms: newAvailableRooms.trim() ? Number(newAvailableRooms) : null,
       rentPerMonth: newRentPerMonth.trim() ? Number(newRentPerMonth) : null,
       depositAmount: newDepositAmount.trim() ? Number(newDepositAmount) : null,
-      isFurnished: newIsFurnished !== "" ? newIsFurnished === "true" : null,
+      isFurnished: newIsFurnished === "true",
       personsAllowed: newPersonsAllowed.trim() ? Number(newPersonsAllowed) : null,
-      petsAllowed: newPetsAllowed !== "" ? newPetsAllowed === "true" : null,
-      dssAllowed: newDssAllowed !== "" ? newDssAllowed === "true" : null,
-      childrenAllowed: newChildrenAllowed !== "" ? newChildrenAllowed === "true" : null,
+      petsAllowed: newPetsAllowed === "true",
+      dssAllowed: newDssAllowed === "true",
+      childrenAllowed: newChildrenAllowed === "true",
       availabilityDate: newAvailabilityDate ? new Date(newAvailabilityDate).toISOString() : null,
-      livingLandlord: newLivingLandlord !== "" ? newLivingLandlord === "true" : null,
+      livingLandlord: newLivingLandlord === "true",
       rooms: newVacancyType === "MULTIPLE" ? normalizedRooms : undefined,
     });
     setCreating(false);
@@ -212,13 +212,13 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
     setNewAvailableRooms("");
     setNewRentPerMonth("");
     setNewDepositAmount("");
-    setNewIsFurnished("");
+    setNewIsFurnished("true");
     setNewPersonsAllowed("");
-    setNewPetsAllowed("");
-    setNewDssAllowed("");
-    setNewChildrenAllowed("");
+    setNewPetsAllowed("true");
+    setNewDssAllowed("true");
+    setNewChildrenAllowed("true");
     setNewAvailabilityDate("");
-    setNewLivingLandlord("");
+    setNewLivingLandlord("false");
     setNewRooms([createEmptyRoom()]);
     setMessage({ type: "success", text: "Property created." });
     await load();
@@ -357,19 +357,19 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                 />
               </label>
               <label className="field">
-                <span className="label">Property Full Address</span>
-                <UIInput value={newAddressLine1} onChange={(event) => setNewAddressLine1(event.target.value)} />
+                <span className="label">Property Full Address <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UIInput value={newAddressLine1} onChange={(event) => setNewAddressLine1(event.target.value)} required />
               </label>
             </div>
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">City</span>
-                <UIInput value={newCity} onChange={(event) => setNewCity(event.target.value)} />
+                <span className="label">City <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UIInput value={newCity} onChange={(event) => setNewCity(event.target.value)} required />
               </label>
               <label className="field">
-                <span className="label">Postcode</span>
-                <UIInput value={newPostcode} onChange={(event) => setNewPostcode(event.target.value)} />
+                <span className="label">Postcode <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UIInput value={newPostcode} onChange={(event) => setNewPostcode(event.target.value)} required />
               </label>
             </div>
 
@@ -392,89 +392,86 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">Total Number of Rooms</span>
+                <span className="label">Total Number of Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
                 <UIInput
                   type="number"
                   min={0}
                   step="1"
                   value={newTotalRooms}
                   onChange={(event) => setNewTotalRooms(event.target.value)}
-                  placeholder="Optional"
+                  required
                 />
               </label>
               <label className="field">
-                <span className="label">Available Rooms</span>
+                <span className="label">Available Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
                 <UIInput
                   type="number"
                   min={0}
                   step="1"
                   value={newAvailableRooms}
                   onChange={(event) => setNewAvailableRooms(event.target.value)}
-                  placeholder="Optional"
+                  required
                 />
               </label>
             </div>
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">Rent per Month (GBP)</span>
+                <span className="label">Rent per Month (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
                 <UIInput
                   type="number"
                   min={0}
                   step="0.01"
                   value={newRentPerMonth}
                   onChange={(event) => setNewRentPerMonth(event.target.value)}
-                  placeholder="Optional"
+                  required
                 />
               </label>
               <label className="field">
-                <span className="label">Deposit Amount (GBP)</span>
+                <span className="label">Deposit Amount (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
                 <UIInput
                   type="number"
                   min={0}
                   step="0.01"
                   value={newDepositAmount}
                   onChange={(event) => setNewDepositAmount(event.target.value)}
-                  placeholder="Optional"
+                  required
                 />
               </label>
             </div>
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">Property Furnished</span>
-                <UISelect value={newIsFurnished} onChange={(e) => setNewIsFurnished(e.target.value as "" | "true" | "false")}>
-                  <option value="">Not specified</option>
+                <span className="label">Property Furnished <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UISelect value={newIsFurnished} onChange={(e) => setNewIsFurnished(e.target.value as "true" | "false")}>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </UISelect>
               </label>
               <label className="field">
-                <span className="label">Number of Persons Allowed</span>
+                <span className="label">Number of Persons Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
                 <UIInput
                   type="number"
-                  min={0}
+                  min={1}
                   step="1"
                   value={newPersonsAllowed}
                   onChange={(event) => setNewPersonsAllowed(event.target.value)}
-                  placeholder="Optional"
+                  required
                 />
               </label>
             </div>
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">Pets Allowed</span>
-                <UISelect value={newPetsAllowed} onChange={(e) => setNewPetsAllowed(e.target.value as "" | "true" | "false")}>
-                  <option value="">Not specified</option>
+                <span className="label">Pets Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UISelect value={newPetsAllowed} onChange={(e) => setNewPetsAllowed(e.target.value as "true" | "false")}>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </UISelect>
               </label>
               <label className="field">
-                <span className="label">DSS Allowed</span>
-                <UISelect value={newDssAllowed} onChange={(e) => setNewDssAllowed(e.target.value as "" | "true" | "false")}>
-                  <option value="">Not specified</option>
+                <span className="label">DSS Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UISelect value={newDssAllowed} onChange={(e) => setNewDssAllowed(e.target.value as "true" | "false")}>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </UISelect>
@@ -483,17 +480,15 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
 
             <div className="field-grid-2">
               <label className="field">
-                <span className="label">Children Allowed</span>
-                <UISelect value={newChildrenAllowed} onChange={(e) => setNewChildrenAllowed(e.target.value as "" | "true" | "false")}>
-                  <option value="">Not specified</option>
+                <span className="label">Children Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UISelect value={newChildrenAllowed} onChange={(e) => setNewChildrenAllowed(e.target.value as "true" | "false")}>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </UISelect>
               </label>
               <label className="field">
-                <span className="label">Living Landlord</span>
-                <UISelect value={newLivingLandlord} onChange={(e) => setNewLivingLandlord(e.target.value as "" | "true" | "false")}>
-                  <option value="">Not specified</option>
+                <span className="label">Living Landlord <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UISelect value={newLivingLandlord} onChange={(e) => setNewLivingLandlord(e.target.value as "true" | "false")}>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
                 </UISelect>
@@ -501,11 +496,12 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
             </div>
 
             <label className="field">
-              <span className="label">Property Availability Date</span>
+              <span className="label">Property Availability Date <span style={{ color: "var(--danger)" }}>*</span></span>
               <UIInput
                 type="date"
                 value={newAvailabilityDate}
                 onChange={(event) => setNewAvailabilityDate(event.target.value)}
+                required
               />
             </label>
 

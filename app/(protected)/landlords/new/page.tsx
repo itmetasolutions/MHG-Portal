@@ -81,6 +81,17 @@ export default function AddPropertyPage() {
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [vacancyType, setVacancyType] = useState<VacancyType>("SINGLE");
   const [rooms, setRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
+  const [totalRooms, setTotalRooms] = useState("");
+  const [availableRooms, setAvailableRooms] = useState("");
+  const [rentPerMonth, setRentPerMonth] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [isFurnished, setIsFurnished] = useState<"true" | "false">("true");
+  const [personsAllowed, setPersonsAllowed] = useState("");
+  const [petsAllowed, setPetsAllowed] = useState<"true" | "false">("true");
+  const [dssAllowed, setDssAllowed] = useState<"true" | "false">("true");
+  const [childrenAllowed, setChildrenAllowed] = useState<"true" | "false">("true");
+  const [availabilityDate, setAvailabilityDate] = useState("");
+  const [livingLandlord, setLivingLandlord] = useState<"true" | "false">("false");
 
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -185,6 +196,35 @@ export default function AddPropertyPage() {
         ? Number(numberOfRooms)
         : undefined;
 
+    if (!addressLine1.trim()) {
+      setMessage({ type: "error", text: "Property full address is required." });
+      return;
+    }
+    if (!totalRooms.trim()) {
+      setMessage({ type: "error", text: "Total number of rooms is required." });
+      return;
+    }
+    if (!availableRooms.trim()) {
+      setMessage({ type: "error", text: "Available rooms is required." });
+      return;
+    }
+    if (!rentPerMonth.trim()) {
+      setMessage({ type: "error", text: "Rent per month is required." });
+      return;
+    }
+    if (!depositAmount.trim()) {
+      setMessage({ type: "error", text: "Deposit amount is required." });
+      return;
+    }
+    if (!personsAllowed.trim()) {
+      setMessage({ type: "error", text: "Number of persons allowed is required." });
+      return;
+    }
+    if (!availabilityDate) {
+      setMessage({ type: "error", text: "Property availability date is required." });
+      return;
+    }
+
     setSaving(true);
     const result = await createPropertyIntake({
       landlord: {
@@ -206,6 +246,17 @@ export default function AddPropertyPage() {
         landlordDemand: vacancyType === "SINGLE" && landlordDemand !== "" ? Number(landlordDemand) : undefined,
         expectedCommissionPct:
           vacancyType === "SINGLE" && commissionPct !== "" ? Number(commissionPct) : undefined,
+        totalRooms: totalRooms.trim() ? Number(totalRooms) : null,
+        availableRooms: availableRooms.trim() ? Number(availableRooms) : null,
+        rentPerMonth: rentPerMonth.trim() ? Number(rentPerMonth) : null,
+        depositAmount: depositAmount.trim() ? Number(depositAmount) : null,
+        isFurnished: isFurnished === "true",
+        personsAllowed: personsAllowed.trim() ? Number(personsAllowed) : null,
+        petsAllowed: petsAllowed === "true",
+        dssAllowed: dssAllowed === "true",
+        childrenAllowed: childrenAllowed === "true",
+        availabilityDate: availabilityDate ? new Date(availabilityDate).toISOString() : null,
+        livingLandlord: livingLandlord === "true",
         rooms: vacancyType === "MULTIPLE" ? roomRows : undefined,
         status,
       },
@@ -389,6 +440,136 @@ export default function AddPropertyPage() {
                     <UIInput value={county} onChange={(e) => setCounty(e.target.value)} placeholder="Greater London" disabled={saving} />
                   </label>
                 </div>
+
+                <div className="form-section-divider">
+                  <span className="form-section-label">Property Details</span>
+                </div>
+
+                <div className="field-grid-2">
+                  <label className="field">
+                    <span className="label">Total Number of Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UIInput
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={totalRooms}
+                      onChange={(e) => setTotalRooms(e.target.value)}
+                      placeholder="e.g. 4"
+                      required
+                      disabled={saving}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="label">Available Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UIInput
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={availableRooms}
+                      onChange={(e) => setAvailableRooms(e.target.value)}
+                      placeholder="e.g. 2"
+                      required
+                      disabled={saving}
+                    />
+                  </label>
+                </div>
+
+                <div className="field-grid-2">
+                  <label className="field">
+                    <span className="label">Rent per Month (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UIInput
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={rentPerMonth}
+                      onChange={(e) => setRentPerMonth(e.target.value)}
+                      placeholder="e.g. 1200"
+                      required
+                      disabled={saving}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="label">Deposit Amount (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UIInput
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      placeholder="e.g. 1500"
+                      required
+                      disabled={saving}
+                    />
+                  </label>
+                </div>
+
+                <div className="field-grid-2">
+                  <label className="field">
+                    <span className="label">Property Furnished <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UISelect value={isFurnished} onChange={(e) => setIsFurnished(e.target.value as "true" | "false")} disabled={saving}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </UISelect>
+                  </label>
+                  <label className="field">
+                    <span className="label">Number of Persons Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UIInput
+                      type="number"
+                      min={1}
+                      step="1"
+                      value={personsAllowed}
+                      onChange={(e) => setPersonsAllowed(e.target.value)}
+                      placeholder="e.g. 3"
+                      required
+                      disabled={saving}
+                    />
+                  </label>
+                </div>
+
+                <div className="field-grid-2">
+                  <label className="field">
+                    <span className="label">Pets Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UISelect value={petsAllowed} onChange={(e) => setPetsAllowed(e.target.value as "true" | "false")} disabled={saving}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </UISelect>
+                  </label>
+                  <label className="field">
+                    <span className="label">DSS Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UISelect value={dssAllowed} onChange={(e) => setDssAllowed(e.target.value as "true" | "false")} disabled={saving}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </UISelect>
+                  </label>
+                </div>
+
+                <div className="field-grid-2">
+                  <label className="field">
+                    <span className="label">Children Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UISelect value={childrenAllowed} onChange={(e) => setChildrenAllowed(e.target.value as "true" | "false")} disabled={saving}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </UISelect>
+                  </label>
+                  <label className="field">
+                    <span className="label">Living Landlord <span style={{ color: "var(--danger)" }}>*</span></span>
+                    <UISelect value={livingLandlord} onChange={(e) => setLivingLandlord(e.target.value as "true" | "false")} disabled={saving}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </UISelect>
+                  </label>
+                </div>
+
+                <label className="field">
+                  <span className="label">Property Availability Date <span style={{ color: "var(--danger)" }}>*</span></span>
+                  <UIInput
+                    type="date"
+                    value={availabilityDate}
+                    onChange={(e) => setAvailabilityDate(e.target.value)}
+                    required
+                    disabled={saving}
+                  />
+                </label>
 
                 <div className="form-section-divider">
                   <span className="form-section-label">Property Type</span>

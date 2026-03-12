@@ -4,6 +4,7 @@ import { UserRole } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { formatDate } from "@/lib/format";
+import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +153,12 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
           <Link className="btn btn-secondary" href={`/admin/agents/${property.ownerAgent.id}`}>
             View Agent
           </Link>
+          <AdminDeleteButton
+            label="Delete Property"
+            confirmMessage={`Permanently delete "${property.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
+            deleteUrl={`/api/properties/${property.id}`}
+            redirectTo="/admin/properties"
+          />
         </div>
       </header>
 
