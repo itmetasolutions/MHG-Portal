@@ -72,8 +72,8 @@ export default function AdminReportsPage() {
 
   // Load agents for filter dropdown
   useEffect(() => {
-    apiGet<{ users: Agent[] }>("/api/admin/users").then((res) => {
-      if (res.ok) setAgents(res.data.users);
+    apiGet<{ agents: Agent[] }>("/api/admin/users").then((res) => {
+      if (res.ok) setAgents(res.data.agents);
     });
   }, []);
 

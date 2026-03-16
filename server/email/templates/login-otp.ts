@@ -7,7 +7,7 @@ export function buildLoginOtpTemplate(input: LoginOtpTemplateInput): {
   subject: string;
   text: string;
 } {
-  const subject = "Your Landlord Registry login code";
+  const subject = "Your More Homes Group Portal login code";
   const text = [
     "Your one-time login code is:",
     input.otpCode,

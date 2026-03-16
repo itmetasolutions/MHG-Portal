@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: "More Homes Group - Letting Agency Portal",
   description: "Secure lettings operations portal for More Homes Group agents and admins.",
   icons: {
-    icon: [{ url: "/mhg%20favicon.png", type: "image/png" }],
-    shortcut: [{ url: "/mhg%20favicon.png", type: "image/png" }],
-    apple: [{ url: "/mhg%20favicon.png", type: "image/png" }],
+    icon: [{ url: "/mhg-favicon.png", type: "image/png" }],
+    shortcut: [{ url: "/mhg-favicon.png", type: "image/png" }],
+    apple: [{ url: "/mhg-favicon.png", type: "image/png" }],
   },
 };
 
