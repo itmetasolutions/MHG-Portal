@@ -116,7 +116,7 @@ export default function AddLandlordPage() {
                   {checking ? "Checking..." : "Check"}
                 </UIButton>
               </div>
-              <span className="hint-text">UK mobile or landline. We verify it's not already registered.</span>
+              <span className="hint-text">UK mobile or landline. We verify it&apos;s not already registered.</span>
             </label>
 
             {phoneConflict && (

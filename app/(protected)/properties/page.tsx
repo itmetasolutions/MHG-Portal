@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
-import { UISelect } from "@/components/ui/select";
 import { apiGet } from "@/lib/api-client";
 import { closePropertySale, closePropertyRoomSale } from "@/lib/portal-api";
 import { formatDate } from "@/lib/format";
@@ -70,7 +68,6 @@ function money(val: string | number | null | undefined) {
 }
 
 export default function PropertiesPage() {
-  const router = useRouter();
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);

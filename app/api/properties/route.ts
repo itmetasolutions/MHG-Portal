@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { phoneLast10, propertyRef, status, city, postcode, createdAt, includeSOLD, page, pageSize } =
+  const { phoneLast10, propertyRef, status, city, postcode, createdAt, page, pageSize } =
     parsedQuery.data;
   const where: Prisma.PropertyWhereInput = {};
 

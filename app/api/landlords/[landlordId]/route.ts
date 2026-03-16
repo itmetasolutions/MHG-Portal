@@ -36,37 +36,11 @@ const adminPatchSchema = z
   })
   .strict();
 
-const conflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
-  id: true,
-  landlordName: true,
-  phoneLast10: true,
-  phoneE164: true,
-  ownerAgentId: true,
-  createdAt: true,
-  ownerAgent: {
-    select: {
-      id: true,
-      agentDisplayName: true,
-    },
-  },
-});
-
 type Params = {
   params: {
     landlordId: string;
   };
 };
-
-function conflictResponse(existingLandlord: Prisma.LandlordGetPayload<{ select: typeof conflictSelect }>) {
-  return NextResponse.json(
-    {
-      error: "LANDLORD_PHONE_CONFLICT",
-      message: "A landlord already exists with this phone (last 10 digits).",
-      existingLandlord,
-    },
-    { status: 409 },
-  );
-}
 
 async function ensureOwnerAgent(ownerAgentId: string) {
   const user = await db.user.findUnique({
