@@ -563,15 +563,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                       {tenant.phone && <span>{tenant.phone}</span>}
                     </td>
                     <td>
-                      <Link
-                        href={`/landlords/${tenant.sale.property.landlord.id}`}
-                        style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
-                      >
-                        {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
-                      </Link>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
-                      </span>
+                      {tenant.sale?.property ? (
+                        <>
+                          <Link
+                            href={`/landlords/${tenant.sale.property.landlord.id}`}
+                            style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
+                          >
+                            {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
+                          </Link>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                            {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No property</span>
+                      )}
                     </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {tenant.moveInDate
@@ -588,7 +594,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                     </td>
                     {isAdmin && (
                       <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                        {tenant.sale.property.ownerAgent?.agentDisplayName ?? "—"}
+                        {tenant.sale?.property.ownerAgent?.agentDisplayName ?? "—"}
                       </td>
                     )}
                   </tr>
