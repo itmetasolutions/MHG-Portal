@@ -109,6 +109,14 @@ function DialerIcon() {
   );
 }
 
+function ReportsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M5 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4Zm3 0h4v1H8V4Zm-4 4h12v8H4V8Zm2 2a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
   { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
@@ -121,6 +129,7 @@ const navItems = [
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
   { href: "/admin/dialer-domain", label: "Dialer Settings", icon: DialerIcon, exact: false },
+  { href: "/admin/reports",      label: "Reports",         icon: ReportsIcon, exact: false },
 ];
 
 export function AdminShell({ user, userId, chatContacts, children }: Props) {

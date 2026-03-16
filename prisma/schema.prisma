@@ -49,6 +49,15 @@ enum CallStatus {
   FAILED
 }
 
+enum CallRecordStatus {
+  CONNECTED
+  FAILED
+  NO_ANSWER
+  FOLLOW_UP
+  RESCHEDULED
+  VOICEMAIL
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -78,6 +87,8 @@ model User {
   potentialTenants    PotentialTenant[]       @relation("PotentialTenantAddedBy")
   potentialLandlords  PotentialLandlord[]     @relation("PotentialLandlordAddedBy")
   addedTenants        Tenant[]                @relation("TenantAddedBy")
+  dailyReports        DailyReport[]           @relation("DailyReportAgent")
+  callRecords         CallRecord[]            @relation("CallRecordAgent")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -99,10 +110,11 @@ model Landlord {
   updatedByUserId String    @db.Uuid
   ownerAgentId    String    @db.Uuid
 
-  createdBy  User       @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  updatedBy  User       @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  ownerAgent User       @relation("LandlordOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  properties Property[]
+  createdBy   User         @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  updatedBy   User         @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ownerAgent  User         @relation("LandlordOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  properties  Property[]
+  callRecords CallRecord[] @relation("CallRecordLandlord")
 
   @@index([landlordName])
   @@index([landlordNumber])
@@ -213,8 +225,9 @@ model Tenant {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  sale         Sale? @relation(fields: [saleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  addedByAgent User? @relation("TenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  sale         Sale?        @relation(fields: [saleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  addedByAgent User?        @relation("TenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  callRecords  CallRecord[] @relation("CallRecordTenant")
 
   @@index([saleId])
   @@index([fullName])
@@ -410,6 +423,49 @@ model PotentialLandlord {
   @@index([addedByAgentId, createdAt])
   @@index([createdAt])
   @@index([phoneLast10])
+}
+
+model DailyReport {
+  id                 String   @id @default(uuid()) @db.Uuid
+  agentId            String   @db.Uuid
+  reportDate         DateTime @db.Date
+  callsMade          Int      @default(0)
+  callsConnected     Int      @default(0)
+  callsFailed        Int      @default(0)
+  landlordConfirm    Int      @default(0)
+  viewingsArranged   Int      @default(0)
+  successfulViewings Int      @default(0)
+  followUp           Int      @default(0)
+  reSchedule         Int      @default(0)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  agent User @relation("DailyReportAgent", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([agentId, reportDate])
+  @@index([agentId, reportDate])
+  @@index([reportDate])
+}
+
+model CallRecord {
+  id                    String           @id @default(uuid()) @db.Uuid
+  agentId               String           @db.Uuid
+  phoneNumber           String
+  status                CallRecordStatus @default(CONNECTED)
+  notes                 String?
+  convertedToLandlordId String?          @db.Uuid
+  convertedToTenantId   String?          @db.Uuid
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  agent             User      @relation("CallRecordAgent", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  convertedLandlord Landlord? @relation("CallRecordLandlord", fields: [convertedToLandlordId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  convertedTenant   Tenant?   @relation("CallRecordTenant", fields: [convertedToTenantId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([agentId, createdAt])
+  @@index([createdAt])
+  @@index([phoneNumber])
 }
 
 // Singleton commission configuration (always upserted with id = "singleton")
