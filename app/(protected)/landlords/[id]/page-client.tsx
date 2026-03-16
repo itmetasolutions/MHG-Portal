@@ -6,23 +6,25 @@ import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
+import { UISelect } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/format";
-import { fetchLandlordDetails, updateLandlord, type LandlordDetails } from "@/lib/portal-api";
+import { fetchLandlordDetails, updateLandlord, type LandlordDetails, type SessionRole } from "@/lib/portal-api";
 
 type Props = {
   landlordId: string;
+  currentRole?: SessionRole;
 };
 
-export function LandlordDetailClient({ landlordId }: Props) {
+export function LandlordDetailClient({ landlordId, currentRole }: Props) {
   const [landlord, setLandlord] = useState<LandlordDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [form, setForm] = useState({
     fullName: "",
-    phone: "",
     email: "",
     notes: "",
+    isPassive: false,
   });
 
   const canEdit = useMemo(() => Boolean(landlord?.canEdit), [landlord?.canEdit]);
@@ -34,10 +36,7 @@ export function LandlordDetailClient({ landlordId }: Props) {
     setLoading(false);
 
     if (!result.ok) {
-      setMessage({
-        type: "error",
-        text: result.message ?? "Failed to load landlord details.",
-      });
+      setMessage({ type: "error", text: result.message ?? "Failed to load landlord details." });
       return;
     }
 
@@ -45,9 +44,9 @@ export function LandlordDetailClient({ landlordId }: Props) {
     setLandlord(row);
     setForm({
       fullName: row.landlordName,
-      phone: row.phoneE164 ?? row.phoneLast10,
       email: row.email ?? "",
       notes: row.notes ?? "",
+      isPassive: row.isPassive ?? false,
     });
   }
 
@@ -60,13 +59,26 @@ export function LandlordDetailClient({ landlordId }: Props) {
     event.preventDefault();
     if (!canEdit) return;
 
+    // Validate passive change rules:
+    // Agents can only set passive to true; admins can set either way
+    if (currentRole === "AGENT" && form.isPassive === false && (landlord?.isPassive ?? false) === true) {
+      setMessage({ type: "error", text: "Agents cannot reactivate a passive landlord. Contact admin." });
+      return;
+    }
+
     setSaving(true);
-    const result = await updateLandlord(landlordId, {
+    const payload: Parameters<typeof updateLandlord>[1] = {
       fullName: form.fullName.trim(),
-      phone: form.phone.trim(),
       email: form.email.trim() || null,
       notes: form.notes.trim() || null,
-    });
+    };
+
+    // Only include isPassive if it changed
+    if (form.isPassive !== (landlord?.isPassive ?? false)) {
+      payload.isPassive = form.isPassive;
+    }
+
+    const result = await updateLandlord(landlordId, payload);
     setSaving(false);
 
     if (!result.ok) {
@@ -78,17 +90,13 @@ export function LandlordDetailClient({ landlordId }: Props) {
     setMessage({ type: "success", text: "Landlord updated successfully." });
   }
 
-  if (loading) {
-    return <p className="muted">Loading landlord...</p>;
-  }
+  if (loading) return <p className="muted">Loading landlord...</p>;
 
   if (!landlord) {
     return (
       <div className="stack">
         {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : <UIAlert type="error">Landlord not found.</UIAlert>}
-        <Link href="/landlords" className="btn btn-secondary">
-          Back to Landlords
-        </Link>
+        <Link href="/landlords" className="btn btn-secondary">Back to Landlords</Link>
       </div>
     );
   }
@@ -99,7 +107,8 @@ export function LandlordDetailClient({ landlordId }: Props) {
         <div>
           <h1 className="page-title">{landlord.landlordName}</h1>
           <p className="page-subtitle">
-            Phone key: {landlord.phoneLast10} • Owner: {landlord.ownerAgent.agentDisplayName}
+            Phone: {landlord.phoneLast10} · Owner: {landlord.ownerAgent.agentDisplayName}
+            {landlord.isPassive && <span className="badge badge-draft" style={{ marginLeft: "0.5rem" }}>Passive</span>}
           </p>
         </div>
         <div className="inline-row">
@@ -107,7 +116,7 @@ export function LandlordDetailClient({ landlordId }: Props) {
             View Properties
           </Link>
           <Link className="btn btn-secondary" href="/landlords">
-            Back to Registry
+            Back
           </Link>
         </div>
       </header>
@@ -120,43 +129,70 @@ export function LandlordDetailClient({ landlordId }: Props) {
             <span className="muted">{landlord._count?.properties ?? 0} properties</span>
           </div>
 
-          {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
+          {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
           <form className="field-grid" onSubmit={onSubmit}>
-            <label className="field">
-              <span className="label">Full Name</span>
-              <UIInput
-                value={form.fullName}
-                onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </label>
+            <div className="form-section-divider">
+              <span className="form-section-label">Landlord Details</span>
+            </div>
 
             <label className="field">
-              <span className="label">Phone</span>
-              <UIInput
-                value={form.phone}
-                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                disabled={!canEdit}
-              />
+              <span className="label">Phone Number</span>
+              <UIInput value={landlord.phoneLast10} disabled />
+              <span className="hint-text">Phone number cannot be changed after registration.</span>
             </label>
 
-            <label className="field">
-              <span className="label">Email</span>
-              <UIInput
-                value={form.email}
-                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                disabled={!canEdit}
-              />
-            </label>
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Full Name</span>
+                <UIInput
+                  value={form.fullName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                  disabled={!canEdit || saving}
+                />
+              </label>
+
+              <label className="field">
+                <span className="label">Email</span>
+                <UIInput
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                  disabled={!canEdit || saving}
+                  placeholder="optional"
+                />
+              </label>
+            </div>
 
             <label className="field">
               <span className="label">Notes</span>
               <UIInput
                 value={form.notes}
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                disabled={!canEdit}
+                disabled={!canEdit || saving}
+                placeholder="optional"
               />
+            </label>
+
+            <div className="form-section-divider">
+              <span className="form-section-label">Status</span>
+            </div>
+
+            <label className="field">
+              <span className="label">Landlord Status</span>
+              <UISelect
+                value={form.isPassive ? "passive" : "active"}
+                onChange={(e) => setForm((prev) => ({ ...prev, isPassive: e.target.value === "passive" }))}
+                disabled={!canEdit || saving || (currentRole === "AGENT" && !form.isPassive)}
+              >
+                <option value="active">Active</option>
+                <option value="passive">Passive</option>
+              </UISelect>
+              <span className="hint-text">
+                {currentRole === "AGENT"
+                  ? "You can mark this landlord as passive. Only admin or a sale can reactivate them."
+                  : "Admins can set active or passive. Auto-passive applies after 7 months with no sale."}
+              </span>
             </label>
 
             <div className="inline-row">

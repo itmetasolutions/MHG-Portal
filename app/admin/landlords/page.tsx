@@ -112,11 +112,20 @@ export default async function AdminLandlordsPage() {
                       {formatDate(landlord.createdAt)}
                     </td>
                     <td>
-                      <AdminDeleteButton
-                        label="Delete"
-                        confirmMessage={`Permanently delete landlord "${landlord.landlordName}"? This will also delete all their properties, sales, and tenant records. This cannot be undone.`}
-                        deleteUrl={`/api/landlords/${landlord.id}`}
-                      />
+                      <div className="inline-row">
+                        <Link
+                          href={`/landlords/${landlord.id}`}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
+                        >
+                          Edit
+                        </Link>
+                        <AdminDeleteButton
+                          label="Delete"
+                          confirmMessage={`Permanently delete landlord "${landlord.landlordName}"? This will also delete all their properties, sales, and tenant records. This cannot be undone.`}
+                          deleteUrl={`/api/landlords/${landlord.id}`}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

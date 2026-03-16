@@ -13,5 +13,5 @@ export default async function LandlordDetailPage({ params }: Props) {
     return null;
   }
 
-  return <LandlordDetailClient landlordId={params.id} />;
+  return <LandlordDetailClient landlordId={params.id} currentRole={session.role} />;
 }

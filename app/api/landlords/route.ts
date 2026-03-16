@@ -186,8 +186,8 @@ export async function GET(request: NextRequest) {
     where.createdAt = createdAt;
   }
 
-  // Auto-passive sync: mark landlords with no sale after 21 days
-  const passiveCutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
+  // Auto-passive sync: mark landlords with no sale after 7 months (210 days)
+  const passiveCutoff = new Date(Date.now() - 210 * 24 * 60 * 60 * 1000);
   await Promise.all([
     db.landlord.updateMany({
       where: {

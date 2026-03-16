@@ -4,11 +4,11 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 
+// Phone is not editable after creation (used as unique identifier)
 const updateTenantSchema = z
   .object({
     fullName: z.string().trim().min(1).optional(),
     email: z.string().trim().email().nullable().optional().or(z.literal("").transform(() => null)),
-    phone: z.string().trim().min(1).nullable().optional(),
     currentAddress: z.string().trim().min(1).nullable().optional(),
     moveInDate: z.string().datetime({ offset: true }).nullable().optional().or(z.string().date().nullable().optional()),
     rentAmount: z.coerce.number().min(0).nullable().optional(),
@@ -31,6 +31,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     select: {
       id: true,
       fullName: true,
+      addedByAgentId: true,
       sale: {
         select: {
           property: {
@@ -45,9 +46,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "NOT_FOUND", message: "Tenant not found." }, { status: 404 });
   }
 
-  // Agents can only edit tenants on their own properties
-  if (auth.user.role !== "ADMIN" && tenant.sale.property.ownerAgentId !== auth.user.id) {
-    return NextResponse.json({ error: "FORBIDDEN", message: "You can only edit tenants on your own properties." }, { status: 403 });
+  // Determine ownership:
+  // - Tenants from sales: owned by property's agent
+  // - Standalone tenants: owned by addedByAgentId
+  const ownerAgentId = tenant.sale?.property?.ownerAgentId ?? tenant.addedByAgentId;
+  if (auth.user.role !== "ADMIN" && ownerAgentId !== auth.user.id) {
+    return NextResponse.json({ error: "FORBIDDEN", message: "You can only edit your own tenants." }, { status: 403 });
   }
 
   let payload: z.infer<typeof updateTenantSchema>;
@@ -63,7 +67,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const updateData: Prisma.TenantUpdateInput = {};
   if (payload.fullName !== undefined) updateData.fullName = payload.fullName;
   if (payload.email !== undefined) updateData.email = payload.email;
-  if (payload.phone !== undefined) updateData.phone = payload.phone;
   if (payload.currentAddress !== undefined) updateData.currentAddress = payload.currentAddress;
   if (payload.moveInDate !== undefined) {
     updateData.moveInDate = payload.moveInDate ? new Date(payload.moveInDate) : null;
@@ -81,9 +84,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: { id: tenant.id },
       data: updateData,
       select: {
-        id: true, fullName: true, email: true, phone: true,
+        id: true, fullName: true, email: true, phone: true, phoneLast10: true,
         currentAddress: true, moveInDate: true, rentAmount: true,
         depositAmount: true, notes: true, createdAt: true, updatedAt: true,
+        saleId: true, addedByAgentId: true,
       },
     });
 

@@ -324,6 +324,7 @@ export type RoomDraftInput = {
 };
 
 export type PropertyDraftPayload = {
+  landlordId?: string;
   propertyRef?: string;
   addressLine1?: string | null;
   addressLine2?: string | null;
@@ -393,6 +394,11 @@ export function fetchLandlords(params: {
   return apiGet<LandlordListResponse>(`/api/landlords?${query.toString()}`);
 }
 
+// Fetch a small list of landlords for use in dropdowns (max 200, no pagination needed for selects)
+export function fetchLandlordsForDropdown(): Promise<ApiResult<LandlordListResponse>> {
+  return apiGet<LandlordListResponse>("/api/landlords?mine=true&pageSize=200");
+}
+
 export function checkLandlordNumber(
   phone: string,
 ): Promise<ApiResult<LandlordLookupResponse>> {
@@ -417,14 +423,21 @@ export function updateLandlord(
   id: string,
   payload: Partial<{
     fullName: string;
-    phone: string;
     email: string | null;
     notes: string | null;
+    isPassive: boolean;
     ownerAgentId: string;
     reassignmentReason: string;
   }>,
 ): Promise<ApiResult<{ landlord: LandlordDetails }>> {
   return apiPatch(`/api/landlords/${id}`, payload);
+}
+
+export function setLandlordPassive(
+  id: string,
+  isPassive: boolean,
+): Promise<ApiResult<{ landlord: LandlordDetails }>> {
+  return apiPatch(`/api/landlords/${id}`, { isPassive });
 }
 
 export function fetchLandlordProperties(
@@ -526,12 +539,25 @@ export function updateProperty(
   return apiPatch(`/api/properties/${propertyId}`, payload);
 }
 
+export function createTenant(payload: {
+  fullName: string;
+  phone: string;
+  email?: string | null;
+  currentAddress?: string | null;
+  moveInDate?: string | null;
+  rentAmount?: number | null;
+  depositAmount?: number | null;
+  notes?: string | null;
+}): Promise<ApiResult<{ tenant: TenantRow }>> {
+  return apiPost("/api/tenants", payload);
+}
+
+// Phone is not editable — use createTenant phone for unique ID
 export function updateTenant(
   tenantId: string,
   payload: {
     fullName?: string;
     email?: string | null;
-    phone?: string | null;
     currentAddress?: string | null;
     moveInDate?: string | null;
     rentAmount?: number | null;

@@ -162,11 +162,20 @@ export default async function AdminPropertiesPage() {
                       {formatDate(prop.createdAt)}
                     </td>
                     <td>
-                      <AdminDeleteButton
-                        label="Delete"
-                        confirmMessage={`Permanently delete "${prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
-                        deleteUrl={`/api/properties/${prop.id}`}
-                      />
+                      <div className="inline-row">
+                        <Link
+                          href={`/properties/${prop.id}/edit`}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
+                        >
+                          Edit
+                        </Link>
+                        <AdminDeleteButton
+                          label="Delete"
+                          confirmMessage={`Permanently delete "${prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
+                          deleteUrl={`/api/properties/${prop.id}`}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

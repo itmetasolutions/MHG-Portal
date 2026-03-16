@@ -21,7 +21,6 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
   const [phoneLast10, setPhoneLast10] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [mineOnly, setMineOnly] = useState(currentRole === "AGENT");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [busy, setBusy] = useState(false);
@@ -47,16 +46,13 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
       dateTo: dateTo || undefined,
       page,
       pageSize,
-      mine: mineOnly || currentRole === "AGENT",
+      mine: currentRole === "AGENT" ? true : undefined,
     });
 
     setBusy(false);
 
     if (!result.ok) {
-      setMessage({
-        type: "error",
-        text: result.message ?? "Failed to load landlords.",
-      });
+      setMessage({ type: "error", text: result.message ?? "Failed to load landlords." });
       return;
     }
 
@@ -73,11 +69,11 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Landlord Management</h1>
-          <p className="page-subtitle">Manage landlord records with owner-agent enforcement.</p>
+          <h1 className="page-title">Landlords</h1>
+          <p className="page-subtitle">Manage your landlord records.</p>
         </div>
         <Link className="btn btn-primary" href="/landlords/new">
-          Add Property
+          + Add New Landlord
         </Link>
       </header>
 
@@ -104,7 +100,7 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             </div>
 
             <div className="field-grid">
-              {currentRole === "ADMIN" ? (
+              {currentRole === "ADMIN" && (
                 <label className="field">
                   <span className="label">Agent</span>
                   <UIInput
@@ -112,11 +108,6 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
                     onChange={(event) => setAgent(event.target.value)}
                     placeholder="Agent name/email/id"
                   />
-                </label>
-              ) : (
-                <label className="field">
-                  <span className="label">Scope</span>
-                  <UIInput value="Your landlords only" disabled />
                 </label>
               )}
 
@@ -134,49 +125,25 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
           </div>
 
           <div className="inline-row">
-            <UIButton
-              onClick={() => {
-                setPage(1);
-                void load();
-              }}
-              disabled={busy}
-            >
+            <UIButton onClick={() => { setPage(1); void load(); }} disabled={busy}>
               {busy ? "Loading..." : "Apply Filters"}
             </UIButton>
             <UIButton
               variant="secondary"
               onClick={() => {
-                setSearch("");
-                setAgent("");
-                setPhoneLast10("");
-                setDateFrom("");
-                setDateTo("");
-                setMineOnly(currentRole === "AGENT");
-                setPage(1);
+                setSearch(""); setAgent(""); setPhoneLast10("");
+                setDateFrom(""); setDateTo(""); setPage(1);
                 void load();
               }}
               disabled={busy}
             >
               Reset
             </UIButton>
-            {currentRole === "ADMIN" ? (
-              <label className="inline-row">
-                <input
-                  type="checkbox"
-                  checked={mineOnly}
-                  onChange={(event) => setMineOnly(event.target.checked)}
-                />
-                <span className="label">Mine only</span>
-              </label>
-            ) : null}
             <label className="inline-row">
               <span className="label">Page Size</span>
               <UISelect
                 value={String(pageSize)}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setPage(1);
-                }}
+                onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}
               >
                 <option value="10">10</option>
                 <option value="20">20</option>
@@ -185,7 +152,7 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             </label>
           </div>
 
-          {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
+          {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
           <div className="table-wrap">
             <table className="table">
@@ -194,44 +161,47 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
                   <th>Name</th>
                   <th>Phone</th>
                   <th>Email</th>
-                  <th>Owner Agent</th>
+                  {currentRole === "ADMIN" && <th>Owner Agent</th>}
                   <th>Properties</th>
-                  <th>Created</th>
+                  <th>Status</th>
+                  <th>Added</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td>{row.landlordName}</td>
+                    <td style={{ fontWeight: 600 }}>{row.landlordName}</td>
+                    <td><code>{row.phoneLast10}</code></td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{row.email ?? "—"}</td>
+                    {currentRole === "ADMIN" && <td style={{ fontSize: "0.82rem" }}>{row.ownerAgent.agentDisplayName}</td>}
+                    <td>{row._count?.properties ?? 0}</td>
                     <td>
-                      <code>{row.phoneLast10}</code>
+                      {row.isPassive ? (
+                        <span className="badge badge-draft">Passive</span>
+                      ) : (
+                        <span className="badge badge-active">Active</span>
+                      )}
                     </td>
-                    <td>{row.email ?? "-"}</td>
-                    <td>{row.ownerAgent.agentDisplayName}</td>
-                    <td>{row._count?.properties ?? "-"}</td>
-                    <td>{formatDate(row.createdAt)}</td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{formatDate(row.createdAt)}</td>
                     <td>
                       <div className="inline-row">
-                        <Link className="btn btn-secondary" href={`/landlords/${row.id}`}>
-                          View
-                        </Link>
-                        {canEdit(row) ? (
+                        {canEdit(row) && (
                           <Link className="btn btn-secondary" href={`/landlords/${row.id}`}>
                             Edit
                           </Link>
-                        ) : null}
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
-                {rows.length === 0 ? (
+                {rows.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="muted">
+                    <td colSpan={currentRole === "ADMIN" ? 8 : 7} className="muted">
                       No landlords found.
                     </td>
                   </tr>
-                ) : null}
+                )}
               </tbody>
             </table>
           </div>
@@ -240,31 +210,13 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             <span className="muted">
               Page {page} of {Math.max(totalPages, 1)} ({total} records)
             </span>
-            <UIButton
-              variant="secondary"
-              onClick={() => {
-                if (page > 1) {
-                  setPage((value) => value - 1);
-                }
-              }}
-              disabled={page <= 1 || busy}
-            >
+            <UIButton variant="secondary" onClick={() => { if (page > 1) setPage((v) => v - 1); }} disabled={page <= 1 || busy}>
               Previous
             </UIButton>
-            <UIButton
-              variant="secondary"
-              onClick={() => {
-                if (page < totalPages) {
-                  setPage((value) => value + 1);
-                }
-              }}
-              disabled={page >= totalPages || busy || totalPages === 0}
-            >
+            <UIButton variant="secondary" onClick={() => { if (page < totalPages) setPage((v) => v + 1); }} disabled={page >= totalPages || busy || totalPages === 0}>
               Next
             </UIButton>
-            <UIButton variant="secondary" onClick={() => void load()} disabled={busy}>
-              Refresh
-            </UIButton>
+            <UIButton variant="secondary" onClick={() => void load()} disabled={busy}>Refresh</UIButton>
           </div>
         </UICardBody>
       </UICard>

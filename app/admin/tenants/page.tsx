@@ -43,11 +43,13 @@ export default async function AdminTenantsPage() {
                 addressLine1: true,
                 city: true,
                 postcode: true,
-                landlord: { select: { id: true, landlordName: true } },
                 ownerAgent: { select: { id: true, agentDisplayName: true } },
               },
             },
           },
+        },
+        addedByAgent: {
+          select: { id: true, agentDisplayName: true },
         },
       },
     }),
@@ -95,64 +97,78 @@ export default async function AdminTenantsPage() {
                 </tr>
               </thead>
               <tbody>
-                {tenants.map((tenant) => (
-                  <tr key={tenant.id}>
-                    <td style={{ fontWeight: 600, color: "var(--text)" }}>
-                      {tenant.fullName}
-                    </td>
-                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                      {tenant.email && <span style={{ display: "block" }}>{tenant.email}</span>}
-                      {tenant.phone && <span>{tenant.phone}</span>}
-                    </td>
-                    <td>
-                      <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--text)" }}>
-                        {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
-                      </strong>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
-                      </span>
-                    </td>
-                    <td>
-                      <Link
-                        href={`/admin/agents/${tenant.sale.property.ownerAgent.id}`}
-                        style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
-                      >
-                        {tenant.sale.property.ownerAgent.agentDisplayName}
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {tenant.moveInDate
-                        ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", {
-                            day: "numeric", month: "short", year: "numeric",
-                          })
-                        : "—"}
-                    </td>
-                    <td style={{ fontSize: "0.82rem" }}>
-                      {tenant.rentAmount
-                        ? (
-                          <span style={{ color: "#4ade80", fontWeight: 600 }}>
-                            {'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo
+                {tenants.map((tenant) => {
+                  const prop = tenant.sale?.property ?? null;
+                  const agent = prop?.ownerAgent ?? tenant.addedByAgent ?? null;
+                  return (
+                    <tr key={tenant.id}>
+                      <td style={{ fontWeight: 600, color: "var(--text)" }}>
+                        {tenant.fullName}
+                      </td>
+                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                        {tenant.email && <span style={{ display: "block" }}>{tenant.email}</span>}
+                        {tenant.phone && <span>{tenant.phone}</span>}
+                      </td>
+                      <td>
+                        {prop ? (
+                          <>
+                            <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--text)" }}>
+                              {prop.addressLine1 ?? prop.propertyRef ?? "—"}
+                            </strong>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                              {[prop.city, prop.postcode].filter(Boolean).join(", ")}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No property</span>
+                        )}
+                      </td>
+                      <td>
+                        {agent ? (
+                          <Link
+                            href={`/admin/agents/${agent.id}`}
+                            style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
+                          >
+                            {agent.agentDisplayName}
+                          </Link>
+                        ) : (
+                          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {tenant.moveInDate
+                          ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })
+                          : "—"}
+                      </td>
+                      <td style={{ fontSize: "0.82rem" }}>
+                        {tenant.rentAmount
+                          ? (
+                            <span style={{ color: "#4ade80", fontWeight: 600 }}>
+                              {'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo
+                            </span>
+                          )
+                          : <span className="muted">—</span>}
+                        {tenant.depositAmount && (
+                          <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                            dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
                           </span>
-                        )
-                        : <span className="muted">—</span>}
-                      {tenant.depositAmount && (
-                        <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                          dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(tenant.createdAt)}
-                    </td>
-                    <td>
-                      <AdminDeleteButton
-                        label="Delete"
-                        confirmMessage={`Permanently delete tenant record for "${tenant.fullName}"? The associated sale record will remain. This cannot be undone.`}
-                        deleteUrl={`/api/admin/tenants?id=${tenant.id}`}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {formatDate(tenant.createdAt)}
+                      </td>
+                      <td>
+                        <AdminDeleteButton
+                          label="Delete"
+                          confirmMessage={`Permanently delete tenant record for "${tenant.fullName}"? The associated sale record will remain. This cannot be undone.`}
+                          deleteUrl={`/api/admin/tenants?id=${tenant.id}`}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

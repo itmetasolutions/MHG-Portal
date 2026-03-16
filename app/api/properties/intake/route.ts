@@ -318,12 +318,16 @@ export async function POST(request: NextRequest) {
       landlordName: true,
       ownerAgentId: true,
       phoneLast10: true,
+      isPassive: true,
     },
   });
 
   if (existingLandlord) {
+    // Passive landlords can be claimed by any agent
     const canUseExisting =
-      auth.user.role === "ADMIN" || existingLandlord.ownerAgentId === auth.user.id;
+      auth.user.role === "ADMIN" ||
+      existingLandlord.ownerAgentId === auth.user.id ||
+      existingLandlord.isPassive;
 
     if (!canUseExisting) {
       return NextResponse.json(
@@ -337,16 +341,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If passive, reassign to the current agent
+    let landlordForProperty = existingLandlord;
+    if (existingLandlord.isPassive && auth.user.role === "AGENT" && existingLandlord.ownerAgentId !== auth.user.id) {
+      await db.landlord.update({
+        where: { id: existingLandlord.id },
+        data: { ownerAgentId: auth.user.id, isPassive: false, passiveMarkedAt: null },
+      });
+      landlordForProperty = { ...existingLandlord, ownerAgentId: auth.user.id, isPassive: false };
+    }
+
     const property = await createPropertyForLandlord({
       actorUserId: auth.user.id,
-      landlord: existingLandlord,
+      landlord: landlordForProperty,
       property: payload.property,
     });
 
     return NextResponse.json(
       {
         landlordCreated: false,
-        landlord: existingLandlord,
+        landlord: landlordForProperty,
         property,
       },
       { status: 201 },

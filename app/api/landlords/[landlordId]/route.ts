@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { normalizeUkPhone } from "@/server/phone";
 import {
   canChangeLandlordOwnership,
   canEditLandlord,
@@ -15,17 +14,23 @@ const landlordIdSchema = z.string().uuid("landlord id must be a valid UUID");
 const optionalEmailSchema = z.union([z.string().trim().email(), z.literal(""), z.null()]).optional();
 const optionalNotesSchema = z.union([z.string().trim().max(5000), z.literal(""), z.null()]).optional();
 
+// Agents: can edit name, email, notes + manually mark their own landlord passive (only to true)
 const agentPatchSchema = z
   .object({
     fullName: z.string().trim().min(1).optional(),
-    phone: z.string().trim().min(1).optional(),
     email: optionalEmailSchema,
     notes: optionalNotesSchema,
+    isPassive: z.literal(true).optional(), // agents can only set passive, not reactivate
   })
   .strict();
 
-const adminPatchSchema = agentPatchSchema
-  .extend({
+// Admins: can also change owner and set isPassive either way
+const adminPatchSchema = z
+  .object({
+    fullName: z.string().trim().min(1).optional(),
+    email: optionalEmailSchema,
+    notes: optionalNotesSchema,
+    isPassive: z.boolean().optional(),
     ownerAgentId: z.string().uuid().optional(),
     reassignmentReason: z.string().trim().min(3).max(500).optional(),
   })
@@ -214,6 +219,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       phoneLast10: true,
       email: true,
       notes: true,
+      isPassive: true,
+      passiveMarkedAt: true,
       createdAt: true,
       updatedAt: true,
       createdByUserId: true,
@@ -240,37 +247,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     updatedByUserId: auth.user.id,
   };
   let hasChanges = false;
-  let nextPhoneLast10 = currentLandlord.phoneLast10;
-  let nextPhoneE164 = currentLandlord.phoneE164;
+  const nextPhoneLast10 = currentLandlord.phoneLast10;
+  const nextPhoneE164 = currentLandlord.phoneE164;
 
   if (payload.fullName !== undefined && payload.fullName !== currentLandlord.landlordName) {
     updateData.landlordName = payload.fullName;
     hasChanges = true;
-  }
-
-  if (payload.phone !== undefined) {
-    const normalized = normalizeUkPhone(payload.phone);
-    if (!normalized.ok) {
-      return NextResponse.json(
-        {
-          error: "INVALID_PHONE",
-          message: normalized.message,
-        },
-        { status: 400 },
-      );
-    }
-
-    nextPhoneLast10 = normalized.phoneLast10;
-    nextPhoneE164 = normalized.phoneE164;
-    if (
-      normalized.phoneLast10 !== currentLandlord.phoneLast10 ||
-      normalized.phoneE164 !== currentLandlord.phoneE164
-    ) {
-      updateData.phoneLast10 = normalized.phoneLast10;
-      updateData.phoneE164 = normalized.phoneE164;
-      updateData.landlordNumber = normalized.phoneLast10;
-      hasChanges = true;
-    }
   }
 
   if (payload.email !== undefined) {
@@ -285,6 +267,22 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const nextNotes = payload.notes?.trim() || null;
     if (nextNotes !== currentLandlord.notes) {
       updateData.notes = nextNotes;
+      hasChanges = true;
+    }
+  }
+
+  if ("isPassive" in payload && payload.isPassive !== undefined) {
+    // Agents can only set passive=true; admins can set either way
+    if (auth.user.role === "AGENT" && payload.isPassive !== true) {
+      return NextResponse.json(
+        { error: "FORBIDDEN", message: "Agents can only mark a landlord as passive, not reactivate." },
+        { status: 403 },
+      );
+    }
+    const currentIsPassive = (currentLandlord as unknown as { isPassive: boolean }).isPassive ?? false;
+    if (payload.isPassive !== currentIsPassive) {
+      updateData.isPassive = payload.isPassive;
+      updateData.passiveMarkedAt = payload.isPassive ? new Date() : null;
       hasChanges = true;
     }
   }
@@ -337,91 +335,65 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const duplicate = await db.landlord.findUnique({
-    where: { phoneLast10: nextPhoneLast10 },
-    select: conflictSelect,
-  });
-
-  if (duplicate && duplicate.id !== currentLandlord.id) {
-    return conflictResponse(duplicate);
-  }
-
-  try {
-    const updated = await db.$transaction(async (tx) => {
-      const landlord = await tx.landlord.update({
-        where: { id: currentLandlord.id },
-        data: updateData,
-        select: {
-          id: true,
-          landlordName: true,
-          landlordNumber: true,
-          phoneE164: true,
-          phoneLast10: true,
-          email: true,
-          notes: true,
-          createdAt: true,
-          updatedAt: true,
-          createdByUserId: true,
-          updatedByUserId: true,
-          ownerAgentId: true,
-          ownerAgent: {
-            select: {
-              id: true,
-              agentDisplayName: true,
-            },
-          },
-          _count: {
-            select: {
-              properties: true,
-            },
-          },
+  const updated = await db.$transaction(async (tx) => {
+    const landlord = await tx.landlord.update({
+      where: { id: currentLandlord.id },
+      data: updateData,
+      select: {
+        id: true,
+        landlordName: true,
+        landlordNumber: true,
+        phoneE164: true,
+        phoneLast10: true,
+        email: true,
+        notes: true,
+        isPassive: true,
+        passiveMarkedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        createdByUserId: true,
+        updatedByUserId: true,
+        ownerAgentId: true,
+        ownerAgent: {
+          select: { id: true, agentDisplayName: true },
         },
-      });
-
-      const ownerChanged = landlord.ownerAgentId !== currentLandlord.ownerAgentId;
-      await tx.auditLog.create({
-        data: {
-          userId: auth.user.id,
-          entityType: "LANDLORD",
-          entityId: landlord.id,
-          action: ownerChanged ? "REASSIGN_LANDLORD_OWNER" : "UPDATE_LANDLORD",
-          metadata: ownerChanged
-            ? {
-                fromOwnerAgentId: currentLandlord.ownerAgentId,
-                toOwnerAgentId: landlord.ownerAgentId,
-                reason: payload.reassignmentReason ?? null,
-              }
-            : {
-                phoneLast10: nextPhoneLast10,
-                phoneE164: nextPhoneE164,
-              },
-          beforeJson: currentLandlord,
-          afterJson: landlord,
+        _count: {
+          select: { properties: true },
         },
-      });
-
-      return landlord;
-    });
-
-    return NextResponse.json({
-      landlord: {
-        ...updated,
-        canEdit: canEditLandlord(auth.user, updated),
       },
     });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      const conflicting = await db.landlord.findUnique({
-        where: { phoneLast10: nextPhoneLast10 },
-        select: conflictSelect,
-      });
-      if (conflicting && conflicting.id !== currentLandlord.id) {
-        return conflictResponse(conflicting);
-      }
-    }
 
-    throw error;
-  }
+    const ownerChanged = landlord.ownerAgentId !== currentLandlord.ownerAgentId;
+    const action = ownerChanged ? "REASSIGN_LANDLORD_OWNER" : "UPDATE_LANDLORD";
+    const metadata = ownerChanged
+      ? {
+          fromOwnerAgentId: currentLandlord.ownerAgentId,
+          toOwnerAgentId: landlord.ownerAgentId,
+          reason: ("reassignmentReason" in payload ? payload.reassignmentReason : null) ?? null,
+        }
+      : { phoneLast10: nextPhoneLast10, phoneE164: nextPhoneE164 };
+
+    await tx.auditLog.create({
+      data: {
+        userId: auth.user.id,
+        entityType: "LANDLORD",
+        entityId: landlord.id,
+        action,
+        metadata,
+        beforeJson: currentLandlord,
+        afterJson: landlord,
+      },
+    });
+
+    return landlord;
+  });
+
+  return NextResponse.json({
+    landlord: {
+      ...updated,
+      canEdit: canEditLandlord(auth.user, updated),
+    },
+  });
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {

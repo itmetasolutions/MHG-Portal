@@ -84,10 +84,8 @@ export async function GET(request: NextRequest) {
 
   if (status) {
     where.status = status;
-  } else if (!includeSOLD) {
-    // By default, hide fully-closed properties from the active list
-    where.status = { not: "CLOSED" };
   }
+  // No default filter — show all statuses including CLOSED
 
   if (city) {
     where.city = { contains: city, mode: "insensitive" };
@@ -170,6 +168,14 @@ export async function GET(request: NextRequest) {
             landlordDemand: true,
             expectedCommissionPct: true,
             status: true,
+            sale: {
+              select: {
+                id: true,
+                finalAmount: true,
+                closedAt: true,
+                tenant: { select: { id: true, fullName: true } },
+              },
+            },
           },
         },
       },

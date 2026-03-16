@@ -6,373 +6,139 @@ import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
-import { UISelect } from "@/components/ui/select";
-import {
-  createPropertyIntake,
-  checkLandlordNumber,
-  type PropertyStatus,
-  type VacancyType,
-} from "@/lib/portal-api";
+import { createLandlord, checkLandlordNumber } from "@/lib/portal-api";
 
-type LookupState =
-  | { checked: false }
-  | {
-      checked: true;
-      phoneLast10: string;
-      ownershipConflict: boolean;
-      landlordExists: boolean;
-      landlord: {
-        id: string;
-        landlordName: string;
-        phoneLast10: string;
-        ownerAgentId: string;
-        ownerAgent: { id: string; agentDisplayName: string };
-        _count: { properties: number };
-      } | null;
-    };
-
-type RoomDraft = {
-  roomName: string;
-  landlordDemand: string;
-  expectedCommissionPct: string;
-};
-
-const ROOM_TYPES = [
-  "Studio Room",
-  "Single Room",
-  "Double Room",
-  "Ensuite Room",
-  "Loft",
-] as const;
-
-const PRIVATE_PROPERTY_TYPES = ["House", "Studio Flat", "Flat"] as const;
-
-const STATUS_OPTIONS: { value: PropertyStatus; label: string; desc: string }[] = [
-  { value: "DRAFT", label: "Draft", desc: "Saved but not yet available" },
-  { value: "AVAILABLE", label: "Available", desc: "Active and available for rent" },
-];
-
-function createEmptyRoom(): RoomDraft {
-  return {
-    roomName: ROOM_TYPES[0],
-    landlordDemand: "",
-    expectedCommissionPct: "",
-  };
-}
-
-export default function AddPropertyPage() {
+export default function AddLandlordPage() {
   const router = useRouter();
-
-  const [landlordPhone, setLandlordPhone] = useState("");
-  const [landlordName, setLandlordName] = useState("");
-  const [landlordEmail, setLandlordEmail] = useState("");
-  const [landlordNotes, setLandlordNotes] = useState("");
-
-  const [addressLine1, setAddressLine1] = useState("");
-  const [addressLine2, setAddressLine2] = useState("");
-  const [city, setCity] = useState("");
-  const [postcode, setPostcode] = useState("");
-  const [county, setCounty] = useState("");
-  const [privatePropertyType, setPrivatePropertyType] = useState<"House" | "Studio Flat" | "Flat" | "">("");
-  const [numberOfRooms, setNumberOfRooms] = useState("");
-  const [landlordDemand, setLandlordDemand] = useState("");
-  const [commissionPct, setCommissionPct] = useState("");
-  const [commissionAmt, setCommissionAmt] = useState("");
-  const [commissionType, setCommissionType] = useState<"pct" | "amt">("pct");
-  const [propertyRef, setPropertyRef] = useState("");
-  const [status, setStatus] = useState<PropertyStatus>("DRAFT");
-  const [vacancyType, setVacancyType] = useState<VacancyType>("SINGLE");
-  const [rooms, setRooms] = useState<RoomDraft[]>([createEmptyRoom()]);
-  const [totalRooms, setTotalRooms] = useState("");
-  const [availableRooms, setAvailableRooms] = useState("");
-  const [rentPerMonth, setRentPerMonth] = useState("");
-  const [depositAmount, setDepositAmount] = useState("");
-  const [isFurnished, setIsFurnished] = useState<"true" | "false">("true");
-  const [personsAllowed, setPersonsAllowed] = useState("");
-  const [petsAllowed, setPetsAllowed] = useState<"true" | "false">("true");
-  const [dssAllowed, setDssAllowed] = useState<"true" | "false">("true");
-  const [childrenAllowed, setChildrenAllowed] = useState<"true" | "false">("true");
-  const [availabilityDate, setAvailabilityDate] = useState("");
-  const [livingLandlord, setLivingLandlord] = useState<"true" | "false">("false");
-
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [notes, setNotes] = useState("");
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [lookup, setLookup] = useState<LookupState>({ checked: false });
+  const [phoneChecked, setPhoneChecked] = useState(false);
+  const [phoneConflict, setPhoneConflict] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  const normalizedPhone = useMemo(() => landlordPhone.trim(), [landlordPhone]);
+  const canSubmit = useMemo(
+    () => phoneChecked && !phoneConflict && phone.trim().length > 0 && name.trim().length > 0,
+    [phoneChecked, phoneConflict, phone, name],
+  );
 
-  const canSubmit = useMemo(() => {
-    if (!lookup.checked || lookup.ownershipConflict) return false;
-    if (!lookup.landlordExists && !landlordName.trim()) return false;
-    if (vacancyType === "MULTIPLE" && rooms.every((room) => !room.roomName.trim())) return false;
-    return true;
-  }, [landlordName, lookup, rooms, vacancyType]);
-
-  function updateRoom(index: number, key: keyof RoomDraft, value: string) {
-    setRooms((prev) => prev.map((room, i) => (i === index ? { ...room, [key]: value } : room)));
-  }
-
-  function addRoom() {
-    setRooms((prev) => [...prev, createEmptyRoom()]);
-  }
-
-  function removeRoom(index: number) {
-    setRooms((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function runPhoneLookup() {
-    if (!normalizedPhone) {
-      setLookup({ checked: false });
-      return;
-    }
-
+  async function checkPhone() {
+    const trimmed = phone.trim();
+    if (!trimmed) return;
     setChecking(true);
     setMessage(null);
-    const result = await checkLandlordNumber(normalizedPhone);
+    setPhoneConflict(null);
+    setPhoneChecked(false);
+    const result = await checkLandlordNumber(trimmed);
     setChecking(false);
 
     if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to validate phone number." });
+      setMessage({ type: "error", text: result.message ?? "Invalid phone number." });
       return;
     }
 
-    setLookup({
-      checked: true,
-      phoneLast10: result.data.phoneLast10,
-      ownershipConflict: result.data.ownershipConflict,
-      landlordExists: result.data.landlordExists,
-      landlord: result.data.landlord,
-    });
-
-    if (result.data.landlordExists && result.data.ownershipConflict) {
-      setMessage({ type: "error", text: "Ownership conflict - see details below." });
+    if (result.data.landlordExists) {
+      const conflict = result.data.landlord;
+      setPhoneConflict(
+        `A landlord with this number already exists: ${conflict?.landlordName} (${conflict?.ownerAgent?.agentDisplayName ?? "another agent"}).`,
+      );
       return;
     }
 
-    setMessage(
-      result.data.landlordExists
-        ? { type: "success", text: "Existing landlord found - fill in property details below." }
-        : { type: "success", text: "No landlord found - fill in landlord details, then property details." },
-    );
+    setPhoneChecked(true);
+    setMessage({ type: "success", text: "Phone number is available. Fill in details below." });
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!canSubmit) return;
+    setSaving(true);
     setMessage(null);
 
-    if (!lookup.checked) {
-      setMessage({ type: "error", text: "Please look up the landlord phone number first." });
-      return;
-    }
-    if (lookup.ownershipConflict) {
-      setMessage({ type: "error", text: "Cannot create property - landlord is assigned to another agent." });
-      return;
-    }
-    if (!lookup.landlordExists && !landlordName.trim()) {
-      setMessage({ type: "error", text: "Landlord full name is required for new landlords." });
-      return;
-    }
-
-    const roomRows =
-      vacancyType === "MULTIPLE"
-        ? rooms
-            .filter((room) => room.roomName.trim().length > 0)
-            .map((room) => ({
-              roomName: room.roomName.trim(),
-              landlordDemand: room.landlordDemand !== "" ? Number(room.landlordDemand) : undefined,
-              expectedCommissionPct:
-                room.expectedCommissionPct !== "" ? Number(room.expectedCommissionPct) : undefined,
-            }))
-        : [];
-
-    if (vacancyType === "MULTIPLE" && roomRows.length === 0) {
-      setMessage({ type: "error", text: "Add at least one room for shared properties." });
-      return;
-    }
-
-    // Derive propertyType and beds from private property fields
-    const resolvedPropertyType = vacancyType === "SINGLE" ? privatePropertyType || undefined : undefined;
-    const resolvedBeds =
-      vacancyType === "SINGLE" && privatePropertyType === "Flat" && numberOfRooms !== ""
-        ? Number(numberOfRooms)
-        : undefined;
-
-    if (!addressLine1.trim()) {
-      setMessage({ type: "error", text: "Property full address is required." });
-      return;
-    }
-    if (!totalRooms.trim()) {
-      setMessage({ type: "error", text: "Total number of rooms is required." });
-      return;
-    }
-    if (!availableRooms.trim()) {
-      setMessage({ type: "error", text: "Available rooms is required." });
-      return;
-    }
-    if (!rentPerMonth.trim()) {
-      setMessage({ type: "error", text: "Rent per month is required." });
-      return;
-    }
-    if (!depositAmount.trim()) {
-      setMessage({ type: "error", text: "Deposit amount is required." });
-      return;
-    }
-    if (!personsAllowed.trim()) {
-      setMessage({ type: "error", text: "Number of persons allowed is required." });
-      return;
-    }
-    if (!availabilityDate) {
-      setMessage({ type: "error", text: "Property availability date is required." });
-      return;
-    }
-
-    setSaving(true);
-    const result = await createPropertyIntake({
-      landlord: {
-        phone: landlordPhone.trim(),
-        fullName: landlordName.trim() || undefined,
-        email: landlordEmail.trim() || undefined,
-        notes: landlordNotes.trim() || undefined,
-      },
-      property: {
-        propertyRef: propertyRef.trim() || undefined,
-        addressLine1: addressLine1.trim() || undefined,
-        addressLine2: addressLine2.trim() || undefined,
-        city: city.trim() || undefined,
-        postcode: postcode.trim() || undefined,
-        county: county.trim() || undefined,
-        propertyType: resolvedPropertyType,
-        beds: resolvedBeds,
-        vacancyType,
-        landlordDemand: vacancyType === "SINGLE" && landlordDemand !== "" ? Number(landlordDemand) : undefined,
-        expectedCommissionPct:
-          vacancyType === "SINGLE" && commissionType === "pct" && commissionPct !== "" ? Number(commissionPct) : undefined,
-        expectedCommissionAmt:
-          vacancyType === "SINGLE" && commissionType === "amt" && commissionAmt !== "" ? Number(commissionAmt) : undefined,
-        totalRooms: totalRooms.trim() ? Number(totalRooms) : null,
-        availableRooms: availableRooms.trim() ? Number(availableRooms) : null,
-        rentPerMonth: rentPerMonth.trim() ? Number(rentPerMonth) : null,
-        depositAmount: depositAmount.trim() ? Number(depositAmount) : null,
-        isFurnished: isFurnished === "true",
-        personsAllowed: personsAllowed.trim() ? Number(personsAllowed) : null,
-        petsAllowed: petsAllowed === "true",
-        dssAllowed: dssAllowed === "true",
-        childrenAllowed: childrenAllowed === "true",
-        availabilityDate: availabilityDate ? new Date(availabilityDate).toISOString() : null,
-        livingLandlord: livingLandlord === "true",
-        rooms: vacancyType === "MULTIPLE" ? roomRows : undefined,
-        status,
-      },
+    const result = await createLandlord({
+      fullName: name.trim(),
+      phone: phone.trim(),
+      email: email.trim() || undefined,
+      notes: notes.trim() || undefined,
     });
     setSaving(false);
 
     if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to create property." });
+      setMessage({ type: "error", text: result.message ?? "Failed to create landlord." });
       return;
     }
 
-    router.push("/properties");
+    router.push("/landlords");
   }
-
-  const showPropertySection = lookup.checked && !lookup.ownershipConflict;
 
   return (
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Add Property</h1>
-          <p className="page-subtitle">
-            Enter landlord phone first. Existing landlords are matched automatically.
-            New landlords are registered on first entry and assigned to you.
-          </p>
+          <h1 className="page-title">Add New Landlord</h1>
+          <p className="page-subtitle">Register a new landlord. Phone number must be a valid UK number.</p>
         </div>
-        <UIButton variant="secondary" onClick={() => router.push("/properties")}>
-          Back to Properties
+        <UIButton variant="secondary" onClick={() => router.push("/landlords")}>
+          Back to Landlords
         </UIButton>
       </header>
 
       <UICard>
         <UICardBody>
           <form className="field-grid" onSubmit={handleSubmit}>
-            <div className="form-section-divider">
-              <span className="form-section-label">Step 1 - Landlord</span>
-            </div>
-
             <label className="field">
-              <span className="label">Landlord Phone Number</span>
+              <span className="label">
+                Phone Number <span style={{ color: "var(--danger)" }}>*</span>
+              </span>
               <div className="inline-row">
                 <UIInput
                   style={{ flex: 1 }}
-                  value={landlordPhone}
+                  value={phone}
                   onChange={(e) => {
-                    setLandlordPhone(e.target.value);
-                    setLookup({ checked: false });
+                    setPhone(e.target.value);
+                    setPhoneChecked(false);
+                    setPhoneConflict(null);
                     setMessage(null);
                   }}
-                  onBlur={() => void runPhoneLookup()}
+                  onBlur={() => void checkPhone()}
                   placeholder="+44 7911 122 233 or 07911122233"
                   disabled={saving}
                 />
                 <UIButton
                   type="button"
                   variant="secondary"
-                  onClick={() => void runPhoneLookup()}
-                  disabled={checking || saving || !normalizedPhone}
+                  onClick={() => void checkPhone()}
+                  disabled={checking || saving || !phone.trim()}
                 >
-                  {checking ? "Checking..." : "Look Up"}
+                  {checking ? "Checking..." : "Check"}
                 </UIButton>
               </div>
-              <span className="hint-text">
-                Enter UK mobile or landline. We will check whether the landlord already exists.
-              </span>
+              <span className="hint-text">UK mobile or landline. We verify it's not already registered.</span>
             </label>
 
-            {lookup.checked && lookup.landlordExists && !lookup.ownershipConflict && (
-              <div className="landlord-found-card">
-                <div className="landlord-found-badge">OK</div>
-                <div>
-                  <p className="landlord-found-name">{lookup.landlord?.landlordName}</p>
-                  <p className="landlord-found-meta">
-                    Existing landlord matched - {lookup.landlord?._count.properties ?? 0}{" "}
-                    {(lookup.landlord?._count.properties ?? 0) === 1 ? "property" : "properties"}.
-                  </p>
-                </div>
-              </div>
+            {phoneConflict && (
+              <UIAlert type="error">{phoneConflict}</UIAlert>
             )}
 
-            {lookup.checked && lookup.ownershipConflict && (
-              <div className="ownership-conflict-card">
-                <div className="ownership-conflict-badge">X</div>
-                <div>
-                  <p className="ownership-conflict-title">Landlord assigned to another agent</p>
-                  <p className="ownership-conflict-meta">
-                    {lookup.landlord?.landlordName
-                      ? `"${lookup.landlord.landlordName}" is `
-                      : "This landlord is "}
-                    currently managed by{" "}
-                    <strong style={{ color: "var(--text)" }}>
-                      {lookup.landlord?.ownerAgent?.agentDisplayName ?? "another agent"}
-                    </strong>
-                    . Contact admin to reassign ownership if needed.
-                  </p>
-                </div>
-              </div>
-            )}
+            {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
-            {lookup.checked && !lookup.ownershipConflict && !lookup.landlordExists && (
+            {phoneChecked && !phoneConflict && (
               <>
                 <div className="form-section-divider">
-                  <span className="form-section-label">New Landlord Details</span>
+                  <span className="form-section-label">Landlord Details</span>
                 </div>
+
                 <div className="field-grid-2">
                   <label className="field">
                     <span className="label">
                       Full Name <span style={{ color: "var(--danger)" }}>*</span>
                     </span>
                     <UIInput
-                      value={landlordName}
-                      onChange={(e) => setLandlordName(e.target.value)}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       placeholder="John Smith"
                       disabled={saving}
                     />
@@ -381,18 +147,19 @@ export default function AddPropertyPage() {
                     <span className="label">Email (optional)</span>
                     <UIInput
                       type="email"
-                      value={landlordEmail}
-                      onChange={(e) => setLandlordEmail(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="john@example.com"
                       disabled={saving}
                     />
                   </label>
                 </div>
+
                 <label className="field">
                   <span className="label">Notes (optional)</span>
                   <UIInput
-                    value={landlordNotes}
-                    onChange={(e) => setLandlordNotes(e.target.value)}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                     placeholder="Any notes about this landlord..."
                     disabled={saving}
                   />
@@ -400,433 +167,11 @@ export default function AddPropertyPage() {
               </>
             )}
 
-            {showPropertySection && (
-              <>
-                <div className="form-section-divider">
-                  <span className="form-section-label">Step 2 - Property Details</span>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Address Line 1</span>
-                    <UIInput
-                      value={addressLine1}
-                      onChange={(e) => setAddressLine1(e.target.value)}
-                      placeholder="123 High Street"
-                      disabled={saving}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="label">Address Line 2 (optional)</span>
-                    <UIInput
-                      value={addressLine2}
-                      onChange={(e) => setAddressLine2(e.target.value)}
-                      placeholder="Flat 4B"
-                      disabled={saving}
-                    />
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">City / Town</span>
-                    <UIInput value={city} onChange={(e) => setCity(e.target.value)} placeholder="London" disabled={saving} />
-                  </label>
-                  <label className="field">
-                    <span className="label">Postcode</span>
-                    <UIInput value={postcode} onChange={(e) => setPostcode(e.target.value)} placeholder="SW1A 1AA" disabled={saving} />
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">County (optional)</span>
-                    <UIInput value={county} onChange={(e) => setCounty(e.target.value)} placeholder="Greater London" disabled={saving} />
-                  </label>
-                </div>
-
-                <div className="form-section-divider">
-                  <span className="form-section-label">Property Details</span>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Total Number of Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput
-                      type="number"
-                      min={0}
-                      step="1"
-                      value={totalRooms}
-                      onChange={(e) => setTotalRooms(e.target.value)}
-                      placeholder="e.g. 4"
-                      required
-                      disabled={saving}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="label">Available Rooms <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput
-                      type="number"
-                      min={0}
-                      step="1"
-                      value={availableRooms}
-                      onChange={(e) => setAvailableRooms(e.target.value)}
-                      placeholder="e.g. 2"
-                      required
-                      disabled={saving}
-                    />
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Rent per Month (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={rentPerMonth}
-                      onChange={(e) => setRentPerMonth(e.target.value)}
-                      placeholder="e.g. 1200"
-                      required
-                      disabled={saving}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="label">Deposit Amount (GBP) <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      placeholder="e.g. 1500"
-                      required
-                      disabled={saving}
-                    />
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Property Furnished <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UISelect value={isFurnished} onChange={(e) => setIsFurnished(e.target.value as "true" | "false")} disabled={saving}>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </UISelect>
-                  </label>
-                  <label className="field">
-                    <span className="label">Number of Persons Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput
-                      type="number"
-                      min={1}
-                      step="1"
-                      value={personsAllowed}
-                      onChange={(e) => setPersonsAllowed(e.target.value)}
-                      placeholder="e.g. 3"
-                      required
-                      disabled={saving}
-                    />
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Pets Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UISelect value={petsAllowed} onChange={(e) => setPetsAllowed(e.target.value as "true" | "false")} disabled={saving}>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </UISelect>
-                  </label>
-                  <label className="field">
-                    <span className="label">DSS Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UISelect value={dssAllowed} onChange={(e) => setDssAllowed(e.target.value as "true" | "false")} disabled={saving}>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </UISelect>
-                  </label>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Children Allowed <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UISelect value={childrenAllowed} onChange={(e) => setChildrenAllowed(e.target.value as "true" | "false")} disabled={saving}>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </UISelect>
-                  </label>
-                  <label className="field">
-                    <span className="label">Living Landlord <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UISelect value={livingLandlord} onChange={(e) => setLivingLandlord(e.target.value as "true" | "false")} disabled={saving}>
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </UISelect>
-                  </label>
-                </div>
-
-                <label className="field">
-                  <span className="label">Property Availability Date <span style={{ color: "var(--danger)" }}>*</span></span>
-                  <UIInput
-                    type="date"
-                    value={availabilityDate}
-                    onChange={(e) => setAvailabilityDate(e.target.value)}
-                    required
-                    disabled={saving}
-                  />
-                </label>
-
-                <div className="form-section-divider">
-                  <span className="form-section-label">Property Type</span>
-                </div>
-
-                <div className="vacancy-toggle">
-                  <label className={`vacancy-option${vacancyType === "SINGLE" ? " is-active" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={vacancyType === "SINGLE"}
-                      onChange={() => setVacancyType("SINGLE")}
-                      disabled={saving}
-                    />
-                    <span className="vacancy-option-title">Private Property</span>
-                    <span className="vacancy-option-sub">One property with a single landlord demand and commission.</span>
-                  </label>
-                  <label className={`vacancy-option${vacancyType === "MULTIPLE" ? " is-active" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={vacancyType === "MULTIPLE"}
-                      onChange={() => setVacancyType("MULTIPLE")}
-                      disabled={saving}
-                    />
-                    <span className="vacancy-option-title">Shared Property</span>
-                    <span className="vacancy-option-sub">Multiple rooms managed separately with demand and commission per room.</span>
-                  </label>
-                </div>
-
-                <div className="form-section-divider">
-                  <span className="form-section-label">Financial</span>
-                </div>
-
-                {vacancyType === "SINGLE" ? (
-                  <>
-                    <div className="field-grid-2">
-                      <label className="field">
-                        <span className="label">Landlord Demand (GBP / month)</span>
-                        <UIInput
-                          type="number"
-                          value={landlordDemand}
-                          onChange={(e) => setLandlordDemand(e.target.value)}
-                          min={0}
-                          step="0.01"
-                          placeholder="e.g. 1200"
-                          disabled={saving}
-                        />
-                      </label>
-                      <label className="field">
-                        <span className="label">
-                          Expected Commission
-                          <span style={{ display: "inline-flex", gap: "0.25rem", marginLeft: "0.5rem" }}>
-                            <button
-                              type="button"
-                              onClick={() => setCommissionType("pct")}
-                              disabled={saving}
-                              style={{
-                                fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem",
-                                border: "1px solid var(--border)",
-                                borderRadius: "0.25rem",
-                                background: commissionType === "pct" ? "var(--brand-gold)" : "transparent",
-                                color: commissionType === "pct" ? "#000" : "var(--text-muted)",
-                                cursor: "pointer",
-                              }}
-                            >%</button>
-                            <button
-                              type="button"
-                              onClick={() => setCommissionType("amt")}
-                              disabled={saving}
-                              style={{
-                                fontSize: "0.72rem", fontWeight: 700, padding: "0.1rem 0.4rem",
-                                border: "1px solid var(--border)",
-                                borderRadius: "0.25rem",
-                                background: commissionType === "amt" ? "var(--brand-gold)" : "transparent",
-                                color: commissionType === "amt" ? "#000" : "var(--text-muted)",
-                                cursor: "pointer",
-                              }}
-                            >£</button>
-                          </span>
-                        </span>
-                        {commissionType === "pct" ? (
-                          <UIInput
-                            type="number"
-                            value={commissionPct}
-                            onChange={(e) => setCommissionPct(e.target.value)}
-                            min={0}
-                            max={9999}
-                            step="0.1"
-                            placeholder="e.g. 10"
-                            disabled={saving}
-                          />
-                        ) : (
-                          <UIInput
-                            type="number"
-                            value={commissionAmt}
-                            onChange={(e) => setCommissionAmt(e.target.value)}
-                            min={0}
-                            step="0.01"
-                            placeholder="e.g. 500"
-                            disabled={saving}
-                          />
-                        )}
-                      </label>
-                    </div>
-
-                    <div className="form-section-divider">
-                      <span className="form-section-label">Property Category</span>
-                    </div>
-
-                    <div className="vacancy-toggle">
-                      {PRIVATE_PROPERTY_TYPES.map((type) => (
-                        <label
-                          key={type}
-                          className={`vacancy-option${privatePropertyType === type ? " is-active" : ""}`}
-                        >
-                          <input
-                            type="radio"
-                            name="privatePropertyType"
-                            checked={privatePropertyType === type}
-                            onChange={() => {
-                              setPrivatePropertyType(type);
-                              if (type !== "Flat") setNumberOfRooms("");
-                            }}
-                            disabled={saving}
-                          />
-                          <span className="vacancy-option-title">{type}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    {privatePropertyType === "Flat" && (
-                      <label className="field" style={{ maxWidth: 280 }}>
-                        <span className="label">Number of Rooms</span>
-                        <UIInput
-                          type="number"
-                          value={numberOfRooms}
-                          onChange={(e) => setNumberOfRooms(e.target.value)}
-                          min={1}
-                          max={50}
-                          placeholder="e.g. 3"
-                          disabled={saving}
-                        />
-                      </label>
-                    )}
-                  </>
-                ) : (
-                  <div className="room-editor">
-                    <div className="table-wrap room-editor-wrap">
-                      <table className="room-editor-table">
-                        <thead>
-                          <tr>
-                            <th>Room Type</th>
-                            <th>Landlord Demand (GBP)</th>
-                            <th>Expected Commission (%)</th>
-                            <th />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rooms.map((room, index) => (
-                            <tr key={`room-${index}`}>
-                              <td>
-                                <UISelect
-                                  value={room.roomName}
-                                  onChange={(e) => updateRoom(index, "roomName", e.target.value)}
-                                  disabled={saving}
-                                >
-                                  {ROOM_TYPES.map((type) => (
-                                    <option key={type} value={type}>
-                                      {type}
-                                    </option>
-                                  ))}
-                                </UISelect>
-                              </td>
-                              <td>
-                                <UIInput
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  value={room.landlordDemand}
-                                  onChange={(e) => updateRoom(index, "landlordDemand", e.target.value)}
-                                  placeholder="Optional"
-                                  disabled={saving}
-                                />
-                              </td>
-                              <td>
-                                <UIInput
-                                  type="number"
-                                  min={0}
-                                  step="0.1"
-                                  value={room.expectedCommissionPct}
-                                  onChange={(e) => updateRoom(index, "expectedCommissionPct", e.target.value)}
-                                  placeholder="Optional"
-                                  disabled={saving}
-                                />
-                              </td>
-                              <td>
-                                <UIButton
-                                  type="button"
-                                  variant="secondary"
-                                  onClick={() => removeRoom(index)}
-                                  disabled={saving || rooms.length <= 1}
-                                >
-                                  Remove
-                                </UIButton>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="inline-row">
-                      <UIButton type="button" variant="secondary" onClick={addRoom} disabled={saving}>
-                        Add Room Row
-                      </UIButton>
-                      <span className="hint-text">Each room can be closed and sold independently later.</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-section-divider">
-                  <span className="form-section-label">Reference and Status</span>
-                </div>
-
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Property Reference (optional)</span>
-                    <UIInput
-                      value={propertyRef}
-                      onChange={(e) => setPropertyRef(e.target.value)}
-                      placeholder="Auto-generated if left blank"
-                      disabled={saving}
-                    />
-                  </label>
-                  <label className="field">
-                    <span className="label">Initial Status</span>
-                    <UISelect value={status} onChange={(e) => setStatus(e.target.value as PropertyStatus)} disabled={saving}>
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label} - {option.desc}
-                        </option>
-                      ))}
-                    </UISelect>
-                  </label>
-                </div>
-              </>
-            )}
-
-            {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
-
-            <div className="inline-row" style={{ marginTop: "0.25rem" }}>
-              <UIButton type="submit" disabled={!canSubmit || saving || checking}>
-                {saving ? "Creating Property..." : "Create Property"}
+            <div className="inline-row" style={{ marginTop: "0.5rem" }}>
+              <UIButton type="submit" disabled={!canSubmit || saving}>
+                {saving ? "Creating..." : "Create Landlord"}
               </UIButton>
-              <UIButton type="button" variant="secondary" onClick={() => router.push("/properties")} disabled={saving}>
+              <UIButton type="button" variant="secondary" onClick={() => router.push("/landlords")} disabled={saving}>
                 Cancel
               </UIButton>
             </div>

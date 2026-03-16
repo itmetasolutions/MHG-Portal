@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
       phoneLast10: true,
       email: true,
       notes: true,
+      isPassive: true,
       ownerAgentId: true,
       createdAt: true,
       ownerAgent: {
@@ -86,8 +87,12 @@ export async function GET(request: NextRequest) {
     },
   });
 
+  // Passive landlords can be claimed by any agent
   const canAccessExisting =
-    landlord === null || auth.user.role === "ADMIN" || landlord.ownerAgentId === auth.user.id;
+    landlord === null ||
+    auth.user.role === "ADMIN" ||
+    landlord.ownerAgentId === auth.user.id ||
+    landlord.isPassive;
 
   return NextResponse.json({
     phoneInput,
