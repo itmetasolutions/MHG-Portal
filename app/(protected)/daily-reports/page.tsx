@@ -101,7 +101,7 @@ export default function DailyReportsPage() {
           <p className="page-subtitle">{reports.length} report{reports.length !== 1 ? "s" : ""} submitted.</p>
         </div>
         <UIButton onClick={() => { setShowForm((v) => !v); setMessage(null); }}>
-          {showForm ? "Cancel" : "+ Submit Today&#39;s Report"}
+          {showForm ? "Cancel" : "+ Submit Today's Report"}
         </UIButton>
       </header>
 
