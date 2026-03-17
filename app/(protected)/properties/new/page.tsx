@@ -37,6 +37,7 @@ export default function AddPropertyPage() {
   // Landlord selection
   const [landlords, setLandlords] = useState<LandlordRow[]>([]);
   const [selectedLandlordId, setSelectedLandlordId] = useState("");
+  const [landlordSearch, setLandlordSearch] = useState("");
   const [showNewLandlordForm, setShowNewLandlordForm] = useState(false);
 
   // New landlord inline form
@@ -94,6 +95,18 @@ export default function AddPropertyPage() {
     return true;
   }, [selectedLandlordId, addressLine1, vacancyType, rooms]);
 
+  const filteredLandlords = useMemo(() => {
+    const q = landlordSearch.trim().toLowerCase();
+    if (!q) return landlords;
+    return landlords.filter(
+      (l) =>
+        l.landlordName.toLowerCase().includes(q) ||
+        l.phoneLast10.includes(q),
+    );
+  }, [landlords, landlordSearch]);
+
+  const selectedLandlord = landlords.find((l) => l.id === selectedLandlordId);
+
   function updateRoom(index: number, key: keyof RoomDraft, value: string) {
     setRooms((prev) => prev.map((r, i) => (i === index ? { ...r, [key]: value } : r)));
   }
@@ -146,7 +159,6 @@ export default function AddPropertyPage() {
     event.preventDefault();
     if (!canSubmit) return;
 
-    const selectedLandlord = landlords.find((l) => l.id === selectedLandlordId);
     if (!selectedLandlord) {
       setMessage({ type: "error", text: "Please select a landlord." });
       return;
@@ -233,32 +245,79 @@ export default function AddPropertyPage() {
               <span className="form-section-label">Step 1 — Landlord</span>
             </div>
 
-            <label className="field">
+            <div className="field">
               <span className="label">Select Existing Landlord <span style={{ color: "var(--danger)" }}>*</span></span>
-              <div className="inline-row">
-                <UISelect
-                  style={{ flex: 1 }}
-                  value={selectedLandlordId}
-                  onChange={(e) => { setSelectedLandlordId(e.target.value); setShowNewLandlordForm(false); setMessage(null); }}
-                  disabled={saving}
-                >
-                  <option value="">— Choose a landlord —</option>
-                  {landlords.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.landlordName} ({l.phoneLast10}){l.isPassive ? " [Passive]" : ""}
-                    </option>
-                  ))}
-                </UISelect>
-                <UIButton
-                  type="button"
-                  variant="secondary"
-                  onClick={() => { setShowNewLandlordForm((v) => !v); setSelectedLandlordId(""); setMessage(null); }}
-                  disabled={saving}
-                >
-                  {showNewLandlordForm ? "Cancel" : "+ Add New"}
-                </UIButton>
-              </div>
-            </label>
+
+              {/* Selected landlord display */}
+              {selectedLandlordId && selectedLandlord ? (
+                <div className="landlord-selected-row">
+                  <div className="landlord-selected-info">
+                    <span className="landlord-selected-name">{selectedLandlord.landlordName}</span>
+                    <span className="landlord-selected-phone">{selectedLandlord.phoneLast10}</span>
+                    {selectedLandlord.isPassive && <span className="landlord-passive-badge">Passive</span>}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setSelectedLandlordId(""); setLandlordSearch(""); setMessage(null); }}
+                    disabled={saving}
+                  >
+                    Change
+                  </button>
+                  <UIButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => { setShowNewLandlordForm((v) => !v); setSelectedLandlordId(""); setLandlordSearch(""); setMessage(null); }}
+                    disabled={saving}
+                  >
+                    {showNewLandlordForm ? "Cancel" : "+ Add New"}
+                  </UIButton>
+                </div>
+              ) : (
+                <div className="landlord-search-wrap">
+                  <div className="inline-row">
+                    <UIInput
+                      style={{ flex: 1 }}
+                      value={landlordSearch}
+                      onChange={(e) => setLandlordSearch(e.target.value)}
+                      placeholder="Search by name or phone..."
+                      disabled={saving}
+                    />
+                    <UIButton
+                      type="button"
+                      variant="secondary"
+                      onClick={() => { setShowNewLandlordForm((v) => !v); setMessage(null); }}
+                      disabled={saving}
+                    >
+                      {showNewLandlordForm ? "Cancel" : "+ Add New"}
+                    </UIButton>
+                  </div>
+
+                  {landlords.length > 0 && (
+                    <div className="landlord-search-list">
+                      {filteredLandlords.length === 0 ? (
+                        <div className="landlord-search-empty">No landlords match &ldquo;{landlordSearch}&rdquo;</div>
+                      ) : (
+                        filteredLandlords.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            className="landlord-search-item"
+                            onClick={() => { setSelectedLandlordId(l.id); setLandlordSearch(""); setShowNewLandlordForm(false); setMessage(null); }}
+                            disabled={saving}
+                          >
+                            <span className="landlord-search-item-name">{l.landlordName}</span>
+                            <span className="landlord-search-item-meta">
+                              {l.phoneLast10}{l.isPassive ? " · Passive" : ""}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Inline add new landlord */}
             {showNewLandlordForm && (

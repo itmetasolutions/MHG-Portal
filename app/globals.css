@@ -4021,6 +4021,114 @@ a.admin-stat-card {
   }
 }
 
+/* ── Landlord Searchable Dropdown ───────────────────────────────────── */
+
+.landlord-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.landlord-search-list {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.landlord-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.6rem 0.875rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+  gap: 0.75rem;
+  transition: background 100ms;
+}
+
+.landlord-search-item:last-child {
+  border-bottom: none;
+}
+
+.landlord-search-item:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.landlord-search-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.landlord-search-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landlord-search-item-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.landlord-search-empty {
+  padding: 0.875rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.landlord-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.875rem;
+  border: 1px solid var(--border-gold);
+  border-radius: 0.5rem;
+  background: var(--brand-gold-light);
+}
+
+.landlord-selected-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.landlord-selected-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.landlord-selected-phone {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.landlord-passive-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--brand-gold);
+  background: rgba(201, 168, 76, 0.15);
+  border: 1px solid var(--border-gold);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
 /* ── Notification Bell ───────────────────────────────────────────────── */
 
 .notif-bell-wrap {
