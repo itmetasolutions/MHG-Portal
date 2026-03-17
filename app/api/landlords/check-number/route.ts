@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { normalizeUkPhone } from "@/server/phone";
+import { sendNumberSearchedEmail } from "@/server/email/service";
 
 const querySchema = z
   .object({
@@ -94,6 +95,52 @@ export async function GET(request: NextRequest) {
     landlord.ownerAgentId === auth.user.id ||
     landlord.isPassive;
 
+  const ownershipConflict = Boolean(landlord && !canAccessExisting);
+
+  // Notify the owner agent when another agent searches their landlord's number
+  if (ownershipConflict && landlord && landlord.ownerAgentId) {
+    try {
+      const ownerAgent = await db.user.findUnique({
+        where: { id: landlord.ownerAgentId },
+        select: { id: true, email: true, agentDisplayName: true },
+      });
+
+      if (ownerAgent) {
+        const searchingAgentName = auth.user.agentDisplayName;
+        const notificationBody = `Agent "${searchingAgentName}" searched for the number belonging to your landlord ${landlord.landlordName} (${landlord.phoneLast10}).`;
+
+        await db.notification.create({
+          data: {
+            userId: ownerAgent.id,
+            type: "NUMBER_SEARCHED",
+            title: "Your landlord number was searched",
+            body: notificationBody,
+            metadata: {
+              landlordId: landlord.id,
+              landlordName: landlord.landlordName,
+              landlordPhone: landlord.phoneLast10,
+              searchingAgentId: auth.user.id,
+              searchingAgentName,
+            },
+          },
+        });
+
+        // Fire email in background — do not block the response
+        void sendNumberSearchedEmail({
+          to: ownerAgent.email,
+          ownerAgentName: ownerAgent.agentDisplayName,
+          searchingAgentName,
+          landlordName: landlord.landlordName,
+          landlordPhone: landlord.phoneLast10,
+        }).catch(() => {
+          // Silently swallow email errors — notification is already saved in DB
+        });
+      }
+    } catch {
+      // Notification failure should never break the check-number response
+    }
+  }
+
   return NextResponse.json({
     phoneInput,
     phoneLast10: normalized.phoneLast10,
@@ -102,6 +149,6 @@ export async function GET(request: NextRequest) {
     landlord,
     canCreateLandlord: !landlord,
     canCreateProperty: canAccessExisting,
-    ownershipConflict: Boolean(landlord && !canAccessExisting),
+    ownershipConflict,
   });
 }

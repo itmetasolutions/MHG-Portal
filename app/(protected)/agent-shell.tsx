@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
 import { checkLandlordNumber, type LandlordLookupResponse } from "@/lib/portal-api";
 import { FloatingChat } from "@/components/floating-chat";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 type AgentUser = {
   name: string;
@@ -270,7 +271,10 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
             </div>
           </div>
 
-          <div className="agent-topbar-meta">{user.name || user.email}</div>
+          <div className="agent-topbar-right">
+            <NotificationsBell />
+            <span className="agent-topbar-meta">{user.name || user.email}</span>
+          </div>
         </div>
 
         <div className="agent-lookup-strip">
