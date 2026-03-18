@@ -18,7 +18,7 @@ export async function PATCH(
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;
 
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT]);
+  const roleCheck = requireRole(auth.user, [UserRole.AGENT, UserRole.ADMIN]);
   if (!roleCheck.ok) return roleCheck.response;
 
   const existing = await db.callRecord.findUnique({
@@ -30,7 +30,7 @@ export async function PATCH(
     return NextResponse.json({ error: "NOT_FOUND", message: "Call record not found." }, { status: 404 });
   }
 
-  if (existing.agentId !== auth.user.id) {
+  if (auth.user.role !== "ADMIN" && existing.agentId !== auth.user.id) {
     return NextResponse.json({ error: "FORBIDDEN", message: "You cannot edit this record." }, { status: 403 });
   }
 
@@ -67,4 +67,32 @@ export async function PATCH(
   });
 
   return NextResponse.json({ record });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const auth = await requireUser(request);
+  if (!auth.ok) return auth.response;
+
+  const roleCheck = requireRole(auth.user, [UserRole.AGENT, UserRole.ADMIN]);
+  if (!roleCheck.ok) return roleCheck.response;
+
+  const existing = await db.callRecord.findUnique({
+    where: { id: params.id },
+    select: { id: true, agentId: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "NOT_FOUND", message: "Call record not found." }, { status: 404 });
+  }
+
+  if (auth.user.role !== "ADMIN" && existing.agentId !== auth.user.id) {
+    return NextResponse.json({ error: "FORBIDDEN", message: "You cannot delete this record." }, { status: 403 });
+  }
+
+  await db.callRecord.delete({ where: { id: params.id } });
+
+  return NextResponse.json({ ok: true });
 }

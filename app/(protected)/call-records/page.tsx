@@ -111,6 +111,7 @@ export default function CallRecordsPage() {
   const [editBusy, setEditBusy] = useState(false);
 
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Add Landlord modal
@@ -174,7 +175,10 @@ export default function CallRecordsPage() {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpenId(null);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null);
+        setMenuPos(null);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -201,6 +205,15 @@ export default function CallRecordsPage() {
     setEditBusy(false);
     if (!result.ok) { setMessage({ type: "error", text: result.message ?? "Failed to update status." }); return; }
     setEditStatusId(null);
+    await loadRecords();
+  }
+
+  async function handleDeleteRecord(id: string) {
+    if (!confirm("Delete this call record?")) return;
+    const result = await apiDelete(`/api/call-records/${id}`);
+    if (!result.ok) { setMessage({ type: "error", text: result.message ?? "Failed to delete." }); return; }
+    setMenuOpenId(null);
+    setMessage({ type: "success", text: "Call record deleted." });
     await loadRecords();
   }
 
@@ -503,15 +516,17 @@ export default function CallRecordsPage() {
                             )}
                           </td>
                           <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{fmt(rec.createdAt)}</td>
-                          <td style={{ position: "relative" }}>
-                            <button style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "1.1rem", lineHeight: 1 }} onClick={() => setMenuOpenId(menuOpenId === rec.id ? null : rec.id)} title="More options">⋮</button>
-                            {menuOpenId === rec.id && (
-                              <div ref={menuRef} style={{ position: "absolute", right: "0.5rem", top: "2rem", zIndex: 100, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 4px 16px rgba(0,0,0,0.4)", minWidth: "170px", overflow: "hidden" }}>
-                                <button style={menuItemStyle} onClick={() => { setEditStatusId(rec.id); setEditStatus(rec.status); setMenuOpenId(null); }}>Change Status</button>
-                                {!rec.convertedToLandlordId && <button style={menuItemStyle} onClick={() => openLandlordModal(rec)}>Add to Landlords</button>}
-                                {!rec.convertedToTenantId && <button style={menuItemStyle} onClick={() => openTenantModal(rec)}>Add to Tenants</button>}
-                              </div>
-                            )}
+                          <td>
+                            <button
+                              style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "1.1rem", lineHeight: 1 }}
+                              title="More options"
+                              onClick={(e) => {
+                                if (menuOpenId === rec.id) { setMenuOpenId(null); setMenuPos(null); return; }
+                                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                                setMenuOpenId(rec.id);
+                              }}
+                            >⋮</button>
                           </td>
                         </tr>
                       );
@@ -640,6 +655,38 @@ export default function CallRecordsPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* ── 3-dot dropdown (fixed position, escapes table overflow) ── */}
+      {menuOpenId && menuPos && (
+        <div
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top: menuPos.top,
+            right: menuPos.right,
+            zIndex: 300,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+            minWidth: "170px",
+            overflow: "hidden",
+          }}
+        >
+          {(() => {
+            const rec = records.find((r) => r.id === menuOpenId);
+            if (!rec) return null;
+            return (
+              <>
+                <button style={menuItemStyle} onClick={() => { setEditStatusId(rec.id); setEditStatus(rec.status); setMenuOpenId(null); setMenuPos(null); }}>Change Status</button>
+                {!rec.convertedToLandlordId && <button style={menuItemStyle} onClick={() => openLandlordModal(rec)}>Add to Landlords</button>}
+                {!rec.convertedToTenantId && <button style={menuItemStyle} onClick={() => openTenantModal(rec)}>Add to Tenants</button>}
+                <button style={{ ...menuItemStyle, color: "var(--danger)", borderBottom: "none" }} onClick={() => void handleDeleteRecord(rec.id)}>Delete Record</button>
+              </>
+            );
+          })()}
+        </div>
       )}
 
       {/* ── Add Landlord Modal ── */}
