@@ -14,12 +14,6 @@ type AgentNote = {
   updatedAt: string;
 };
 
-function fmt(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
 export default function NotesPage() {
   const [notes, setNotes] = useState<AgentNote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +202,7 @@ export default function NotesPage() {
       ) : notes.length === 0 ? (
         <div className="panel" style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem" }}>
           <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>📝</div>
-          <p style={{ margin: 0 }}>No notes yet. Click "+ New Note" to get started.</p>
+          <p style={{ margin: 0 }}>No notes yet. Click &quot;+ New Note&quot; to get started.</p>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>No notes match your search.</div>

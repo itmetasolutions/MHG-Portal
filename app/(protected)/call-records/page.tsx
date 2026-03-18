@@ -573,7 +573,7 @@ export default function CallRecordsPage() {
             {schedLoading ? (
               <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>Loading...</div>
             ) : scheduledCalls.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>No scheduled calls. Click "+ Schedule a Call" to add one.</div>
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>No scheduled calls. Click &quot;+ Schedule a Call&quot; to add one.</div>
             ) : (
               <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
                 <table className="table">
