@@ -28,6 +28,13 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Neon pooled connections don't support advisory locks required by Prisma Migrate.
+// Override DATABASE_URL with the direct (non-pooled) URL for migrations.
+if (process.env.DIRECT_URL) {
+  process.env.DATABASE_URL = process.env.DIRECT_URL;
+  process.stdout.write("[migrate] Using DIRECT_URL for migrations (non-pooled connection).\n");
+}
+
 const retriesRaw = Number.parseInt(process.env.PRISMA_MIGRATE_DEPLOY_RETRIES ?? "5", 10);
 const delayRaw = Number.parseInt(process.env.PRISMA_MIGRATE_DEPLOY_DELAY_MS ?? "15000", 10);
 const maxRetries = Number.isFinite(retriesRaw) && retriesRaw > 0 ? retriesRaw : 5;
