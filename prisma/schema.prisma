@@ -58,6 +58,13 @@ enum CallRecordStatus {
   VOICEMAIL
 }
 
+enum ScheduledCallStatus {
+  PENDING
+  DONE
+  CANCELLED
+  MISSED
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -89,6 +96,8 @@ model User {
   addedTenants        Tenant[]                @relation("TenantAddedBy")
   dailyReports        DailyReport[]           @relation("DailyReportAgent")
   callRecords         CallRecord[]            @relation("CallRecordAgent")
+  scheduledCalls      ScheduledCall[]         @relation("ScheduledCallAgent")
+  agentNotes          AgentNote[]             @relation("AgentNoteOwner")
   notifications       Notification[]          @relation("UserNotifications")
 
   @@index([agentDisplayName])
@@ -483,6 +492,39 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
   @@index([userId, createdAt])
+}
+
+model ScheduledCall {
+  id          String              @id @default(uuid()) @db.Uuid
+  agentId     String              @db.Uuid
+  phoneNumber String
+  contactName String?
+  scheduledAt DateTime
+  notes       String?
+  status      ScheduledCallStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  agent User @relation("ScheduledCallAgent", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([agentId, scheduledAt])
+  @@index([scheduledAt])
+  @@index([agentId, status])
+}
+
+model AgentNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  agentId   String   @db.Uuid
+  title     String?
+  content   String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agent User @relation("AgentNoteOwner", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([agentId, createdAt])
+  @@index([agentId, isPinned])
 }
 
 // Singleton commission configuration (always upserted with id = "singleton")

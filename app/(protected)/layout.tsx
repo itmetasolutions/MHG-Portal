@@ -13,8 +13,8 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
-  if (session.role !== UserRole.AGENT) {
-    redirect("/admin");
+  if (session.role !== UserRole.AGENT && session.role !== UserRole.ADMIN) {
+    redirect("/login");
   }
 
   const [user, contacts] = await Promise.all([
@@ -31,6 +31,11 @@ export default async function ProtectedLayout({
 
   if (!user || !user.isActive) {
     redirect("/login");
+  }
+
+  // Admins have their own shell via the root AppShell; just render the page
+  if (session.role === UserRole.ADMIN) {
+    return <>{children}</>;
   }
 
   return (
