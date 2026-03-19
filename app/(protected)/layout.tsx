@@ -33,11 +33,6 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
-  // Admins have their own shell via the root AppShell; just render the page
-  if (session.role === UserRole.ADMIN) {
-    return <>{children}</>;
-  }
-
   return (
     <AgentShell
       user={{ name: user.agentDisplayName, email: session.email, profilePicture: user.profilePicture }}

@@ -1,18 +1,10 @@
-import Link from "next/link";
 import { UserRole, PropertyStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
-import { formatDate } from "@/lib/format";
-import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
+import { AdminPropertiesClient } from "./admin-properties-client";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
-  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
-  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
-};
 
 export default async function AdminPropertiesPage() {
   const session = await getAuthSession();
@@ -100,88 +92,7 @@ export default async function AdminPropertiesPage() {
             <p className="muted" style={{ margin: 0, textAlign: "center" }}>No properties yet.</p>
           </div>
         ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Address</th>
-                  <th>Ref</th>
-                  <th>Type</th>
-                  <th>Beds</th>
-                  <th>Landlord</th>
-                  <th>Agent</th>
-                  <th>Status</th>
-                  <th>Added</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {properties.map((prop) => (
-                  <tr key={prop.id}>
-                    <td>
-                      <Link
-                        href={`/admin/properties/${prop.id}`}
-                        style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block", textDecoration: "none" }}
-                      >
-                        {prop.addressLine1 || prop.propertyRef}
-                      </Link>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[prop.city, prop.postcode].filter(Boolean).join(", ")}
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/admin/properties/${prop.id}`} style={{ color: "var(--text-muted)", textDecoration: "none" }}>
-                        <code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code>
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {prop.propertyType ?? "—"}
-                    </td>
-                    <td style={{ color: "var(--text-muted)" }}>
-                      {prop.beds != null
-                        ? `${prop.beds}${prop.baths != null ? ` / ${prop.baths}` : ""}`
-                        : "—"}
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {prop.landlord.landlordName}
-                    </td>
-                    <td>
-                      <Link
-                        href={`/admin/agents/${prop.ownerAgent.id}`}
-                        style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
-                      >
-                        {prop.ownerAgent.agentDisplayName}
-                      </Link>
-                    </td>
-                    <td>
-                      <span className={`badge ${STATUS_CONFIG[prop.status].badgeClass}`}>
-                        {STATUS_CONFIG[prop.status].label}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(prop.createdAt)}
-                    </td>
-                    <td>
-                      <div className="inline-row">
-                        <Link
-                          href={`/properties/${prop.id}/edit`}
-                          className="btn btn-secondary"
-                          style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
-                        >
-                          Edit
-                        </Link>
-                        <AdminDeleteButton
-                          label="Delete"
-                          confirmMessage={`Permanently delete "${prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
-                          deleteUrl={`/api/properties/${prop.id}`}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminPropertiesClient properties={properties} />
         )}
       </div>
     </div>

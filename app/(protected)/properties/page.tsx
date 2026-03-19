@@ -8,6 +8,7 @@ import { UIInput } from "@/components/ui/input";
 import { apiGet } from "@/lib/api-client";
 import { closePropertySale, closePropertyRoomSale } from "@/lib/portal-api";
 import { formatDate } from "@/lib/format";
+import { PropertyStatusDropdown } from "@/components/property-status-dropdown";
 
 type RoomRow = {
   id: string;
@@ -265,9 +266,15 @@ export default function PropertiesPage() {
                         </Link>
                       </td>
                       <td>
-                        <span className={`badge ${STATUS_CONFIG[prop.status]?.cls ?? "badge-draft"}`}>
-                          {STATUS_CONFIG[prop.status]?.label ?? prop.status}
-                        </span>
+                        <PropertyStatusDropdown
+                          propertyId={prop.id}
+                          status={prop.status}
+                          onUpdated={(newStatus) => {
+                            setProperties((prev) =>
+                              prev.map((p) => p.id === prop.id ? { ...p, status: newStatus as PropertyRow["status"] } : p)
+                            );
+                          }}
+                        />
                       </td>
                       <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{formatDate(prop.createdAt)}</td>
                       <td>
