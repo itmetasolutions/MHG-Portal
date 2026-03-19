@@ -56,11 +56,6 @@ const emptySaleForm = {
   finalAmount: "", commissionPct: "", otherCosts: "",
 };
 
-const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  AVAILABLE: { label: "Available", cls: "badge-active" },
-  CLOSED:    { label: "Closed",    cls: "badge-sold"   },
-  DRAFT:     { label: "Draft",     cls: "badge-draft"  },
-};
 
 function money(val: string | number | null | undefined) {
   if (!val) return "—";
