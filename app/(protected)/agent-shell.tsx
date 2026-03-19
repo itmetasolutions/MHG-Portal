@@ -156,6 +156,14 @@ function ContactsIcon() {
   );
 }
 
+function TemplatesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H7Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
@@ -172,6 +180,7 @@ const navItems = [
   { href: "/daily-reports", label: "Daily Reports", icon: DailyReportIcon, exact: false },
   { href: "/call-records", label: "Call Records", icon: CallRecordsIcon, exact: false },
   { href: "/notes", label: "My Notes", icon: NotesIcon, exact: false },
+  { href: "/templates", label: "Templates", icon: TemplatesIcon, exact: false },
 ];
 
 export function AgentShell({ user, userId, chatContacts, children }: Props) {

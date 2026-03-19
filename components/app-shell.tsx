@@ -37,7 +37,8 @@ export function AppShell({ session, children }: Props) {
     pathname?.startsWith("/potential-landlords") ||
     pathname?.startsWith("/daily-reports") ||
     pathname?.startsWith("/call-records") ||
-    pathname?.startsWith("/notes");
+    pathname?.startsWith("/notes") ||
+    pathname?.startsWith("/templates");
 
   if (session && isProtectedPath) {
     return <>{children}</>;
