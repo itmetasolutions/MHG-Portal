@@ -1,4 +1,4 @@
-import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
+import { ApprovalEntityType, Prisma, PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -9,6 +9,7 @@ import {
   canEditProperty,
   canViewProperty,
 } from "@/server/policies";
+import { queueEditApproval } from "@/server/edit-approvals";
 
 const propertyIdSchema = z.string().uuid("property id must be a valid UUID");
 
@@ -279,56 +280,82 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const updateData: Prisma.PropertyUncheckedUpdateInput = {};
+  const proposedChanges: Record<string, unknown> = {};
+  const changedFields: string[] = [];
   let hasChanges = false;
 
   if (payload.landlordId !== undefined && payload.landlordId !== currentProperty.landlordId) {
     updateData.landlordId = payload.landlordId;
+    proposedChanges.landlordId = payload.landlordId;
+    changedFields.push("landlord");
     hasChanges = true;
   }
 
   if (ownerAgentId !== currentProperty.ownerAgentId) {
     updateData.ownerAgentId = ownerAgentId;
+    proposedChanges.ownerAgentId = ownerAgentId;
+    changedFields.push("owner agent");
     hasChanges = true;
   }
 
   if (payload.propertyRef !== undefined && payload.propertyRef !== currentProperty.propertyRef) {
     updateData.propertyRef = payload.propertyRef;
+    proposedChanges.propertyRef = payload.propertyRef;
+    changedFields.push("reference");
     hasChanges = true;
   }
   if (payload.addressLine1 !== undefined && payload.addressLine1 !== currentProperty.addressLine1) {
     updateData.addressLine1 = payload.addressLine1;
+    proposedChanges.addressLine1 = payload.addressLine1;
+    changedFields.push("address line 1");
     hasChanges = true;
   }
   if (payload.addressLine2 !== undefined && payload.addressLine2 !== currentProperty.addressLine2) {
     updateData.addressLine2 = payload.addressLine2;
+    proposedChanges.addressLine2 = payload.addressLine2;
+    changedFields.push("address line 2");
     hasChanges = true;
   }
   if (payload.city !== undefined && payload.city !== currentProperty.city) {
     updateData.city = payload.city;
+    proposedChanges.city = payload.city;
+    changedFields.push("city");
     hasChanges = true;
   }
   if (payload.county !== undefined && payload.county !== currentProperty.county) {
     updateData.county = payload.county;
+    proposedChanges.county = payload.county;
+    changedFields.push("county");
     hasChanges = true;
   }
   if (payload.postcode !== undefined && payload.postcode !== currentProperty.postcode) {
     updateData.postcode = payload.postcode;
+    proposedChanges.postcode = payload.postcode;
+    changedFields.push("postcode");
     hasChanges = true;
   }
   if (payload.propertyType !== undefined && payload.propertyType !== currentProperty.propertyType) {
     updateData.propertyType = payload.propertyType;
+    proposedChanges.propertyType = payload.propertyType;
+    changedFields.push("property type");
     hasChanges = true;
   }
   if (payload.beds !== undefined && payload.beds !== currentProperty.beds) {
     updateData.beds = payload.beds;
+    proposedChanges.beds = payload.beds;
+    changedFields.push("beds");
     hasChanges = true;
   }
   if (payload.baths !== undefined && payload.baths !== currentProperty.baths) {
     updateData.baths = payload.baths;
+    proposedChanges.baths = payload.baths;
+    changedFields.push("baths");
     hasChanges = true;
   }
   if (payload.status !== undefined && payload.status !== currentProperty.status) {
     updateData.status = payload.status;
+    proposedChanges.status = payload.status;
+    changedFields.push("status");
     hasChanges = true;
   }
   if (
@@ -336,6 +363,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     String(payload.landlordDemand) !== String(currentProperty.landlordDemand)
   ) {
     updateData.landlordDemand = payload.landlordDemand;
+    proposedChanges.landlordDemand = payload.landlordDemand;
+    changedFields.push("landlord demand");
     hasChanges = true;
   }
   if (
@@ -343,6 +372,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     String(payload.expectedCommissionPct) !== String(currentProperty.expectedCommissionPct)
   ) {
     updateData.expectedCommissionPct = payload.expectedCommissionPct;
+    proposedChanges.expectedCommissionPct = payload.expectedCommissionPct;
+    changedFields.push("expected commission %");
     hasChanges = true;
   }
   if (
@@ -350,42 +381,62 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     String(payload.expectedCommissionAmt) !== String(currentProperty.expectedCommissionAmt)
   ) {
     updateData.expectedCommissionAmt = payload.expectedCommissionAmt;
+    proposedChanges.expectedCommissionAmt = payload.expectedCommissionAmt;
+    changedFields.push("expected commission amount");
     hasChanges = true;
   }
   if (payload.totalRooms !== undefined && payload.totalRooms !== currentProperty.totalRooms) {
     updateData.totalRooms = payload.totalRooms;
+    proposedChanges.totalRooms = payload.totalRooms;
+    changedFields.push("total rooms");
     hasChanges = true;
   }
   if (payload.availableRooms !== undefined && payload.availableRooms !== currentProperty.availableRooms) {
     updateData.availableRooms = payload.availableRooms;
+    proposedChanges.availableRooms = payload.availableRooms;
+    changedFields.push("available rooms");
     hasChanges = true;
   }
   if (payload.rentPerMonth !== undefined && String(payload.rentPerMonth) !== String(currentProperty.rentPerMonth)) {
     updateData.rentPerMonth = payload.rentPerMonth;
+    proposedChanges.rentPerMonth = payload.rentPerMonth;
+    changedFields.push("rent per month");
     hasChanges = true;
   }
   if (payload.depositAmount !== undefined && String(payload.depositAmount) !== String(currentProperty.depositAmount)) {
     updateData.depositAmount = payload.depositAmount;
+    proposedChanges.depositAmount = payload.depositAmount;
+    changedFields.push("deposit amount");
     hasChanges = true;
   }
   if (payload.isFurnished !== undefined && payload.isFurnished !== currentProperty.isFurnished) {
     updateData.isFurnished = payload.isFurnished;
+    proposedChanges.isFurnished = payload.isFurnished;
+    changedFields.push("furnished status");
     hasChanges = true;
   }
   if (payload.personsAllowed !== undefined && payload.personsAllowed !== currentProperty.personsAllowed) {
     updateData.personsAllowed = payload.personsAllowed;
+    proposedChanges.personsAllowed = payload.personsAllowed;
+    changedFields.push("persons allowed");
     hasChanges = true;
   }
   if (payload.petsAllowed !== undefined && payload.petsAllowed !== currentProperty.petsAllowed) {
     updateData.petsAllowed = payload.petsAllowed;
+    proposedChanges.petsAllowed = payload.petsAllowed;
+    changedFields.push("pets allowed");
     hasChanges = true;
   }
   if (payload.dssAllowed !== undefined && payload.dssAllowed !== currentProperty.dssAllowed) {
     updateData.dssAllowed = payload.dssAllowed;
+    proposedChanges.dssAllowed = payload.dssAllowed;
+    changedFields.push("DSS allowed");
     hasChanges = true;
   }
   if (payload.childrenAllowed !== undefined && payload.childrenAllowed !== currentProperty.childrenAllowed) {
     updateData.childrenAllowed = payload.childrenAllowed;
+    proposedChanges.childrenAllowed = payload.childrenAllowed;
+    changedFields.push("children allowed");
     hasChanges = true;
   }
   if (
@@ -395,10 +446,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       : String(payload.availabilityDate) !== String(currentProperty.availabilityDate))
   ) {
     updateData.availabilityDate = payload.availabilityDate ? new Date(payload.availabilityDate) : null;
+    proposedChanges.availabilityDate = payload.availabilityDate ? new Date(payload.availabilityDate).toISOString() : null;
+    changedFields.push("availability date");
     hasChanges = true;
   }
   if (payload.livingLandlord !== undefined && payload.livingLandlord !== currentProperty.livingLandlord) {
     updateData.livingLandlord = payload.livingLandlord;
+    proposedChanges.livingLandlord = payload.livingLandlord;
+    changedFields.push("living landlord");
     hasChanges = true;
   }
 
@@ -409,6 +464,31 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         message: "No effective property changes were provided.",
       },
       { status: 400 },
+    );
+  }
+
+  if (auth.user.role === "AGENT") {
+    const approval = await db.$transaction(async (tx) =>
+      queueEditApproval({
+        tx,
+        entityType: ApprovalEntityType.PROPERTY,
+        entityId: currentProperty.id,
+        requestedById: auth.user.id,
+        beforeJson: currentProperty as unknown as Prisma.InputJsonValue,
+        proposedJson: proposedChanges as Prisma.InputJsonValue,
+        changedFields,
+        entityLabel: currentProperty.addressLine1 ?? currentProperty.propertyRef,
+      }),
+    );
+
+    return NextResponse.json(
+      {
+        property: currentProperty,
+        approvalRequired: true,
+        approvalRequest: approval,
+        message: "Changes submitted for admin approval.",
+      },
+      { status: 202 },
     );
   }
 

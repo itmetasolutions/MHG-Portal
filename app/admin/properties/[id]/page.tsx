@@ -151,6 +151,9 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
           <Link className="btn btn-secondary" href="/admin/properties">
             All Properties
           </Link>
+          <Link className="btn btn-secondary" href={`/properties/${property.id}/edit`}>
+            Edit Property
+          </Link>
           <Link className="btn btn-secondary" href={`/admin/agents/${property.ownerAgent.id}`}>
             View Agent
           </Link>

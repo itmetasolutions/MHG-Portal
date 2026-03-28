@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { UIInput } from "@/components/ui/input";
-import { apiGet } from "@/lib/api-client";
+import { apiDelete, apiGet } from "@/lib/api-client";
 
 type Agent = { id: string; agentDisplayName: string; email: string };
+type DialingArea = "AREA_1" | "AREA_2" | "AREA_3" | "AREA_4" | "AREA_5";
 
 type DailyReport = {
   id: string;
   reportDate: string;
+  dialingArea: DialingArea | null;
   callsMade: number;
   callsConnected: number;
   callsFailed: number;
@@ -54,23 +57,25 @@ const STATUS_COLORS: Record<string, string> = {
   VOICEMAIL: "#a78bfa",
 };
 
+function formatDialingArea(value: DialingArea | null) {
+  return value ? value.replace("_", " ") : "—";
+}
+
 export default function AdminReportsPage() {
   const [tab, setTab] = useState<"daily" | "calls">("daily");
   const [agents, setAgents] = useState<Agent[]>([]);
-
-  // Filters
   const [agentId, setAgentId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [callStatus, setCallStatus] = useState("");
-
-  // Data
+  const [search, setSearch] = useState("");
   const [dailyReports, setDailyReports] = useState<DailyReport[]>([]);
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
-  // Load agents for filter dropdown
   useEffect(() => {
     apiGet<{ agents: Agent[] }>("/api/admin/users").then((res) => {
       if (res.ok) setAgents(res.data.agents);
@@ -86,7 +91,10 @@ export default function AdminReportsPage() {
     if (dateTo) params.set("dateTo", dateTo);
     const result = await apiGet<{ reports: DailyReport[] }>(`/api/admin/daily-reports?${params}`);
     setLoading(false);
-    if (!result.ok) { setError(result.message ?? "Failed to load daily reports."); return; }
+    if (!result.ok) {
+      setError(result.message ?? "Failed to load daily reports.");
+      return;
+    }
     setDailyReports(result.data.reports);
   }
 
@@ -100,17 +108,35 @@ export default function AdminReportsPage() {
     if (callStatus) params.set("status", callStatus);
     const result = await apiGet<{ records: CallRecord[] }>(`/api/admin/call-records?${params}`);
     setLoading(false);
-    if (!result.ok) { setError(result.message ?? "Failed to load call records."); return; }
+    if (!result.ok) {
+      setError(result.message ?? "Failed to load call records.");
+      return;
+    }
     setCallRecords(result.data.records);
+  }
+
+  async function handleDeleteCallRecord(id: string) {
+    if (!confirm("Permanently delete this call record?")) return;
+    const result = await apiDelete(`/api/call-records/${id}`);
+    if (!result.ok) {
+      setError(result.message ?? "Failed to delete call record.");
+      return;
+    }
+    setCallRecords((prev) => prev.filter((record) => record.id !== id));
   }
 
   useEffect(() => {
     if (tab === "daily") void loadDailyReports();
     else void loadCallRecords();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [tab, search, pageSize]);
+
   function applyFilters() {
+    setPage(1);
     if (tab === "daily") void loadDailyReports();
     else void loadCallRecords();
   }
@@ -120,25 +146,74 @@ export default function AdminReportsPage() {
     setDateFrom("");
     setDateTo("");
     setCallStatus("");
+    setSearch("");
+    setPage(1);
   }
 
-  function fmt(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  function formatDate(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   }
 
-  // Totals for daily reports
-  const totals = dailyReports.reduce(
-    (acc, r) => ({
-      callsMade: acc.callsMade + r.callsMade,
-      callsConnected: acc.callsConnected + r.callsConnected,
-      callsFailed: acc.callsFailed + r.callsFailed,
-      landlordConfirm: acc.landlordConfirm + r.landlordConfirm,
-      viewingsArranged: acc.viewingsArranged + r.viewingsArranged,
-      successfulViewings: acc.successfulViewings + r.successfulViewings,
-      followUp: acc.followUp + r.followUp,
-      reSchedule: acc.reSchedule + r.reSchedule,
+  const filteredDailyReports = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return dailyReports.filter((report) => {
+      if (!query) return true;
+      return [
+        report.agent.agentDisplayName.toLowerCase(),
+        report.agent.email.toLowerCase(),
+        formatDate(report.reportDate).toLowerCase(),
+        formatDialingArea(report.dialingArea).toLowerCase(),
+        report.notes?.toLowerCase() ?? "",
+      ].some((value) => value.includes(query));
+    });
+  }, [dailyReports, search]);
+
+  const filteredCallRecords = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return callRecords.filter((record) => {
+      if (!query) return true;
+      return [
+        record.agent.agentDisplayName.toLowerCase(),
+        record.agent.email.toLowerCase(),
+        record.phoneNumber.toLowerCase(),
+        STATUS_LABELS[record.status]?.toLowerCase() ?? record.status.toLowerCase(),
+        record.notes?.toLowerCase() ?? "",
+        record.convertedLandlord?.landlordName.toLowerCase() ?? "",
+        record.convertedTenant?.fullName.toLowerCase() ?? "",
+      ].some((value) => value.includes(query));
+    });
+  }, [callRecords, search]);
+
+  const visibleDailyReports = filteredDailyReports.slice((page - 1) * pageSize, page * pageSize);
+  const visibleCallRecords = filteredCallRecords.slice((page - 1) * pageSize, page * pageSize);
+  const totalRows = tab === "daily" ? filteredDailyReports.length : filteredCallRecords.length;
+  const totalPages = totalRows === 0 ? 0 : Math.ceil(totalRows / pageSize);
+
+  const totals = filteredDailyReports.reduce(
+    (acc, report) => ({
+      callsMade: acc.callsMade + report.callsMade,
+      callsConnected: acc.callsConnected + report.callsConnected,
+      callsFailed: acc.callsFailed + report.callsFailed,
+      landlordConfirm: acc.landlordConfirm + report.landlordConfirm,
+      viewingsArranged: acc.viewingsArranged + report.viewingsArranged,
+      successfulViewings: acc.successfulViewings + report.successfulViewings,
+      followUp: acc.followUp + report.followUp,
+      reSchedule: acc.reSchedule + report.reSchedule,
     }),
-    { callsMade: 0, callsConnected: 0, callsFailed: 0, landlordConfirm: 0, viewingsArranged: 0, successfulViewings: 0, followUp: 0, reSchedule: 0 },
+    {
+      callsMade: 0,
+      callsConnected: 0,
+      callsFailed: 0,
+      landlordConfirm: 0,
+      viewingsArranged: 0,
+      successfulViewings: 0,
+      followUp: 0,
+      reSchedule: 0,
+    },
   );
 
   return (
@@ -150,18 +225,17 @@ export default function AdminReportsPage() {
         </div>
       </header>
 
-      {/* Tabs */}
       <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border)", paddingBottom: 0 }}>
-        {(["daily", "calls"] as const).map((t) => (
+        {(["daily", "calls"] as const).map((currentTab) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={currentTab}
+            onClick={() => setTab(currentTab)}
             style={{
               background: "none",
               border: "none",
-              borderBottom: tab === t ? "2px solid var(--brand-gold)" : "2px solid transparent",
-              color: tab === t ? "var(--brand-gold)" : "var(--text-muted)",
-              fontWeight: tab === t ? 700 : 400,
+              borderBottom: tab === currentTab ? "2px solid var(--brand-gold)" : "2px solid transparent",
+              color: tab === currentTab ? "var(--brand-gold)" : "var(--text-muted)",
+              fontWeight: tab === currentTab ? 700 : 400,
               padding: "0.6rem 1.1rem",
               cursor: "pointer",
               fontSize: "0.9rem",
@@ -169,47 +243,59 @@ export default function AdminReportsPage() {
               transition: "color 0.15s",
             }}
           >
-            {t === "daily" ? "Daily Task Reports" : "Calls Data"}
+            {currentTab === "daily" ? "Daily Task Reports" : "Calls Data"}
           </button>
         ))}
       </div>
 
-      {/* Filters */}
       <div className="panel" style={{ padding: "1rem 1.25rem" }}>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="field" style={{ minWidth: "180px", flex: "1 1 180px" }}>
             <span className="label">Agent</span>
-            <select className="input" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+            <select className="input" value={agentId} onChange={(event) => setAgentId(event.target.value)}>
               <option value="">All Agents</option>
-              {agents.map((a) => <option key={a.id} value={a.id}>{a.agentDisplayName}</option>)}
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>{agent.agentDisplayName}</option>
+              ))}
             </select>
           </label>
 
           <label className="field" style={{ minWidth: "140px" }}>
             <span className="label">Date From</span>
-            <UIInput type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <UIInput type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
           </label>
 
           <label className="field" style={{ minWidth: "140px" }}>
             <span className="label">Date To</span>
-            <UIInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <UIInput type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
           </label>
 
           {tab === "calls" && (
             <label className="field" style={{ minWidth: "150px" }}>
               <span className="label">Call Status</span>
-              <select className="input" value={callStatus} onChange={(e) => setCallStatus(e.target.value)}>
+              <select className="input" value={callStatus} onChange={(event) => setCallStatus(event.target.value)}>
                 <option value="">All Statuses</option>
-                {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
               </select>
             </label>
           )}
+
+          <label className="field" style={{ minWidth: "240px", flex: "1 1 240px" }}>
+            <span className="label">Search</span>
+            <UIInput
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={tab === "daily" ? "Agent, date, area, notes" : "Agent, phone, status, notes"}
+            />
+          </label>
 
           <div style={{ display: "flex", gap: "0.5rem", paddingBottom: "0.15rem" }}>
             <button className="btn btn-primary btn-sm" onClick={applyFilters} disabled={loading}>
               {loading ? "Loading..." : "Apply"}
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => { resetFilters(); }}>
+            <button className="btn btn-secondary btn-sm" onClick={resetFilters}>
               Reset
             </button>
           </div>
@@ -218,11 +304,9 @@ export default function AdminReportsPage() {
 
       {error && <UIAlert type="error">{error}</UIAlert>}
 
-      {/* ── Daily Task Reports Tab ── */}
       {tab === "daily" && (
         <div className="stack">
-          {/* Summary cards */}
-          {dailyReports.length > 0 && (
+          {filteredDailyReports.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.75rem" }}>
               {[
                 { label: "Calls Made", value: totals.callsMade, color: "var(--text)" },
@@ -245,124 +329,170 @@ export default function AdminReportsPage() {
           <div className="panel">
             <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Daily Task Reports</h2>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{dailyReports.length} records</span>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{filteredDailyReports.length} records</span>
             </div>
 
             {loading ? (
               <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>Loading...</div>
-            ) : dailyReports.length === 0 ? (
+            ) : filteredDailyReports.length === 0 ? (
               <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>No daily reports found.</div>
             ) : (
-              <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Agent</th>
-                      <th>Date</th>
-                      <th>Calls Made</th>
-                      <th>Connected</th>
-                      <th>Failed</th>
-                      <th>Landlord Confirm</th>
-                      <th>Viewings Arranged</th>
-                      <th>Successful Viewings</th>
-                      <th>Follow Up</th>
-                      <th>Re-Schedule</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailyReports.map((r) => (
-                      <tr key={r.id}>
-                        <td>
-                          <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{r.agent.agentDisplayName}</div>
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{r.agent.email}</div>
-                        </td>
-                        <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{fmt(r.reportDate)}</td>
-                        <td style={{ textAlign: "center" }}>{r.callsMade}</td>
-                        <td style={{ textAlign: "center", color: "#4ade80", fontWeight: 600 }}>{r.callsConnected}</td>
-                        <td style={{ textAlign: "center", color: "var(--danger)" }}>{r.callsFailed}</td>
-                        <td style={{ textAlign: "center", color: "var(--brand-gold)", fontWeight: 600 }}>{r.landlordConfirm}</td>
-                        <td style={{ textAlign: "center" }}>{r.viewingsArranged}</td>
-                        <td style={{ textAlign: "center", color: "#4ade80" }}>{r.successfulViewings}</td>
-                        <td style={{ textAlign: "center" }}>{r.followUp}</td>
-                        <td style={{ textAlign: "center" }}>{r.reSchedule}</td>
-                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "12rem" }}>
-                          {r.notes ? <span title={r.notes}>{r.notes.length > 50 ? r.notes.slice(0, 50) + "…" : r.notes}</span> : "—"}
-                        </td>
+              <div className="stack" style={{ paddingBottom: "1rem" }}>
+                <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Agent</th>
+                        <th>Date</th>
+                        <th>Dialing Area</th>
+                        <th>Calls Made</th>
+                        <th>Connected</th>
+                        <th>Failed</th>
+                        <th>Landlord Confirm</th>
+                        <th>Viewings Arranged</th>
+                        <th>Successful Viewings</th>
+                        <th>Follow Up</th>
+                        <th>Re-Schedule</th>
+                        <th>Notes</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {visibleDailyReports.map((report) => (
+                        <tr key={report.id}>
+                          <td>
+                            <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{report.agent.agentDisplayName}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{report.agent.email}</div>
+                          </td>
+                          <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{formatDate(report.reportDate)}</td>
+                          <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{formatDialingArea(report.dialingArea)}</td>
+                          <td style={{ textAlign: "center" }}>{report.callsMade}</td>
+                          <td style={{ textAlign: "center", color: "#4ade80", fontWeight: 600 }}>{report.callsConnected}</td>
+                          <td style={{ textAlign: "center", color: "var(--danger)" }}>{report.callsFailed}</td>
+                          <td style={{ textAlign: "center", color: "var(--brand-gold)", fontWeight: 600 }}>{report.landlordConfirm}</td>
+                          <td style={{ textAlign: "center" }}>{report.viewingsArranged}</td>
+                          <td style={{ textAlign: "center", color: "#4ade80" }}>{report.successfulViewings}</td>
+                          <td style={{ textAlign: "center" }}>{report.followUp}</td>
+                          <td style={{ textAlign: "center" }}>{report.reSchedule}</td>
+                          <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "12rem" }}>
+                            {report.notes ? <span title={report.notes}>{report.notes.length > 50 ? `${report.notes.slice(0, 50)}...` : report.notes}</span> : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ padding: "0 1.25rem" }}>
+                  <PaginationControls
+                    page={page}
+                    pageSize={pageSize}
+                    total={filteredDailyReports.length}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                  />
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Calls Data Tab ── */}
       {tab === "calls" && (
         <div className="panel">
           <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Calls Data</h2>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{callRecords.length} records</span>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{filteredCallRecords.length} records</span>
           </div>
 
           {loading ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>Loading...</div>
-          ) : callRecords.length === 0 ? (
+          ) : filteredCallRecords.length === 0 ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>No call records found.</div>
           ) : (
-            <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Agent</th>
-                    <th>Phone</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                    <th>Linked To</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {callRecords.map((rec) => (
-                    <tr key={rec.id}>
-                      <td>
-                        <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{rec.agent.agentDisplayName}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{rec.agent.email}</div>
-                      </td>
-                      <td style={{ fontWeight: 600, fontFamily: "monospace", fontSize: "0.9rem" }}>{rec.phoneNumber}</td>
-                      <td>
-                        <span
-                          className="badge"
-                          style={{
-                            background: `${STATUS_COLORS[rec.status] ?? "var(--text-muted)"}22`,
-                            color: STATUS_COLORS[rec.status] ?? "var(--text-muted)",
-                            border: `1px solid ${STATUS_COLORS[rec.status] ?? "var(--text-muted)"}44`,
-                          }}
-                        >
-                          {STATUS_LABELS[rec.status] ?? rec.status}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "14rem" }}>
-                        {rec.notes ? <span title={rec.notes}>{rec.notes.length > 50 ? rec.notes.slice(0, 50) + "…" : rec.notes}</span> : "—"}
-                      </td>
-                      <td style={{ fontSize: "0.82rem" }}>
-                        {rec.convertedLandlord ? (
-                          <span style={{ color: "var(--brand-gold)" }}>Landlord: {rec.convertedLandlord.landlordName}</span>
-                        ) : rec.convertedTenant ? (
-                          <span style={{ color: "#4ade80" }}>Tenant: {rec.convertedTenant.fullName}</span>
-                        ) : (
-                          <span style={{ color: "var(--text-muted)" }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                        {fmt(rec.createdAt)}
-                      </td>
+            <div className="stack" style={{ paddingBottom: "1rem" }}>
+              <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Agent</th>
+                      <th>Phone</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                      <th>Linked To</th>
+                      <th>Date</th>
+                      <th></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {visibleCallRecords.map((record) => (
+                      <tr key={record.id}>
+                        <td>
+                          <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{record.agent.agentDisplayName}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{record.agent.email}</div>
+                        </td>
+                        <td style={{ fontWeight: 600, fontFamily: "monospace", fontSize: "0.9rem" }}>{record.phoneNumber}</td>
+                        <td>
+                          <span
+                            className="badge"
+                            style={{
+                              background: `${STATUS_COLORS[record.status] ?? "var(--text-muted)"}22`,
+                              color: STATUS_COLORS[record.status] ?? "var(--text-muted)",
+                              border: `1px solid ${STATUS_COLORS[record.status] ?? "var(--text-muted)"}44`,
+                            }}
+                          >
+                            {STATUS_LABELS[record.status] ?? record.status}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "14rem" }}>
+                          {record.notes ? <span title={record.notes}>{record.notes.length > 50 ? `${record.notes.slice(0, 50)}...` : record.notes}</span> : "—"}
+                        </td>
+                        <td style={{ fontSize: "0.82rem" }}>
+                          {record.convertedLandlord ? (
+                            <span style={{ color: "var(--brand-gold)" }}>Landlord: {record.convertedLandlord.landlordName}</span>
+                          ) : record.convertedTenant ? (
+                            <span style={{ color: "#4ade80" }}>Tenant: {record.convertedTenant.fullName}</span>
+                          ) : (
+                            <span style={{ color: "var(--text-muted)" }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                          {formatDate(record.createdAt)}
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => void handleDeleteCallRecord(record.id)}
+                            title="Delete call record"
+                            style={{
+                              background: "none",
+                              border: "1px solid var(--danger)",
+                              color: "var(--danger)",
+                              cursor: "pointer",
+                              borderRadius: "5px",
+                              fontSize: "0.75rem",
+                              padding: "0.25rem 0.55rem",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ padding: "0 1.25rem" }}>
+                <PaginationControls
+                  page={page}
+                  pageSize={pageSize}
+                  total={filteredCallRecords.length}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
             </div>
           )}
         </div>

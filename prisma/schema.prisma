@@ -65,6 +65,28 @@ enum ScheduledCallStatus {
   MISSED
 }
 
+enum DialingArea {
+  AREA_1
+  AREA_2
+  AREA_3
+  AREA_4
+  AREA_5
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalEntityType {
+  LANDLORD
+  PROPERTY
+  TENANT
+  POTENTIAL_TENANT
+  POTENTIAL_LANDLORD
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -99,6 +121,8 @@ model User {
   scheduledCalls      ScheduledCall[]         @relation("ScheduledCallAgent")
   agentNotes          AgentNote[]             @relation("AgentNoteOwner")
   notifications       Notification[]          @relation("UserNotifications")
+  requestedEditApprovals EditApproval[]       @relation("RequestedEditApprovals")
+  reviewedEditApprovals  EditApproval[]       @relation("ReviewedEditApprovals")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -439,6 +463,7 @@ model DailyReport {
   id                 String   @id @default(uuid()) @db.Uuid
   agentId            String   @db.Uuid
   reportDate         DateTime @db.Date
+  dialingArea        DialingArea?
   callsMade          Int      @default(0)
   callsConnected     Int      @default(0)
   callsFailed        Int      @default(0)
@@ -456,6 +481,29 @@ model DailyReport {
   @@unique([agentId, reportDate])
   @@index([agentId, reportDate])
   @@index([reportDate])
+}
+
+model EditApproval {
+  id            String             @id @default(uuid()) @db.Uuid
+  entityType    ApprovalEntityType
+  entityId      String             @db.Uuid
+  requestedById String             @db.Uuid
+  reviewedById  String?            @db.Uuid
+  status        ApprovalStatus     @default(PENDING)
+  summary       String?
+  beforeJson    Json
+  proposedJson  Json
+  reviewerNotes String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  reviewedAt    DateTime?
+
+  requestedBy User  @relation("RequestedEditApprovals", fields: [requestedById], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  reviewedBy  User? @relation("ReviewedEditApprovals", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([status, createdAt])
+  @@index([entityType, entityId, status])
+  @@index([requestedById, createdAt])
 }
 
 model CallRecord {

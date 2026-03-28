@@ -130,6 +130,11 @@ export type PropertyRow = {
   livingLandlord: boolean | null;
   createdAt: string;
   updatedAt: string;
+  ownerAgent?: {
+    id: string;
+    agentDisplayName: string;
+    email?: string;
+  };
   sales?: SaleRow[];
   rooms?: PropertyRoomRow[];
   // Backward compatibility for legacy screens still expecting one sale.
@@ -168,6 +173,39 @@ export type AuditLogRow = {
 
 export type AuditLogListResponse = {
   logs: AuditLogRow[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export type ApprovalRow = {
+  id: string;
+  entityType: "LANDLORD" | "PROPERTY" | "TENANT" | "POTENTIAL_TENANT" | "POTENTIAL_LANDLORD";
+  entityId: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  summary: string | null;
+  beforeJson: unknown;
+  proposedJson: unknown;
+  reviewerNotes: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  requestedBy: {
+    id: string;
+    email: string;
+    agentDisplayName: string;
+  };
+  reviewedBy: {
+    id: string;
+    email: string;
+    agentDisplayName: string;
+  } | null;
+};
+
+export type ApprovalListResponse = {
+  approvals: ApprovalRow[];
   pagination: {
     page: number;
     pageSize: number;
@@ -429,7 +467,19 @@ export function updateLandlord(
     ownerAgentId: string;
     reassignmentReason: string;
   }>,
-): Promise<ApiResult<{ landlord: LandlordDetails }>> {
+): Promise<ApiResult<{
+  landlord: LandlordDetails;
+  approvalRequired?: boolean;
+  approvalRequest?: {
+    id: string;
+    status: string;
+    entityType: string;
+    entityId: string;
+    summary: string | null;
+    createdAt: string;
+  };
+  message?: string;
+}>> {
   return apiPatch(`/api/landlords/${id}`, payload);
 }
 
@@ -490,6 +540,7 @@ export function createPropertyIntake(payload: {
 }
 
 export function fetchProperties(params: {
+  search?: string;
   phoneLast10?: string;
   propertyRef?: string;
   status?: PropertyStatus;
@@ -520,6 +571,7 @@ export function fetchProperties(params: {
   }>
 > {
   const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
   if (params.phoneLast10) query.set("phoneLast10", params.phoneLast10);
   if (params.propertyRef) query.set("propertyRef", params.propertyRef);
   if (params.status) query.set("status", params.status);
@@ -535,7 +587,19 @@ export function fetchProperties(params: {
 export function updateProperty(
   propertyId: string,
   payload: Partial<PropertyDraftPayload>,
-): Promise<ApiResult<{ property: PropertyRow }>> {
+): Promise<ApiResult<{
+  property: PropertyRow;
+  approvalRequired?: boolean;
+  approvalRequest?: {
+    id: string;
+    status: string;
+    entityType: string;
+    entityId: string;
+    summary: string | null;
+    createdAt: string;
+  };
+  message?: string;
+}>> {
   return apiPatch(`/api/properties/${propertyId}`, payload);
 }
 
@@ -564,7 +628,19 @@ export function updateTenant(
     depositAmount?: number | null;
     notes?: string | null;
   },
-): Promise<ApiResult<{ tenant: TenantRow }>> {
+): Promise<ApiResult<{
+  tenant: TenantRow;
+  approvalRequired?: boolean;
+  approvalRequest?: {
+    id: string;
+    status: string;
+    entityType: string;
+    entityId: string;
+    summary: string | null;
+    createdAt: string;
+  };
+  message?: string;
+}>> {
   return apiPatch(`/api/tenants/${tenantId}`, payload);
 }
 
@@ -682,6 +758,21 @@ export function listAuditLogs(params: {
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
 
   return apiGet(`/api/admin/audit?${query.toString()}`);
+}
+
+export function listApprovals(params?: {
+  status?: "PENDING" | "APPROVED" | "REJECTED";
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResult<ApprovalListResponse>> {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.search) query.set("search", params.search);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+
+  return apiGet(`/api/approvals?${query.toString()}`);
 }
 
 export function fetchDialerDomain(): Promise<ApiResult<{ config: DialerDomainConfigRow }>> {

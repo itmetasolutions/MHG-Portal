@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { UIInput } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type PotentialLandlord = {
   id: string;
@@ -32,10 +35,30 @@ const EMPTY_FORM = { fullName: "", phone: "" };
 export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Props) {
   const router = useRouter();
   const [landlords, setLandlords] = useState(initialLandlords);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const filteredLandlords = landlords.filter((landlord) => {
+    const haystack = [
+      landlord.fullName,
+      landlord.phone,
+      landlord.phoneLast10,
+      landlord.addedByAgent.agentDisplayName,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(search.trim().toLowerCase());
+  });
+
+  const totalPages = filteredLandlords.length === 0 ? 0 : Math.ceil(filteredLandlords.length / pageSize);
+  const visibleLandlords = filteredLandlords.slice((page - 1) * pageSize, page * pageSize);
 
   function openModal() {
     setForm(EMPTY_FORM);
@@ -77,6 +100,7 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
 
         const data = await res.json();
         setLandlords((prev) => [data.potentialLandlord, ...prev]);
+        setPage(1);
         setShowModal(false);
         router.refresh();
       } catch {
@@ -99,6 +123,20 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
         </button>
       </header>
 
+      <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="label">Search</span>
+          <UIInput
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Name, phone, agent"
+          />
+        </label>
+      </div>
+
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
           <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
@@ -106,11 +144,12 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
           </h2>
         </div>
 
-        {landlords.length === 0 ? (
+        {filteredLandlords.length === 0 ? (
           <div style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            No potential landlords yet.<br />
+            {landlords.length === 0 ? "No potential landlords yet." : "No potential landlords match your search."}
+            <br />
             <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-              Click &quot;Add New Potential Landlord&quot; to get started.
+              {landlords.length === 0 ? 'Click "Add New Potential Landlord" to get started.' : "Try a different search term."}
             </span>
           </div>
         ) : (
@@ -126,13 +165,17 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
                 </tr>
               </thead>
               <tbody>
-                {landlords.map((l) => {
+                {visibleLandlords.map((l) => {
                   const locked = isLockActive(l.createdAt);
                   const ownedByMe = l.addedByAgent.id === currentUserId;
                   const expiry = getLockExpiry(l.createdAt);
                   return (
                     <tr key={l.id}>
-                      <td style={{ fontWeight: 600, color: "var(--text)" }}>{l.fullName}</td>
+                      <td style={{ fontWeight: 600, color: "var(--text)" }}>
+                        <Link href={`/potential-landlords/${l.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                          {l.fullName}
+                        </Link>
+                      </td>
                       <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                         +44{l.phoneLast10}
                       </td>
@@ -182,6 +225,22 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
             </table>
           </div>
         )}
+
+        {filteredLandlords.length > 0 ? (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={filteredLandlords.length}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {showModal && (

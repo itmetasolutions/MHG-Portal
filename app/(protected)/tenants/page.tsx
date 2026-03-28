@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { createTenant, updateTenant, type TenantRow } from "@/lib/portal-api";
 import { apiGet } from "@/lib/api-client";
 
@@ -30,6 +31,11 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<TenantWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState(emptyAddForm);
@@ -44,16 +50,31 @@ export default function TenantsPage() {
 
   async function load() {
     setLoading(true);
-    const result = await apiGet<{ tenants: TenantWithProperty[] }>("/api/tenants");
+    const query = new URLSearchParams();
+    if (search) query.set("search", search);
+    query.set("page", String(page));
+    query.set("pageSize", String(pageSize));
+
+    const result = await apiGet<{
+      tenants: TenantWithProperty[];
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/api/tenants?${query.toString()}`);
     setLoading(false);
     if (!result.ok) {
       setMessage({ type: "error", text: result.message ?? "Failed to load tenants." });
       return;
     }
     setTenants(result.data.tenants);
+    setTotal(result.data.pagination.total);
+    setTotalPages(result.data.pagination.totalPages);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [page, pageSize, search]);
 
   async function handleAdd() {
     if (!addForm.fullName.trim() || !addForm.phone.trim()) {
@@ -80,6 +101,7 @@ export default function TenantsPage() {
     setMessage({ type: "success", text: "Tenant created." });
     setShowAddForm(false);
     setAddForm(emptyAddForm);
+    setPage(1);
     await load();
   }
 
@@ -114,19 +136,28 @@ export default function TenantsPage() {
       setMessage({ type: "error", text: result.message ?? "Failed to update tenant." });
       return;
     }
+
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Changes submitted for admin approval.",
+      });
+      setEditId(null);
+      return;
+    }
+
     setMessage({ type: "success", text: "Tenant updated." });
     setEditId(null);
     await load();
   }
 
-  const total = tenants.length;
-
+  const totalRecords = total;
   return (
     <div className="stack">
       <header className="page-header">
         <div>
           <h1 className="page-title">Tenants</h1>
-          <p className="page-subtitle">{total} tenant {total === 1 ? "record" : "records"}.</p>
+          <p className="page-subtitle">{totalRecords} tenant {totalRecords === 1 ? "record" : "records"}.</p>
         </div>
         <UIButton onClick={() => { setShowAddForm((v) => !v); setMessage(null); }}>
           {showAddForm ? "Cancel" : "+ Add New Tenant"}
@@ -134,6 +165,20 @@ export default function TenantsPage() {
       </header>
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
+
+      <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="label">Search</span>
+          <UIInput
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Tenant, phone, email, property, landlord, agent"
+          />
+        </label>
+      </div>
 
       {showAddForm && (
         <div className="panel" style={{ padding: "1.25rem" }}>
@@ -198,7 +243,7 @@ export default function TenantsPage() {
           </div>
         ) : tenants.length === 0 ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            No tenant records yet.
+            {search ? "No tenant records match your search." : "No tenant records yet."}
           </div>
         ) : (
           <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
@@ -223,7 +268,11 @@ export default function TenantsPage() {
                       <td style={{ fontWeight: 600 }}>
                         {editing ? (
                           <UIInput value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} disabled={editBusy} />
-                        ) : tenant.fullName}
+                        ) : (
+                          <Link href={`/tenants/${tenant.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                            {tenant.fullName}
+                          </Link>
+                        )}
                       </td>
                       <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                         {tenant.phone ?? "—"}
@@ -299,6 +348,22 @@ export default function TenantsPage() {
             </table>
           </div>
         )}
+
+        {!loading && totalRecords > 0 ? (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={totalRecords}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

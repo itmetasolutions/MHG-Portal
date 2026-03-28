@@ -1,8 +1,8 @@
-import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { UserRole } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
-import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
+import { AdminPotentialTenantsClient } from "./admin-potential-tenants-client";
 
 export const dynamic = "force-dynamic";
 
@@ -66,62 +66,7 @@ export default async function AdminPotentialTenantsPage() {
             </p>
           </div>
         ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Contact</th>
-                  <th>Interested In</th>
-                  <th>Budget</th>
-                  <th>Notes</th>
-                  <th>Added By</th>
-                  <th>Date</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map((t) => (
-                  <tr key={t.id}>
-                    <td style={{ fontWeight: 600, color: "var(--text)" }}>{t.fullName}</td>
-                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                      {t.email && <span style={{ display: "block" }}>{t.email}</span>}
-                      {t.phone && <span>{t.phone}</span>}
-                      {!t.email && !t.phone && <span className="muted">—</span>}
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {t.interestedIn ?? <span className="muted">—</span>}
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {t.budget ?? <span className="muted">—</span>}
-                    </td>
-                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "14rem" }}>
-                      {t.notes
-                        ? <span title={t.notes}>{t.notes.length > 60 ? t.notes.slice(0, 60) + "…" : t.notes}</span>
-                        : <span className="muted">—</span>}
-                    </td>
-                    <td>
-                      <span style={{ fontSize: "0.82rem", color: "var(--brand-gold)", fontWeight: 600 }}>
-                        {t.addedByAgent.agentDisplayName}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {new Date(t.createdAt).toLocaleDateString("en-GB", {
-                        day: "numeric", month: "short", year: "numeric",
-                      })}
-                    </td>
-                    <td>
-                      <AdminDeleteButton
-                        label="Delete"
-                        confirmMessage={`Permanently delete potential tenant "${t.fullName}"? This cannot be undone.`}
-                        deleteUrl={`/api/potential-tenants?id=${t.id}`}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AdminPotentialTenantsClient tenants={tenants} />
         )}
       </div>
     </div>

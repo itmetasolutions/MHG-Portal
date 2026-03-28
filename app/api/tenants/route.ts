@@ -18,12 +18,39 @@ const createTenantSchema = z
   })
   .strict();
 
+const listTenantsQuerySchema = z
+  .object({
+    search: z.string().trim().min(1).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(200).default(50),
+  })
+  .strict();
+
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;
 
   const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
   if (!roleCheck.ok) return roleCheck.response;
+
+  const parsedQuery = listTenantsQuerySchema.safeParse({
+    search: request.nextUrl.searchParams.get("search") ?? undefined,
+    page: request.nextUrl.searchParams.get("page") ?? undefined,
+    pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
+  });
+
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      {
+        error: "INVALID_QUERY",
+        message: "Invalid tenant query parameters.",
+        details: parsedQuery.error.flatten(),
+      },
+      { status: 400 },
+    );
+  }
+
+  const { page, pageSize, search } = parsedQuery.data;
 
   const where: Prisma.TenantWhereInput =
     auth.user.role === "ADMIN"
@@ -35,42 +62,104 @@ export async function GET(request: NextRequest) {
           ],
         };
 
-  const tenants = await db.tenant.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      phoneLast10: true,
-      currentAddress: true,
-      moveInDate: true,
-      rentAmount: true,
-      depositAmount: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-      saleId: true,
-      addedByAgentId: true,
-      sale: {
-        select: {
-          property: {
-            select: {
-              id: true,
-              propertyRef: true,
-              addressLine1: true,
-              city: true,
-              postcode: true,
-              landlord: { select: { id: true, landlordName: true } },
+  if (search) {
+    const searchFilters: Prisma.TenantWhereInput[] = [
+      { fullName: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+      { phoneLast10: { contains: search } },
+      { notes: { contains: search, mode: "insensitive" } },
+      {
+        sale: {
+          is: {
+            property: {
+              OR: [
+                { propertyRef: { contains: search, mode: "insensitive" } },
+                { addressLine1: { contains: search, mode: "insensitive" } },
+                { postcode: { contains: search, mode: "insensitive" } },
+                { landlord: { landlordName: { contains: search, mode: "insensitive" } } },
+                { ownerAgent: { agentDisplayName: { contains: search, mode: "insensitive" } } },
+              ],
             },
           },
         },
       },
+      {
+        addedByAgent: {
+          is: {
+            OR: [
+              { agentDisplayName: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    ];
+
+    if ("OR" in where && Array.isArray(where.OR)) {
+      where.AND = [{ OR: where.OR }, { OR: searchFilters }];
+      delete where.OR;
+    } else {
+      where.OR = searchFilters;
+    }
+  }
+
+  const skip = (page - 1) * pageSize;
+
+  const [total, tenants] = await db.$transaction([
+    db.tenant.count({ where }),
+    db.tenant.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        phoneLast10: true,
+        currentAddress: true,
+        moveInDate: true,
+        rentAmount: true,
+        depositAmount: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+        saleId: true,
+        addedByAgentId: true,
+        addedByAgent: {
+          select: { id: true, agentDisplayName: true, email: true },
+        },
+        sale: {
+          select: {
+            id: true,
+            property: {
+              select: {
+                id: true,
+                propertyRef: true,
+                addressLine1: true,
+                city: true,
+                postcode: true,
+                landlord: { select: { id: true, landlordName: true } },
+                ownerAgent: { select: { id: true, agentDisplayName: true, email: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return NextResponse.json({
+    tenants,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
     },
   });
-
-  return NextResponse.json({ tenants });
 }
 
 export async function POST(request: NextRequest) {

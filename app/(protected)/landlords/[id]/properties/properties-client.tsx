@@ -282,6 +282,15 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       return;
     }
 
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Changes submitted for admin approval.",
+      });
+      setEditId(null);
+      return;
+    }
+
     setMessage({ type: "success", text: "Property updated." });
     setEditId(null);
     await load();

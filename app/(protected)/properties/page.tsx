@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
-import { apiGet } from "@/lib/api-client";
-import { closePropertySale, closePropertyRoomSale } from "@/lib/portal-api";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { closePropertySale, closePropertyRoomSale, fetchProperties } from "@/lib/portal-api";
 import { formatDate } from "@/lib/format";
 import { PropertyStatusDropdown } from "@/components/property-status-dropdown";
 
@@ -68,6 +68,11 @@ export default function PropertiesPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Close-sale modal state
   const [closeSale, setCloseSale] = useState<CloseSaleState | null>(null);
@@ -77,16 +82,22 @@ export default function PropertiesPage() {
 
   async function load() {
     setLoading(true);
-    const result = await apiGet<{ properties: PropertyRow[] }>("/api/properties?pageSize=200");
+    const result = await fetchProperties({
+      search: search || undefined,
+      page,
+      pageSize,
+    });
     setLoading(false);
     if (!result.ok) {
       setMessage({ type: "error", text: result.message ?? "Failed to load properties." });
       return;
     }
-    setProperties(result.data.properties);
+    setProperties(result.data.properties as unknown as PropertyRow[]);
+    setTotal(result.data.pagination.total);
+    setTotalPages(result.data.pagination.totalPages);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [page, pageSize, search]);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -163,7 +174,7 @@ export default function PropertiesPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Properties</h1>
-          <p className="page-subtitle">Manage your property listings.</p>
+          <p className="page-subtitle">{total} property {total === 1 ? "record" : "records"}.</p>
         </div>
         <Link className="btn btn-primary" href="/properties/new">
           + Add Property
@@ -171,6 +182,20 @@ export default function PropertiesPage() {
       </header>
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
+
+      <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="label">Search</span>
+          <UIInput
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Address, postcode, landlord, property ref"
+          />
+        </label>
+      </div>
 
       {/* Status breakdown */}
       {properties.length > 0 && (
@@ -242,14 +267,18 @@ export default function PropertiesPage() {
                         )}
                       </td>
                       <td>
-                        <span style={{ fontWeight: 600, color: "var(--text)", display: "block" }}>
+                        <Link href={`/properties/${prop.id}/edit`} style={{ fontWeight: 600, color: "var(--brand-gold)", display: "block", textDecoration: "none" }}>
                           {prop.addressLine1 || prop.propertyRef}
-                        </span>
+                        </Link>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                           {[prop.city, prop.postcode].filter(Boolean).join(", ")}
                         </span>
                       </td>
-                      <td><code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code></td>
+                      <td>
+                        <Link href={`/properties/${prop.id}/edit`} style={{ color: "var(--text-muted)", textDecoration: "none" }}>
+                          <code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code>
+                        </Link>
+                      </td>
                       <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
                         {isMultiple ? "Shared" : (prop.propertyType ?? "Private")}
                         {prop.beds != null && !isMultiple ? ` (${prop.beds}bd)` : ""}
@@ -340,6 +369,23 @@ export default function PropertiesPage() {
             </table>
           </div>
         )}
+
+        {!loading && total > 0 ? (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              totalPages={totalPages}
+              busy={loading}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Close-Sale Modal */}

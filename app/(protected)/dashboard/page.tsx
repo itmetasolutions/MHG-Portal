@@ -26,6 +26,7 @@ type PageProps = {
     period?: string | string[];
     from?: string | string[];
     to?: string | string[];
+    postcode?: string | string[];
   };
 };
 
@@ -43,6 +44,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const period: PeriodKey = isPeriodKey(requestedPeriod) ? requestedPeriod : "month";
   const from = firstQueryValue(searchParams?.from);
   const to = firstQueryValue(searchParams?.to);
+  const postcode = firstQueryValue(searchParams?.postcode)?.trim();
   const salesRange = parsePeriodToDateRange(period, from, to);
   const salesRangeLabel = formatPeriodRange(salesRange);
 
@@ -74,6 +76,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     recentProperties,
     recentSales,
     recentTenants,
+    postcodeMatches,
   ] = await Promise.all([
     db.user.findUnique({
       where: { id: session.userId },
@@ -176,6 +179,25 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         },
       },
     }),
+    postcode
+      ? db.property.findMany({
+          where: {
+            ...propertyWhere,
+            postcode: { contains: postcode, mode: "insensitive" },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 50,
+          select: {
+            id: true,
+            propertyRef: true,
+            addressLine1: true,
+            city: true,
+            postcode: true,
+            landlord: { select: { id: true, landlordName: true } },
+            ownerAgent: { select: { id: true, agentDisplayName: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const displayName    = user?.agentDisplayName ?? session.email;
@@ -222,6 +244,72 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {/* ── Portfolio Overview ──────────────────────────────────────────── */}
       <div className="panel" style={{ padding: "1rem 1.1rem" }}>
         <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
+      </div>
+
+      <div className="panel" style={{ padding: "1rem 1.1rem" }}>
+        <form method="get" className="stack" style={{ gap: "0.75rem" }}>
+          <input type="hidden" name="period" value={period} />
+          {from ? <input type="hidden" name="from" value={from} /> : null}
+          {to ? <input type="hidden" name="to" value={to} /> : null}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+            <label className="field" style={{ flex: "1 1 320px", marginBottom: 0 }}>
+              <span className="label">Search Properties by Postcode</span>
+              <input className="input" name="postcode" defaultValue={postcode ?? ""} placeholder="Enter postcode" />
+            </label>
+            <button type="submit" className="btn btn-primary">Search</button>
+            {postcode ? (
+              <Link href="/dashboard" className="btn btn-secondary">
+                Clear
+              </Link>
+            ) : null}
+          </div>
+        </form>
+
+        {postcode ? (
+          <div className="table-wrap" style={{ marginTop: "1rem", border: "1px solid var(--border)" }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Landlord</th>
+                  <th>Agent</th>
+                  <th>Postcode</th>
+                </tr>
+              </thead>
+              <tbody>
+                {postcodeMatches.length > 0 ? (
+                  postcodeMatches.map((property) => (
+                    <tr key={property.id}>
+                      <td>
+                        <Link href={`/properties/${property.id}/edit`} style={{ color: "var(--brand-gold)", textDecoration: "none", fontWeight: 600 }}>
+                          {property.addressLine1 ?? property.propertyRef}
+                        </Link>
+                        <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {[property.city, property.postcode].filter(Boolean).join(", ")}
+                        </span>
+                      </td>
+                      <td>
+                        <Link href={`/landlords/${property.landlord.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                          {property.landlord.landlordName}
+                        </Link>
+                      </td>
+                      <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                        {property.ownerAgent.agentDisplayName}
+                      </td>
+                      <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                        {property.postcode ?? "-"}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="muted">No properties found for that postcode.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </div>
 
       <div>

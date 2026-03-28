@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { UIInput } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 type PotentialTenant = {
   id: string;
@@ -31,10 +34,33 @@ const EMPTY_FORM = {
 export function PotentialTenantsClient({ initialTenants }: Props) {
   const router = useRouter();
   const [tenants, setTenants] = useState(initialTenants);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const filteredTenants = tenants.filter((tenant) => {
+    const haystack = [
+      tenant.fullName,
+      tenant.email,
+      tenant.phone,
+      tenant.interestedIn,
+      tenant.budget,
+      tenant.notes,
+      tenant.addedByAgent.agentDisplayName,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(search.trim().toLowerCase());
+  });
+
+  const totalPages = filteredTenants.length === 0 ? 0 : Math.ceil(filteredTenants.length / pageSize);
+  const visibleTenants = filteredTenants.slice((page - 1) * pageSize, page * pageSize);
 
   function openModal() {
     setForm(EMPTY_FORM);
@@ -79,6 +105,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
 
         const data = await res.json();
         setTenants((prev) => [data.potentialTenant, ...prev]);
+        setPage(1);
         setShowModal(false);
         router.refresh();
       } catch {
@@ -101,6 +128,20 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
         </button>
       </header>
 
+      <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="label">Search</span>
+          <UIInput
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Name, phone, email, interest, budget"
+          />
+        </label>
+      </div>
+
       {/* Table */}
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
@@ -109,11 +150,12 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
           </h2>
         </div>
 
-        {tenants.length === 0 ? (
+        {filteredTenants.length === 0 ? (
           <div style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            No potential tenants yet.<br />
+            {tenants.length === 0 ? "No potential tenants yet." : "No potential tenants match your search."}
+            <br />
             <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-              Click &quot;Add New Potential Tenant&quot; to get started.
+              {tenants.length === 0 ? 'Click "Add New Potential Tenant" to get started.' : "Try a different search term."}
             </span>
           </div>
         ) : (
@@ -131,9 +173,13 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {tenants.map((t) => (
+                {visibleTenants.map((t) => (
                   <tr key={t.id}>
-                    <td style={{ fontWeight: 600, color: "var(--text)" }}>{t.fullName}</td>
+                    <td style={{ fontWeight: 600, color: "var(--text)" }}>
+                      <Link href={`/potential-tenants/${t.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                        {t.fullName}
+                      </Link>
+                    </td>
                     <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                       {t.email && <span style={{ display: "block" }}>{t.email}</span>}
                       {t.phone && <span>{t.phone}</span>}
@@ -166,6 +212,22 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
             </table>
           </div>
         )}
+
+        {filteredTenants.length > 0 ? (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={filteredTenants.length}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Add Modal */}

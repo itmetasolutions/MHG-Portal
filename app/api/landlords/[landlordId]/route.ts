@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { ApprovalEntityType, Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -8,6 +8,7 @@ import {
   canEditLandlord,
   canViewLandlordRegistry,
 } from "@/server/policies";
+import { queueEditApproval } from "@/server/edit-approvals";
 
 const landlordIdSchema = z.string().uuid("landlord id must be a valid UUID");
 
@@ -200,6 +201,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       createdByUserId: true,
       updatedByUserId: true,
       ownerAgentId: true,
+      ownerAgent: {
+        select: { id: true, agentDisplayName: true },
+      },
+      _count: {
+        select: { properties: true },
+      },
     },
   });
 
@@ -220,12 +227,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const updateData: Prisma.LandlordUncheckedUpdateInput = {
     updatedByUserId: auth.user.id,
   };
+  const proposedChanges: Record<string, unknown> = {};
+  const changedFields: string[] = [];
   let hasChanges = false;
   const nextPhoneLast10 = currentLandlord.phoneLast10;
   const nextPhoneE164 = currentLandlord.phoneE164;
 
   if (payload.fullName !== undefined && payload.fullName !== currentLandlord.landlordName) {
     updateData.landlordName = payload.fullName;
+    proposedChanges.fullName = payload.fullName;
+    changedFields.push("full name");
     hasChanges = true;
   }
 
@@ -233,6 +244,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const nextEmail = payload.email?.trim() || null;
     if (nextEmail !== currentLandlord.email) {
       updateData.email = nextEmail;
+      proposedChanges.email = nextEmail;
+      changedFields.push("email");
       hasChanges = true;
     }
   }
@@ -241,6 +254,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const nextNotes = payload.notes?.trim() || null;
     if (nextNotes !== currentLandlord.notes) {
       updateData.notes = nextNotes;
+      proposedChanges.notes = nextNotes;
+      changedFields.push("notes");
       hasChanges = true;
     }
   }
@@ -257,6 +272,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (payload.isPassive !== currentIsPassive) {
       updateData.isPassive = payload.isPassive;
       updateData.passiveMarkedAt = payload.isPassive ? new Date() : null;
+      proposedChanges.isPassive = payload.isPassive;
+      changedFields.push("status");
       hasChanges = true;
     }
   }
@@ -295,6 +312,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
 
       updateData.ownerAgentId = payload.ownerAgentId;
+      proposedChanges.ownerAgentId = payload.ownerAgentId;
+      proposedChanges.reassignmentReason = payload.reassignmentReason;
+      changedFields.push("owner agent");
       hasChanges = true;
     }
   }
@@ -306,6 +326,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         message: "No effective changes were provided.",
       },
       { status: 400 },
+    );
+  }
+
+  if (auth.user.role === "AGENT") {
+    const approval = await db.$transaction(async (tx) =>
+      queueEditApproval({
+        tx,
+        entityType: ApprovalEntityType.LANDLORD,
+        entityId: currentLandlord.id,
+        requestedById: auth.user.id,
+        beforeJson: currentLandlord as unknown as Prisma.InputJsonValue,
+        proposedJson: proposedChanges as Prisma.InputJsonValue,
+        changedFields,
+        entityLabel: currentLandlord.landlordName,
+      }),
+    );
+
+    return NextResponse.json(
+      {
+        landlord: {
+          ...currentLandlord,
+          canEdit: canEditLandlord(auth.user, currentLandlord),
+        },
+        approvalRequired: true,
+        approvalRequest: approval,
+        message: "Changes submitted for admin approval.",
+      },
+      { status: 202 },
     );
   }
 

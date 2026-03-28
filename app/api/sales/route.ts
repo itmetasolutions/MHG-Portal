@@ -14,7 +14,7 @@ const listSalesQuerySchema = z
     postcode: z.string().trim().min(1).optional(),
     format: z.enum(["json", "csv"]).default("json"),
     page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(100).default(20),
+    pageSize: z.coerce.number().int().min(1).max(200).default(50),
   })
   .superRefine((value, ctx) => {
     if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {

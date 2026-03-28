@@ -203,6 +203,14 @@ export default function EditPropertyPage({ params }: Props) {
       return;
     }
 
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Changes submitted for admin approval.",
+      });
+      return;
+    }
+
     setMessage({ type: "success", text: "Property updated." });
     setTimeout(() => router.push("/properties"), 800);
   }

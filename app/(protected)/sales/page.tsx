@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import {
-  formatDate,
   formatCurrency,
   formatPKR,
   gbpToPkr,
@@ -12,6 +10,7 @@ import {
 } from "@/lib/format";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
+import { SalesClient } from "./sales-client";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +112,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {totalSales > 0 && (
+      {totalSales > 0 ? (
         <div className="grid-cards">
           <div className="stat-card stat-card-money">
             <p className="stat-label">Total Revenue</p>
@@ -144,7 +143,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
             <p className="stat-pkr-sub">{formatPKR(gbpToPkr(Math.round(totalRevenue / totalSales)))}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
@@ -157,135 +156,16 @@ export default async function SalesPage({ searchParams }: PageProps) {
             No closed sales for this period.
           </div>
         ) : (
-          <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Property</th>
-                  <th>Landlord</th>
-                  <th>Sale Amount</th>
-                  <th>Company Commission</th>
-                  <th>Net Profit</th>
-                  <th>My Comm.</th>
-                  <th>Tenant</th>
-                  <th>Closed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((sale, idx) => (
-                  <tr key={sale.id}>
-                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{idx + 1}</td>
-                    <td>
-                      <Link
-                        href={`/landlords/${sale.property.landlord.id}`}
-                        style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
-                      >
-                        {sale.property.addressLine1 ?? sale.property.propertyRef}
-                      </Link>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[sale.property.city, sale.property.postcode].filter(Boolean).join(", ")}
-                      </span>
-                    </td>
-                    <td>
-                      <Link
-                        href={`/landlords/${sale.property.landlord.id}`}
-                        style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}
-                      >
-                        {sale.property.landlord.landlordName}
-                      </Link>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
-                        {formatCurrency(Number(sale.finalAmount))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.finalAmount)))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: "var(--brand-gold)", display: "block" }}>
-                        {formatCurrency(Number(sale.commissionAmount))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.commissionAmount)))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: "#22d3ee", display: "block" }}>
-                        {formatCurrency(Number(sale.profit))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.profit)))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
-                        {formatPKR(AGENT_COMMISSION_PKR)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ~ {formatCurrency(pkrToGbp(AGENT_COMMISSION_PKR))}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {sale.tenant?.fullName ?? "-"}
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(sale.closedAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              {sales.length > 1 && (
-                <tfoot>
-                  <tr style={{ borderTop: "2px solid var(--border)" }}>
-                    <td
-                      colSpan={3}
-                      style={{ fontWeight: 700, color: "var(--text-muted)", fontSize: "0.82rem", padding: "0.6rem 0.75rem" }}
-                    >
-                      Totals ({totalSales} sales)
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
-                        {formatCurrency(totalRevenue)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalRevenue))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
-                        {formatCurrency(totalCommission)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalCommission))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#22d3ee", display: "block" }}>
-                        {formatCurrency(totalProfit)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalProfit))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
-                        {formatPKR(myCommissionPKR)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        ~ {formatCurrency(myCommissionGBP)}
-                      </span>
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+          <SalesClient
+            sales={sales.map((sale) => ({
+              ...sale,
+              finalAmount: Number(sale.finalAmount),
+              commissionAmount: Number(sale.commissionAmount),
+              profit: Number(sale.profit),
+            }))}
+          />
         )}
       </div>
     </div>
   );
 }
-

@@ -86,7 +86,15 @@ export function LandlordDetailClient({ landlordId, currentRole }: Props) {
       return;
     }
 
-    setLandlord(result.data.landlord);
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Changes submitted for admin approval.",
+      });
+      return;
+    }
+
+    await load();
     setMessage({ type: "success", text: "Landlord updated successfully." });
   }
 

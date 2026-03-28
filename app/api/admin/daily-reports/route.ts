@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     select: {
       id: true,
       reportDate: true,
+      dialingArea: true,
       callsMade: true,
       callsConnected: true,
       callsFailed: true,

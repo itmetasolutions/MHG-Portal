@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
-import { UISelect } from "@/components/ui/select";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { formatDateTime } from "@/lib/format";
 import { listAuditLogs, type AuditLogRow } from "@/lib/portal-api";
 
 function truncateJson(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "â€”";
   try {
     const json = JSON.stringify(value);
-    return json.length > 120 ? `${json.slice(0, 120)}…` : json;
+    return json.length > 120 ? `${json.slice(0, 120)}â€¦` : json;
   } catch {
     return String(value);
   }
@@ -60,7 +60,7 @@ export function AdminAuditClient() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<AuditLogRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -109,7 +109,7 @@ export function AdminAuditClient() {
         <div>
           <h1 className="page-title">Audit Logs</h1>
           <p className="page-subtitle">
-            Review all system changes — landlords, agents, properties.
+            Review all system changes â€” landlords, agents, properties.
           </p>
         </div>
         <div className="inline-row">
@@ -130,7 +130,6 @@ export function AdminAuditClient() {
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
 
-      {/* Filters */}
       <div className="admin-card">
         <div className="admin-card-header">
           <h2 className="admin-card-title">
@@ -153,57 +152,23 @@ export function AdminAuditClient() {
           >
             <label className="field">
               <span className="label">Entity Type</span>
-              <UIInput
-                value={entityType}
-                onChange={(e) => setEntityType(e.target.value)}
-                placeholder="LANDLORD, PROPERTY…"
-              />
+              <UIInput value={entityType} onChange={(e) => setEntityType(e.target.value)} placeholder="LANDLORD, PROPERTYâ€¦" />
             </label>
             <label className="field">
               <span className="label">Action</span>
-              <UIInput
-                value={action}
-                onChange={(e) => setAction(e.target.value)}
-                placeholder="LANDLORD_UPDATE…"
-              />
+              <UIInput value={action} onChange={(e) => setAction(e.target.value)} placeholder="LANDLORD_UPDATEâ€¦" />
             </label>
             <label className="field">
               <span className="label">User</span>
-              <UIInput
-                value={user}
-                onChange={(e) => setUser(e.target.value)}
-                placeholder="email or display name"
-              />
+              <UIInput value={user} onChange={(e) => setUser(e.target.value)} placeholder="email or display name" />
             </label>
             <label className="field">
               <span className="label">Date From</span>
-              <UIInput
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
+              <UIInput type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </label>
             <label className="field">
               <span className="label">Date To</span>
-              <UIInput
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span className="label">Page Size</span>
-              <UISelect
-                value={String(pageSize)}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-              >
-                <option value="20">20 per page</option>
-                <option value="50">50 per page</option>
-                <option value="100">100 per page</option>
-              </UISelect>
+              <UIInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </label>
           </div>
           <div className="inline-row" style={{ marginTop: "0.75rem" }}>
@@ -214,16 +179,12 @@ export function AdminAuditClient() {
               }}
               disabled={busy}
             >
-              {busy ? "Loading…" : "Apply Filters"}
-            </UIButton>
-            <UIButton variant="secondary" onClick={() => void load()} disabled={busy}>
-              Refresh
+              {busy ? "Loadingâ€¦" : "Apply Filters"}
             </UIButton>
           </div>
         </div>
       </div>
 
-      {/* Audit Table */}
       <div className="admin-card">
         <div className="admin-card-header">
           <h2 className="admin-card-title">
@@ -232,12 +193,7 @@ export function AdminAuditClient() {
             </svg>
             Audit Records
           </h2>
-          <span
-            style={{
-              fontSize: "0.78rem",
-              color: "var(--text-muted)",
-            }}
-          >
+          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
             Page {page} of {Math.max(totalPages, 1)}
           </span>
         </div>
@@ -264,7 +220,7 @@ export function AdminAuditClient() {
                   {busy ? (
                     <tr>
                       <td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>
-                        <span className="muted">Loading…</span>
+                        <span className="muted">Loadingâ€¦</span>
                       </td>
                     </tr>
                   ) : (
@@ -277,30 +233,22 @@ export function AdminAuditClient() {
                           <ActionBadge action={log.action} />
                         </td>
                         <td>
-                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                            {log.entityType}
-                          </span>
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{log.entityType}</span>
                           <code style={{ display: "block", fontSize: "0.72rem", marginTop: 2 }}>
-                            {log.entityId.slice(0, 12)}…
+                            {log.entityId.slice(0, 12)}â€¦
                           </code>
                         </td>
                         <td>
-                          <strong style={{ fontSize: "0.85rem" }}>
-                            {log.user.agentDisplayName}
-                          </strong>
+                          <strong style={{ fontSize: "0.85rem" }}>{log.user.agentDisplayName}</strong>
                           <span className="muted" style={{ display: "block", fontSize: "0.75rem" }}>
                             {log.user.email}
                           </span>
                         </td>
                         <td style={{ maxWidth: 200 }}>
-                          <code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>
-                            {truncateJson(log.beforeJson)}
-                          </code>
+                          <code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>{truncateJson(log.beforeJson)}</code>
                         </td>
                         <td style={{ maxWidth: 200 }}>
-                          <code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>
-                            {truncateJson(log.afterJson)}
-                          </code>
+                          <code style={{ fontSize: "0.72rem", wordBreak: "break-all" }}>{truncateJson(log.afterJson)}</code>
                         </td>
                       </tr>
                     ))
@@ -311,39 +259,19 @@ export function AdminAuditClient() {
           )}
         </div>
 
-        {/* Pagination */}
-        <div
-          style={{
-            padding: "1rem 1.5rem",
-            borderTop: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            justifyContent: "space-between",
-          }}
-        >
-          <span className="muted" style={{ fontSize: "0.82rem" }}>
-            {total} total records
-          </span>
-          <div className="inline-row">
-            <UIButton
-              variant="secondary"
-              onClick={() => { if (page > 1) setPage((v) => v - 1); }}
-              disabled={page <= 1 || busy}
-            >
-              ← Previous
-            </UIButton>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", padding: "0 0.25rem" }}>
-              {page} / {Math.max(totalPages, 1)}
-            </span>
-            <UIButton
-              variant="secondary"
-              onClick={() => { if (page < totalPages) setPage((v) => v + 1); }}
-              disabled={page >= totalPages || busy || totalPages === 0}
-            >
-              Next →
-            </UIButton>
-          </div>
+        <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid var(--border)" }}>
+          <PaginationControls
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            totalPages={totalPages}
+            busy={busy}
+            onPageChange={setPage}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
     </div>

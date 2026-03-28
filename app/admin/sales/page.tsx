@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
 import {
-  formatDate,
   formatCurrency,
   formatPKR,
   gbpToPkr,
@@ -13,6 +11,7 @@ import {
 import { calcAgentCommissionGBP, describeCommission, type CommissionConfigData, type FlexibleRange } from "@/lib/commission";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
+import { AdminSalesClient } from "./admin-sales-client";
 
 export const dynamic = "force-dynamic";
 
@@ -96,11 +95,9 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
   const totalCommission = Number(agg._sum.commissionAmount ?? 0);
   const totalProfit = Number(agg._sum.profit ?? 0);
   const totalSales = agg._count.id;
-
-  // Calculate total agent commission across all sales using the dynamic config
   const totalAgentCommGBP = sales.reduce(
-    (sum, s) => sum + calcAgentCommissionGBP(Number(s.commissionAmount), commissionConfig),
-    0
+    (sum, sale) => sum + calcAgentCommissionGBP(Number(sale.commissionAmount), commissionConfig),
+    0,
   );
   const totalAgentCommPKR = totalAgentCommGBP * GBP_TO_PKR;
   const commissionDesc = describeCommission(commissionConfig);
@@ -118,7 +115,7 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
         <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
       </div>
 
-      {totalSales > 0 && (
+      {totalSales > 0 ? (
         <div className="admin-stats-grid-wide">
           <div className="admin-stat-card">
             <p className="admin-stat-label">Sales Closed</p>
@@ -147,9 +144,9 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
             <p className="admin-stat-pkr">{formatPKR(gbpToPkr(totalProfit))}</p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {totalSales > 0 && (
+      {totalSales > 0 ? (
         <div className="admin-stat-card" style={{ borderTopColor: "#a855f7", maxWidth: "360px" }}>
           <p className="admin-stat-label">Total Agent Commissions Paid</p>
           <p className="admin-stat-value" style={{ color: "#c084fc", fontSize: "1.8rem" }}>
@@ -157,7 +154,7 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
           </p>
           <p className="admin-stat-pkr">~ {formatCurrency(totalAgentCommGBP)} · {commissionDesc}</p>
         </div>
-      )}
+      ) : null}
 
       <div className="admin-card">
         <div className="admin-card-header">
@@ -175,144 +172,17 @@ export default async function AdminSalesPage({ searchParams }: PageProps) {
             <p className="muted" style={{ margin: 0, textAlign: "center" }}>No sales closed for this period.</p>
           </div>
         ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Landlord</th>
-                  <th>Agent</th>
-                  <th>Sale Amount</th>
-                  <th>Company Commission</th>
-                  <th>Net Profit</th>
-                  <th>Agent Comm.</th>
-                  <th>Tenant</th>
-                  <th>Closed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((sale) => (
-                  <tr key={sale.id}>
-                    <td>
-                      <strong style={{ display: "block", color: "var(--text)" }}>
-                        {sale.property.addressLine1 ?? sale.property.propertyRef}
-                      </strong>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {[sale.property.city, sale.property.postcode].filter(Boolean).join(", ")}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {sale.property.landlord.landlordName}
-                    </td>
-                    <td>
-                      {sale.closedBy && (
-                        <Link
-                          href={`/admin/agents/${sale.closedBy.id}`}
-                          style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
-                        >
-                          {sale.closedBy.agentDisplayName}
-                        </Link>
-                      )}
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
-                        {formatCurrency(Number(sale.finalAmount))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.finalAmount)))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
-                        {formatCurrency(Number(sale.commissionAmount))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.commissionAmount)))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600, color: "#22d3ee", display: "block" }}>
-                        {formatCurrency(Number(sale.profit))}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(Number(sale.profit)))}
-                      </span>
-                    </td>
-                    <td>
-                      {(() => {
-                        const agentCommGBP = calcAgentCommissionGBP(Number(sale.commissionAmount), commissionConfig);
-                        const agentCommPKR = agentCommGBP * GBP_TO_PKR;
-                        return (
-                          <>
-                            <span style={{ fontWeight: 600, color: "#c084fc", display: "block" }}>
-                              {formatCurrency(agentCommGBP)}
-                            </span>
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                              {formatPKR(agentCommPKR)}
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                      {sale.tenant?.fullName ?? "-"}
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                      {formatDate(sale.closedAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              {sales.length > 1 && (
-                <tfoot>
-                  <tr style={{ borderTop: "2px solid var(--border)" }}>
-                    <td
-                      colSpan={3}
-                      style={{ fontWeight: 700, color: "var(--text-muted)", fontSize: "0.82rem", padding: "0.6rem 0.75rem" }}
-                    >
-                      Totals ({totalSales} sales)
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#4ade80", display: "block" }}>
-                        {formatCurrency(totalRevenue)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalRevenue))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "var(--brand-gold)", display: "block" }}>
-                        {formatCurrency(totalCommission)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalCommission))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#22d3ee", display: "block" }}>
-                        {formatCurrency(totalProfit)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(gbpToPkr(totalProfit))}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: "#c084fc", display: "block" }}>
-                        {formatCurrency(totalAgentCommGBP)}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {formatPKR(totalAgentCommPKR)}
-                      </span>
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+          <AdminSalesClient
+            sales={sales.map((sale) => ({
+              ...sale,
+              finalAmount: Number(sale.finalAmount),
+              commissionAmount: Number(sale.commissionAmount),
+              profit: Number(sale.profit),
+              agentCommissionGBP: calcAgentCommissionGBP(Number(sale.commissionAmount), commissionConfig),
+            }))}
+          />
         )}
       </div>
     </div>
   );
 }
-

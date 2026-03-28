@@ -6,7 +6,7 @@ import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
-import { UISelect } from "@/components/ui/select";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { formatDate } from "@/lib/format";
 import { fetchLandlords, type LandlordRow, type SessionRole } from "@/lib/portal-api";
 
@@ -22,7 +22,7 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<LandlordRow[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -139,17 +139,6 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             >
               Reset
             </UIButton>
-            <label className="inline-row">
-              <span className="label">Page Size</span>
-              <UISelect
-                value={String(pageSize)}
-                onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}
-              >
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-              </UISelect>
-            </label>
           </div>
 
           {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
@@ -171,7 +160,11 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ fontWeight: 600 }}>{row.landlordName}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <Link href={`/landlords/${row.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                        {row.landlordName}
+                      </Link>
+                    </td>
                     <td><code>{row.phoneLast10}</code></td>
                     <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{row.email ?? "—"}</td>
                     {currentRole === "ADMIN" && <td style={{ fontSize: "0.82rem" }}>{row.ownerAgent.agentDisplayName}</td>}
@@ -206,18 +199,18 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
             </table>
           </div>
 
-          <div className="inline-row">
-            <span className="muted">
-              Page {page} of {Math.max(totalPages, 1)} ({total} records)
-            </span>
-            <UIButton variant="secondary" onClick={() => { if (page > 1) setPage((v) => v - 1); }} disabled={page <= 1 || busy}>
-              Previous
-            </UIButton>
-            <UIButton variant="secondary" onClick={() => { if (page < totalPages) setPage((v) => v + 1); }} disabled={page >= totalPages || busy || totalPages === 0}>
-              Next
-            </UIButton>
-            <UIButton variant="secondary" onClick={() => void load()} disabled={busy}>Refresh</UIButton>
-          </div>
+          <PaginationControls
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            totalPages={totalPages}
+            busy={busy}
+            onPageChange={setPage}
+            onPageSizeChange={(nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }}
+          />
         </UICardBody>
       </UICard>
     </div>

@@ -117,9 +117,18 @@ function ReportsIcon() {
   );
 }
 
+function ApprovalsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M4.75 2A2.75 2.75 0 0 0 2 4.75v10.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25V4.75A2.75 2.75 0 0 0 15.25 2H4.75ZM6.5 5.75a.75.75 0 0 0 0 1.5h7a.75.75 0 0 0 0-1.5h-7Zm0 3.5a.75.75 0 0 0 0 1.5h4.25a.75.75 0 0 0 0-1.5H6.5Zm0 3.5a.75.75 0 0 0 0 1.5h2.75a.75.75 0 0 0 0-1.5H6.5Zm7.28-2.22a.75.75 0 0 0-1.06-1.06l-1.47 1.47-.47-.47a.75.75 0 0 0-1.06 1.06l1 1a.75.75 0 0 0 1.06 0l2-2Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
   { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
+  { href: "/admin/approvals",  label: "Approvals",   icon: ApprovalsIcon,  exact: false },
   { href: "/admin/landlords",  label: "Landlords",   icon: LandlordsIcon,  exact: false },
   { href: "/admin/properties", label: "Properties",  icon: PropertiesIcon, exact: false },
   { href: "/admin/sales",      label: "Sales",       icon: SalesIcon,      exact: false },

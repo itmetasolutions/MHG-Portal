@@ -7,6 +7,7 @@ import { canListProperties } from "@/server/policies";
 
 const listQuerySchema = z
   .object({
+    search: z.string().trim().min(1).optional(),
     phoneLast10: z.string().trim().regex(/^\d{10}$/).optional(),
     propertyRef: z.string().trim().min(1).optional(),
     status: z.nativeEnum(PropertyStatus).optional(),
@@ -15,7 +16,7 @@ const listQuerySchema = z
     createdAt: z.coerce.date().optional(),
     includeSOLD: z.coerce.boolean().optional(),
     page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(500).default(20),
+    pageSize: z.coerce.number().int().min(1).max(200).default(50),
   })
   .strict();
 
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   const parsedQuery = listQuerySchema.safeParse({
+    search: request.nextUrl.searchParams.get("search") ?? undefined,
     phoneLast10:
       request.nextUrl.searchParams.get("phoneLast10") ??
       request.nextUrl.searchParams.get("landlordNumber") ??
@@ -66,7 +68,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { phoneLast10, propertyRef, status, city, postcode, createdAt, page, pageSize } =
+  const { search, phoneLast10, propertyRef, status, city, postcode, createdAt, page, pageSize } =
     parsedQuery.data;
   const where: Prisma.PropertyWhereInput = {};
 
@@ -111,6 +113,31 @@ export async function GET(request: NextRequest) {
     where.ownerAgentId = auth.user.id;
   }
 
+  if (search) {
+    const searchFilters: Prisma.PropertyWhereInput[] = [
+      { propertyRef: { contains: search, mode: "insensitive" } },
+      { addressLine1: { contains: search, mode: "insensitive" } },
+      { addressLine2: { contains: search, mode: "insensitive" } },
+      { city: { contains: search, mode: "insensitive" } },
+      { postcode: { contains: search, mode: "insensitive" } },
+      { propertyType: { contains: search, mode: "insensitive" } },
+      { landlord: { is: { landlordName: { contains: search, mode: "insensitive" } } } },
+      {
+        ownerAgent: {
+          is: {
+            OR: [
+              { agentDisplayName: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    ];
+
+    const existingAnd = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+    where.AND = [...existingAnd, { OR: searchFilters }];
+  }
+
   const skip = (page - 1) * pageSize;
 
   const [total, properties] = await db.$transaction([
@@ -145,6 +172,13 @@ export async function GET(request: NextRequest) {
             phoneE164: true,
             phoneLast10: true,
             ownerAgentId: true,
+          },
+        },
+        ownerAgent: {
+          select: {
+            id: true,
+            agentDisplayName: true,
+            email: true,
           },
         },
         vacancyType: true,

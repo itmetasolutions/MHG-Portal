@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { DialingArea, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 
 const createReportSchema = z.object({
   reportDate: z.string().date(),
+  dialingArea: z.nativeEnum(DialingArea).optional().nullable(),
   callsMade: z.coerce.number().int().min(0).default(0),
   callsConnected: z.coerce.number().int().min(0).default(0),
   callsFailed: z.coerce.number().int().min(0).default(0),
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
     data: {
       agentId: auth.user.id,
       reportDate: new Date(payload.reportDate),
+      dialingArea: payload.dialingArea ?? null,
       callsMade: payload.callsMade,
       callsConnected: payload.callsConnected,
       callsFailed: payload.callsFailed,

@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
-import { formatDate } from "@/lib/format";
-import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
+import { AdminTenantsClient } from "./admin-tenants-client";
 
 export const dynamic = "force-dynamic";
 
@@ -82,96 +80,13 @@ export default async function AdminTenantsPage() {
             <p className="muted" style={{ margin: 0, textAlign: "center" }}>No tenant records yet.</p>
           </div>
         ) : (
-          <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Tenant</th>
-                  <th>Contact</th>
-                  <th>Property</th>
-                  <th>Agent</th>
-                  <th>Move-In</th>
-                  <th>Rent / Deposit</th>
-                  <th>Added</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenants.map((tenant) => {
-                  const prop = tenant.sale?.property ?? null;
-                  const agent = prop?.ownerAgent ?? tenant.addedByAgent ?? null;
-                  return (
-                    <tr key={tenant.id}>
-                      <td style={{ fontWeight: 600, color: "var(--text)" }}>
-                        {tenant.fullName}
-                      </td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                        {tenant.email && <span style={{ display: "block" }}>{tenant.email}</span>}
-                        {tenant.phone && <span>{tenant.phone}</span>}
-                      </td>
-                      <td>
-                        {prop ? (
-                          <>
-                            <strong style={{ display: "block", fontSize: "0.85rem", color: "var(--text)" }}>
-                              {prop.addressLine1 ?? prop.propertyRef ?? "—"}
-                            </strong>
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                              {[prop.city, prop.postcode].filter(Boolean).join(", ")}
-                            </span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No property</span>
-                        )}
-                      </td>
-                      <td>
-                        {agent ? (
-                          <Link
-                            href={`/admin/agents/${agent.id}`}
-                            style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
-                          >
-                            {agent.agentDisplayName}
-                          </Link>
-                        ) : (
-                          <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        {tenant.moveInDate
-                          ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", {
-                              day: "numeric", month: "short", year: "numeric",
-                            })
-                          : "—"}
-                      </td>
-                      <td style={{ fontSize: "0.82rem" }}>
-                        {tenant.rentAmount
-                          ? (
-                            <span style={{ color: "#4ade80", fontWeight: 600 }}>
-                              {'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo
-                            </span>
-                          )
-                          : <span className="muted">—</span>}
-                        {tenant.depositAmount && (
-                          <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                            dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        {formatDate(tenant.createdAt)}
-                      </td>
-                      <td>
-                        <AdminDeleteButton
-                          label="Delete"
-                          confirmMessage={`Permanently delete tenant record for "${tenant.fullName}"? The associated sale record will remain. This cannot be undone.`}
-                          deleteUrl={`/api/admin/tenants?id=${tenant.id}`}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <AdminTenantsClient
+            tenants={tenants.map((tenant) => ({
+              ...tenant,
+              rentAmount: tenant.rentAmount === null ? null : Number(tenant.rentAmount),
+              depositAmount: tenant.depositAmount === null ? null : Number(tenant.depositAmount),
+            }))}
+          />
         )}
       </div>
     </div>
