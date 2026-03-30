@@ -557,6 +557,17 @@ export function AgentsAdminClient({ initialAgents }: Props) {
                                   </svg>
                                   Reset Password
                                 </button>
+                                <Link
+                                  href={`/admin/agents/${agent.id}#reassignment-tools`}
+                                  className="kebab-menu-item"
+                                  onClick={() => setMenuOpenId(null)}
+                                >
+                                  <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15">
+                                    <path d="M3.5 4.75A2.25 2.25 0 0 1 5.75 2.5h6.69a2.25 2.25 0 0 1 1.59.66l1.81 1.81a2.25 2.25 0 0 1 .66 1.59v7.69a2.25 2.25 0 0 1-2.25 2.25H5.75A2.25 2.25 0 0 1 3.5 14.25V4.75Zm2.25-.75a.75.75 0 0 0-.75.75v9.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75V7.06a.75.75 0 0 0-.22-.53l-1.81-1.81a.75.75 0 0 0-.53-.22H5.75Z" />
+                                    <path d="M10.75 6.25a.75.75 0 0 0-1.5 0v2h-2a.75.75 0 0 0 0 1.5h2v2a.75.75 0 0 0 1.5 0v-2h2a.75.75 0 0 0 0-1.5h-2v-2Z" />
+                                  </svg>
+                                  Reassign Records
+                                </Link>
                                 <div className="kebab-menu-divider" />
                                 <button
                                   className={`kebab-menu-item${agent.isActive ? " kebab-menu-item-danger" : ""}`}

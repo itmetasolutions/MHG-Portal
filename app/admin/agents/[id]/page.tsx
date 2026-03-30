@@ -47,7 +47,7 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
     ...(salesRange ? { closedAt: { gte: salesRange.gte, lte: salesRange.lte } } : {}),
   };
 
-  const [agent, sales, landlords, tenants, potentialTenants, potentialLandlords] = await Promise.all([
+  const [agent, sales, landlords, tenants, potentialTenants, potentialLandlords, transferTargets] = await Promise.all([
     db.user.findFirst({
       where: { id: params.id, role: UserRole.AGENT },
       select: {
@@ -174,6 +174,19 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
         createdAt: true,
       },
     }),
+    db.user.findMany({
+      where: {
+        role: UserRole.AGENT,
+        isActive: true,
+        id: { not: params.id },
+      },
+      orderBy: [{ agentDisplayName: "asc" }, { email: "asc" }],
+      select: {
+        id: true,
+        agentDisplayName: true,
+        email: true,
+      },
+    }),
   ]);
 
   if (!agent) notFound();
@@ -272,6 +285,9 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
       </div>
 
       <AgentReportClient
+        sourceAgentId={agent.id}
+        sourceAgentName={agent.agentDisplayName}
+        transferTargets={transferTargets}
         properties={agent.ownedProperties}
         landlords={landlords}
         tenants={tenants.map((tenant) => ({

@@ -154,6 +154,32 @@ export type AgentRow = {
   };
 };
 
+export type AgentTransferCategory =
+  | "LANDLORDS"
+  | "PROPERTIES"
+  | "TENANTS"
+  | "POTENTIAL_TENANTS"
+  | "POTENTIAL_LANDLORDS";
+
+export type AgentTransferEntityType =
+  | "LANDLORD"
+  | "PROPERTY"
+  | "TENANT"
+  | "POTENTIAL_TENANT"
+  | "POTENTIAL_LANDLORD";
+
+export type AgentTransferSummary = {
+  landlordsMoved: number;
+  propertiesMoved: number;
+  standaloneTenantsMoved: number;
+  potentialTenantsMoved: number;
+  potentialLandlordsMoved: number;
+  linkedSaleTenantsAffected: number;
+  skippedProperties: number;
+  skippedTenants: number;
+  warnings: string[];
+};
+
 export type AuditLogRow = {
   id: string;
   entityType: string;
@@ -737,6 +763,41 @@ export function listAgents(params: {
     query.set("includeDisabled", String(params.includeDisabled));
   }
   return apiGet(`/api/admin/users?${query.toString()}`);
+}
+
+export function reassignAgentRecords(
+  agentId: string,
+  payload:
+    | {
+        mode: "BULK";
+        targetAgentId: string;
+        categories: AgentTransferCategory[];
+        reason: string;
+      }
+    | {
+        mode: "SINGLE";
+        targetAgentId: string;
+        entityType: AgentTransferEntityType;
+        entityId: string;
+        reason: string;
+      },
+): Promise<
+  ApiResult<{
+    message: string;
+    summary: AgentTransferSummary;
+    sourceAgent: {
+      id: string;
+      agentDisplayName: string;
+      email: string;
+    };
+    targetAgent: {
+      id: string;
+      agentDisplayName: string;
+      email: string;
+    };
+  }>
+> {
+  return apiPost(`/api/admin/users/${agentId}/reassign`, payload);
 }
 
 export function listAuditLogs(params: {
