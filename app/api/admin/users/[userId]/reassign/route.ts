@@ -665,9 +665,9 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     const result = await db.$transaction(async (tx) => {
       const summary = createSummary();
       let message = "";
-      let entityType: string = payload.mode === "SINGLE" ? payload.entityType : "USER";
-      let entityId: string = payload.mode === "SINGLE" ? payload.entityId : sourceAgent.id;
-      let action =
+      const entityType: string = payload.mode === "SINGLE" ? payload.entityType : "USER";
+      const entityId: string = payload.mode === "SINGLE" ? payload.entityId : sourceAgent.id;
+      const action =
         payload.mode === "SINGLE"
           ? `ADMIN_REASSIGN_${payload.entityType}`
           : "ADMIN_REASSIGN_AGENT_RECORDS";
