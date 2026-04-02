@@ -715,7 +715,7 @@ export function AgentReportClient({
           <div>
             <h2 className="admin-card-title">Reassign Records</h2>
             <p className="page-subtitle" style={{ margin: "0.35rem 0 0" }}>
-              Move this agent&apos;s records to another active agent when someone leaves, is reassigned, or needs a partial handoff.
+              Admins can transfer records from active or disabled agents here, as long as the receiving agent account is active.
             </p>
           </div>
         </div>

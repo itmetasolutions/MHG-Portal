@@ -842,6 +842,21 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
       );
     }
 
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      const message =
+        error.code === "P2022"
+          ? "Record transfer is blocked because the landlord table is out of sync with the current schema. Apply the latest database migrations and try again."
+          : "A database error prevented the transfer from completing. Try again after applying the latest migrations.";
+
+      return NextResponse.json(
+        {
+          error: "TRANSFER_FAILED",
+          message,
+        },
+        { status: 500 },
+      );
+    }
+
     throw error;
   }
 }
