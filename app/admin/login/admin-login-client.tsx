@@ -11,6 +11,8 @@ import { apiPost } from "@/lib/api-client";
 type LoginResponse = {
   ok: true;
   message: string;
+  requiresOtp: boolean;
+  redirectTo: string;
 };
 
 type Props = {
@@ -95,8 +97,14 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
       return;
     }
 
-    setMessage({ type: "success", text: "OTP sent. Check your email." });
-    router.push(`/admin/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
+    if (result.data.requiresOtp) {
+      setMessage({ type: "success", text: "OTP sent. Check your email." });
+      router.push(result.data.redirectTo);
+      return;
+    }
+
+    setMessage({ type: "success", text: "Signed in. Redirecting..." });
+    window.location.assign(result.data.redirectTo || "/admin");
   }
 
   return (
@@ -105,7 +113,7 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
         <h1 className="auth-title">Admin Sign In</h1>
-        <p className="auth-subtitle">Use your admin credentials to receive a one-time login code.</p>
+        <p className="auth-subtitle">Use your admin credentials to sign in. OTP is only requested after 12 hours of inactivity.</p>
       </div>
 
       <UICard style={{ width: "100%", maxWidth: 420 }}>
@@ -138,7 +146,7 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
             {message ? <UIAlert type={message.type}>{message.text}</UIAlert> : null}
 
             <UIButton type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
-              {busy ? "Sending code..." : "Continue"}
+              {busy ? "Signing in..." : "Continue"}
             </UIButton>
           </form>
         </UICardBody>

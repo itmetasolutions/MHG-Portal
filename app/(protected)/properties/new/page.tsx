@@ -7,6 +7,7 @@ import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
 import { UISelect } from "@/components/ui/select";
+import { PropertyMediaLibrary } from "@/components/property-media-library";
 import {
   fetchLandlordsForDropdown,
   createLandlord,
@@ -56,6 +57,9 @@ export default function AddPropertyPage() {
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
   const [county, setCounty] = useState("");
+  const [propertyTitle, setPropertyTitle] = useState("");
+  const [propertyDescription, setPropertyDescription] = useState("");
+  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [privatePropertyType, setPrivatePropertyType] = useState<"House" | "Studio Flat" | "Flat" | "">("");
   const [numberOfRooms, setNumberOfRooms] = useState("");
   const [landlordDemand, setLandlordDemand] = useState("");
@@ -188,6 +192,8 @@ export default function AddPropertyPage() {
       landlord: { phone: selectedLandlord.phoneLast10 },
       property: {
         propertyRef: propertyRef.trim() || undefined,
+        title: propertyTitle.trim() || null,
+        description: propertyDescription.trim() || null,
         addressLine1: addressLine1.trim() || undefined,
         addressLine2: addressLine2.trim() || undefined,
         city: city.trim() || undefined,
@@ -210,6 +216,7 @@ export default function AddPropertyPage() {
         childrenAllowed: childrenAllowed === "true",
         availabilityDate: availabilityDate ? new Date(availabilityDate).toISOString() : null,
         livingLandlord: livingLandlord === "true",
+        mediaAssetIds: selectedMediaIds,
         rooms: vacancyType === "MULTIPLE" ? roomRows : undefined,
         status,
       },
@@ -380,6 +387,15 @@ export default function AddPropertyPage() {
 
                 <div className="field-grid-2">
                   <label className="field">
+                    <span className="label">Property Title</span>
+                    <UIInput
+                      value={propertyTitle}
+                      onChange={(e) => setPropertyTitle(e.target.value)}
+                      placeholder="e.g. Bright 3-bed family home in Harrow"
+                      disabled={saving}
+                    />
+                  </label>
+                  <label className="field">
                     <span className="label">Address Line 1 <span style={{ color: "var(--danger)" }}>*</span></span>
                     <UIInput value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} placeholder="123 High Street" disabled={saving} />
                   </label>
@@ -404,6 +420,28 @@ export default function AddPropertyPage() {
                   <span className="label">County (optional)</span>
                   <UIInput value={county} onChange={(e) => setCounty(e.target.value)} placeholder="Greater London" disabled={saving} />
                 </label>
+
+                <label className="field">
+                  <span className="label">Property Description</span>
+                  <textarea
+                    className="textarea"
+                    value={propertyDescription}
+                    onChange={(e) => setPropertyDescription(e.target.value)}
+                    placeholder="Describe the property, nearby highlights, layout, and any standout features."
+                    rows={5}
+                    disabled={saving}
+                  />
+                </label>
+
+                <div className="form-section-divider">
+                  <span className="form-section-label">Property Images</span>
+                </div>
+
+                <PropertyMediaLibrary
+                  selectedAssetIds={selectedMediaIds}
+                  onChange={setSelectedMediaIds}
+                  disabled={saving}
+                />
 
                 <div className="form-section-divider">
                   <span className="form-section-label">Occupancy Details</span>

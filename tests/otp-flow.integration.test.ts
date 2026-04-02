@@ -38,12 +38,18 @@ test("postgres integration: OTP flow works and rate limits apply", { skip: !hasP
       password: plainPassword,
     });
     assert.equal(loginOne.ok, true);
+    if (loginOne.ok) {
+      assert.equal(loginOne.requiresOtp, true);
+    }
 
     const loginTwo = await authService.loginWithPassword({
       email: user.email,
       password: plainPassword,
     });
     assert.equal(loginTwo.ok, true);
+    if (loginTwo.ok) {
+      assert.equal(loginTwo.requiresOtp, true);
+    }
 
     const loginThree = await authService.loginWithPassword({
       email: user.email,
@@ -77,6 +83,15 @@ test("postgres integration: OTP flow works and rate limits apply", { skip: !hasP
       otpCode: knownCode,
     });
     assert.equal(verifySuccess.ok, true);
+
+    const loginAfterRecentActivity = await authService.loginWithPassword({
+      email: user.email,
+      password: plainPassword,
+    });
+    assert.equal(loginAfterRecentActivity.ok, true);
+    if (loginAfterRecentActivity.ok) {
+      assert.equal(loginAfterRecentActivity.requiresOtp, false);
+    }
 
     const limiterCode = "654321";
     await db.oTPCode.create({

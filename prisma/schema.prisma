@@ -95,6 +95,7 @@ model User {
   agentDisplayName String
   profilePicture   String?
   isActive         Boolean  @default(true)
+  lastActivityAt   DateTime?
   createdAt        DateTime @default(now())
 
   createdLandlords Landlord[]    @relation("LandlordCreatedBy")
@@ -123,6 +124,7 @@ model User {
   notifications       Notification[]          @relation("UserNotifications")
   requestedEditApprovals EditApproval[]       @relation("RequestedEditApprovals")
   reviewedEditApprovals  EditApproval[]       @relation("ReviewedEditApprovals")
+  uploadedMediaAssets    MediaAsset[]         @relation("MediaAssetUploadedBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -162,6 +164,8 @@ model Property {
   landlordId            String         @db.Uuid
   ownerAgentId          String         @db.Uuid
   propertyRef           String
+  title                 String?
+  description           String?
   addressLine1          String?
   addressLine2          String?
   city                  String?
@@ -193,6 +197,7 @@ model Property {
   ownerAgent User           @relation("PropertyOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   sales      Sale[]
   rooms      PropertyRoom[]
+  mediaLinks PropertyMedia[]
 
   @@index([landlordId])
   @@index([ownerAgentId])
@@ -203,6 +208,35 @@ model Property {
   @@index([createdAt])
   @@index([ownerAgentId, createdAt])
   @@index([landlordId, createdAt])
+}
+
+model MediaAsset {
+  id               String   @id @default(uuid()) @db.Uuid
+  uploadedByUserId String?  @db.Uuid
+  name             String
+  mimeType         String
+  dataUrl          String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  uploadedBy   User?          @relation("MediaAssetUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  propertyLinks PropertyMedia[]
+
+  @@index([uploadedByUserId, createdAt])
+  @@index([createdAt])
+}
+
+model PropertyMedia {
+  propertyId   String @db.Uuid
+  mediaAssetId String @db.Uuid
+  sortOrder    Int    @default(0)
+
+  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([propertyId, mediaAssetId])
+  @@index([mediaAssetId])
+  @@index([propertyId, sortOrder])
 }
 
 model Sale {

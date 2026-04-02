@@ -1,4 +1,5 @@
 import { UserRole } from "@prisma/client";
+import { AuthActivityTracker } from "@/components/auth-activity-tracker";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { AdminShell } from "./admin-shell";
@@ -35,6 +36,7 @@ export default async function AdminLayout({
       userId={session.userId}
       chatContacts={agents.map((a) => ({ id: a.id, name: a.agentDisplayName, email: a.email, profilePicture: a.profilePicture }))}
     >
+      <AuthActivityTracker />
       {children}
     </AdminShell>
   );

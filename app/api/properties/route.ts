@@ -152,6 +152,8 @@ export async function GET(request: NextRequest) {
         landlordId: true,
         ownerAgentId: true,
         propertyRef: true,
+        title: true,
+        description: true,
         addressLine1: true,
         addressLine2: true,
         city: true,

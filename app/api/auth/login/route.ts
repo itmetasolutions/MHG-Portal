@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
-import { loginWithPassword } from "@/server/auth";
+import { issueAuthSessionCookie, loginWithPassword } from "@/server/auth";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -51,5 +51,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.code }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, message: "OTP sent" });
+  if (!result.requiresOtp) {
+    await issueAuthSessionCookie({
+      userId: result.user.id,
+      email: result.user.email,
+      role: result.user.role,
+    });
+
+    const redirectTo = result.user.role === UserRole.ADMIN ? "/admin" : "/dashboard";
+    return NextResponse.json({
+      ok: true,
+      requiresOtp: false,
+      message: "Signed in successfully.",
+      redirectTo,
+    });
+  }
+
+  const verifyPath =
+    expectedRole === UserRole.ADMIN
+      ? `/admin/verify-otp?email=${encodeURIComponent(payload.email.trim().toLowerCase())}`
+      : `/verify-otp?email=${encodeURIComponent(payload.email.trim().toLowerCase())}`;
+
+  return NextResponse.json({
+    ok: true,
+    requiresOtp: true,
+    message: "OTP sent",
+    redirectTo: verifyPath,
+  });
 }

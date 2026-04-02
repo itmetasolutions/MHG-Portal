@@ -9,6 +9,11 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { notifyApprovalDecision } from "@/server/edit-approvals";
+import {
+  assertMediaAssetsExist,
+  buildPropertyMediaRows,
+  normalizeMediaAssetIds,
+} from "@/server/property-media";
 
 const approvalIdSchema = z.string().uuid("approval id must be a valid UUID");
 
@@ -130,6 +135,8 @@ async function applyPropertyApproval(
       landlordId: true,
       ownerAgentId: true,
       propertyRef: true,
+      title: true,
+      description: true,
       addressLine1: true,
       addressLine2: true,
       city: true,
@@ -158,6 +165,21 @@ async function applyPropertyApproval(
       updatedAt: true,
       landlord: { select: { id: true, landlordName: true } },
       ownerAgent: { select: { id: true, agentDisplayName: true } },
+      mediaLinks: {
+        orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+        select: {
+          sortOrder: true,
+          mediaAsset: {
+            select: {
+              id: true,
+              name: true,
+              mimeType: true,
+              dataUrl: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -165,42 +187,76 @@ async function applyPropertyApproval(
     throw new Error("PROPERTY_NOT_FOUND");
   }
 
-  const updated = await tx.property.update({
+  const updateData: Prisma.PropertyUncheckedUpdateInput = {
+    landlordId: typeof proposed.landlordId === "string" ? proposed.landlordId : undefined,
+    propertyRef: typeof proposed.propertyRef === "string" ? proposed.propertyRef : undefined,
+    title: Object.prototype.hasOwnProperty.call(proposed, "title") ? (proposed.title as string | null) : undefined,
+    description: Object.prototype.hasOwnProperty.call(proposed, "description") ? (proposed.description as string | null) : undefined,
+    addressLine1: Object.prototype.hasOwnProperty.call(proposed, "addressLine1") ? (proposed.addressLine1 as string | null) : undefined,
+    addressLine2: Object.prototype.hasOwnProperty.call(proposed, "addressLine2") ? (proposed.addressLine2 as string | null) : undefined,
+    city: Object.prototype.hasOwnProperty.call(proposed, "city") ? (proposed.city as string | null) : undefined,
+    county: Object.prototype.hasOwnProperty.call(proposed, "county") ? (proposed.county as string | null) : undefined,
+    postcode: Object.prototype.hasOwnProperty.call(proposed, "postcode") ? (proposed.postcode as string | null) : undefined,
+    propertyType: Object.prototype.hasOwnProperty.call(proposed, "propertyType") ? (proposed.propertyType as string | null) : undefined,
+    beds: Object.prototype.hasOwnProperty.call(proposed, "beds") ? (proposed.beds as number | null) : undefined,
+    baths: Object.prototype.hasOwnProperty.call(proposed, "baths") ? (proposed.baths as number | null) : undefined,
+    status: Object.prototype.hasOwnProperty.call(proposed, "status") ? (proposed.status as never) : undefined,
+    landlordDemand: Object.prototype.hasOwnProperty.call(proposed, "landlordDemand") ? (proposed.landlordDemand as number | null) : undefined,
+    expectedCommissionPct: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionPct") ? (proposed.expectedCommissionPct as number | null) : undefined,
+    expectedCommissionAmt: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionAmt") ? (proposed.expectedCommissionAmt as number | null) : undefined,
+    totalRooms: Object.prototype.hasOwnProperty.call(proposed, "totalRooms") ? (proposed.totalRooms as number | null) : undefined,
+    availableRooms: Object.prototype.hasOwnProperty.call(proposed, "availableRooms") ? (proposed.availableRooms as number | null) : undefined,
+    rentPerMonth: Object.prototype.hasOwnProperty.call(proposed, "rentPerMonth") ? (proposed.rentPerMonth as number | null) : undefined,
+    depositAmount: Object.prototype.hasOwnProperty.call(proposed, "depositAmount") ? (proposed.depositAmount as number | null) : undefined,
+    isFurnished: Object.prototype.hasOwnProperty.call(proposed, "isFurnished") ? (proposed.isFurnished as boolean | null) : undefined,
+    personsAllowed: Object.prototype.hasOwnProperty.call(proposed, "personsAllowed") ? (proposed.personsAllowed as number | null) : undefined,
+    petsAllowed: Object.prototype.hasOwnProperty.call(proposed, "petsAllowed") ? (proposed.petsAllowed as boolean | null) : undefined,
+    dssAllowed: Object.prototype.hasOwnProperty.call(proposed, "dssAllowed") ? (proposed.dssAllowed as boolean | null) : undefined,
+    childrenAllowed: Object.prototype.hasOwnProperty.call(proposed, "childrenAllowed") ? (proposed.childrenAllowed as boolean | null) : undefined,
+    availabilityDate: Object.prototype.hasOwnProperty.call(proposed, "availabilityDate")
+      ? (proposed.availabilityDate ? new Date(String(proposed.availabilityDate)) : null)
+      : undefined,
+    livingLandlord: Object.prototype.hasOwnProperty.call(proposed, "livingLandlord") ? (proposed.livingLandlord as boolean | null) : undefined,
+  };
+  const normalizedMediaAssetIds = Array.isArray(proposed.mediaAssetIds)
+    ? normalizeMediaAssetIds(
+        proposed.mediaAssetIds.filter((value): value is string => typeof value === "string"),
+      )
+    : undefined;
+
+  if (normalizedMediaAssetIds !== undefined) {
+    await assertMediaAssetsExist(tx, normalizedMediaAssetIds);
+  }
+
+  if (Object.values(updateData).some((value) => value !== undefined)) {
+    await tx.property.update({
+      where: { id: approval.entityId },
+      data: updateData,
+      select: { id: true },
+    });
+  }
+
+  if (normalizedMediaAssetIds !== undefined) {
+    await tx.propertyMedia.deleteMany({
+      where: { propertyId: approval.entityId },
+    });
+
+    if (normalizedMediaAssetIds.length > 0) {
+      await tx.propertyMedia.createMany({
+        data: buildPropertyMediaRows(approval.entityId, normalizedMediaAssetIds),
+      });
+    }
+  }
+
+  const updated = await tx.property.findUniqueOrThrow({
     where: { id: approval.entityId },
-    data: {
-      landlordId: typeof proposed.landlordId === "string" ? proposed.landlordId : undefined,
-      propertyRef: typeof proposed.propertyRef === "string" ? proposed.propertyRef : undefined,
-      addressLine1: Object.prototype.hasOwnProperty.call(proposed, "addressLine1") ? (proposed.addressLine1 as string | null) : undefined,
-      addressLine2: Object.prototype.hasOwnProperty.call(proposed, "addressLine2") ? (proposed.addressLine2 as string | null) : undefined,
-      city: Object.prototype.hasOwnProperty.call(proposed, "city") ? (proposed.city as string | null) : undefined,
-      county: Object.prototype.hasOwnProperty.call(proposed, "county") ? (proposed.county as string | null) : undefined,
-      postcode: Object.prototype.hasOwnProperty.call(proposed, "postcode") ? (proposed.postcode as string | null) : undefined,
-      propertyType: Object.prototype.hasOwnProperty.call(proposed, "propertyType") ? (proposed.propertyType as string | null) : undefined,
-      beds: Object.prototype.hasOwnProperty.call(proposed, "beds") ? (proposed.beds as number | null) : undefined,
-      baths: Object.prototype.hasOwnProperty.call(proposed, "baths") ? (proposed.baths as number | null) : undefined,
-      status: Object.prototype.hasOwnProperty.call(proposed, "status") ? (proposed.status as never) : undefined,
-      landlordDemand: Object.prototype.hasOwnProperty.call(proposed, "landlordDemand") ? (proposed.landlordDemand as number | null) : undefined,
-      expectedCommissionPct: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionPct") ? (proposed.expectedCommissionPct as number | null) : undefined,
-      expectedCommissionAmt: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionAmt") ? (proposed.expectedCommissionAmt as number | null) : undefined,
-      totalRooms: Object.prototype.hasOwnProperty.call(proposed, "totalRooms") ? (proposed.totalRooms as number | null) : undefined,
-      availableRooms: Object.prototype.hasOwnProperty.call(proposed, "availableRooms") ? (proposed.availableRooms as number | null) : undefined,
-      rentPerMonth: Object.prototype.hasOwnProperty.call(proposed, "rentPerMonth") ? (proposed.rentPerMonth as number | null) : undefined,
-      depositAmount: Object.prototype.hasOwnProperty.call(proposed, "depositAmount") ? (proposed.depositAmount as number | null) : undefined,
-      isFurnished: Object.prototype.hasOwnProperty.call(proposed, "isFurnished") ? (proposed.isFurnished as boolean | null) : undefined,
-      personsAllowed: Object.prototype.hasOwnProperty.call(proposed, "personsAllowed") ? (proposed.personsAllowed as number | null) : undefined,
-      petsAllowed: Object.prototype.hasOwnProperty.call(proposed, "petsAllowed") ? (proposed.petsAllowed as boolean | null) : undefined,
-      dssAllowed: Object.prototype.hasOwnProperty.call(proposed, "dssAllowed") ? (proposed.dssAllowed as boolean | null) : undefined,
-      childrenAllowed: Object.prototype.hasOwnProperty.call(proposed, "childrenAllowed") ? (proposed.childrenAllowed as boolean | null) : undefined,
-      availabilityDate: Object.prototype.hasOwnProperty.call(proposed, "availabilityDate")
-        ? (proposed.availabilityDate ? new Date(String(proposed.availabilityDate)) : null)
-        : undefined,
-      livingLandlord: Object.prototype.hasOwnProperty.call(proposed, "livingLandlord") ? (proposed.livingLandlord as boolean | null) : undefined,
-    },
     select: {
       id: true,
       landlordId: true,
       ownerAgentId: true,
       propertyRef: true,
+      title: true,
+      description: true,
       addressLine1: true,
       addressLine2: true,
       city: true,
@@ -229,6 +285,21 @@ async function applyPropertyApproval(
       updatedAt: true,
       landlord: { select: { id: true, landlordName: true } },
       ownerAgent: { select: { id: true, agentDisplayName: true } },
+      mediaLinks: {
+        orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+        select: {
+          sortOrder: true,
+          mediaAsset: {
+            select: {
+              id: true,
+              name: true,
+              mimeType: true,
+              dataUrl: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
     },
   });
 

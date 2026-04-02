@@ -7,6 +7,7 @@ import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
 import { UISelect } from "@/components/ui/select";
+import { PropertyMediaLibrary } from "@/components/property-media-library";
 import {
   fetchLandlordsForDropdown,
   updateProperty,
@@ -28,6 +29,8 @@ type RoomRow = {
 type PropertyDetail = {
   id: string;
   propertyRef: string;
+  title: string | null;
+  description: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
@@ -56,6 +59,7 @@ type PropertyDetail = {
   livingLandlord: boolean | null;
   landlord: { id: string; landlordName: string; phoneLast10: string | null };
   rooms?: RoomRow[];
+  images?: Array<{ id: string }>;
 };
 
 const ROOM_TYPES = ["Studio Room", "Single Room", "Double Room", "Ensuite Room", "Loft"] as const;
@@ -80,6 +84,9 @@ export default function EditPropertyPage({ params }: Props) {
   // Editable fields
   const [selectedLandlordId, setSelectedLandlordId] = useState("");
   const [propertyRef, setPropertyRef] = useState("");
+  const [propertyTitle, setPropertyTitle] = useState("");
+  const [propertyDescription, setPropertyDescription] = useState("");
+  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [propertyType, setPropertyType] = useState("");
   const [beds, setBeds] = useState("");
@@ -121,6 +128,9 @@ export default function EditPropertyPage({ params }: Props) {
       setOriginal(p);
       setSelectedLandlordId(p.landlordId);
       setPropertyRef(p.propertyRef ?? "");
+      setPropertyTitle(p.title ?? "");
+      setPropertyDescription(p.description ?? "");
+      setSelectedMediaIds((p.images ?? []).map((image) => image.id));
       setStatus(p.status === "CLOSED" ? "AVAILABLE" : p.status);
       setPropertyType(p.propertyType ?? "");
       setBeds(p.beds != null ? String(p.beds) : "");
@@ -162,6 +172,8 @@ export default function EditPropertyPage({ params }: Props) {
     const payload: Record<string, unknown> = {
       landlordId: selectedLandlordId !== original.landlordId ? selectedLandlordId : undefined,
       propertyRef: propertyRef.trim() || undefined,
+      title: propertyTitle.trim() || null,
+      description: propertyDescription.trim() || null,
       status,
       propertyType: propertyType.trim() || null,
       beds: beds !== "" ? Number(beds) : null,
@@ -177,6 +189,7 @@ export default function EditPropertyPage({ params }: Props) {
       childrenAllowed: childrenAllowed === "true",
       availabilityDate: availabilityDate ? new Date(availabilityDate).toISOString() : null,
       livingLandlord: livingLandlord === "true",
+      mediaAssetIds: selectedMediaIds,
     };
 
     if (!isMultiple) {
@@ -317,6 +330,40 @@ export default function EditPropertyPage({ params }: Props) {
                 <UIInput value={propertyRef} onChange={(e) => setPropertyRef(e.target.value)} disabled={saving} />
               </label>
             </div>
+
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Property Title</span>
+                <UIInput
+                  value={propertyTitle}
+                  onChange={(e) => setPropertyTitle(e.target.value)}
+                  placeholder="e.g. Spacious flat near transport links"
+                  disabled={saving}
+                />
+              </label>
+            </div>
+
+            <label className="field">
+              <span className="label">Property Description</span>
+              <textarea
+                className="textarea"
+                value={propertyDescription}
+                onChange={(e) => setPropertyDescription(e.target.value)}
+                placeholder="Describe the property, nearby amenities, and any standout features."
+                rows={5}
+                disabled={saving}
+              />
+            </label>
+
+            <div className="form-section-divider">
+              <span className="form-section-label">Property Images</span>
+            </div>
+
+            <PropertyMediaLibrary
+              selectedAssetIds={selectedMediaIds}
+              onChange={setSelectedMediaIds}
+              disabled={saving}
+            />
 
             {/* Property Details */}
             <div className="form-section-divider">

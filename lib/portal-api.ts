@@ -53,6 +53,19 @@ export type PropertyRoomRow = {
   } | null;
 };
 
+export type MediaAssetRow = {
+  id: string;
+  name: string;
+  mimeType: string;
+  dataUrl: string;
+  createdAt: string;
+  uploadedBy?: {
+    id: string;
+    agentDisplayName: string;
+    email: string;
+  } | null;
+};
+
 export type LandlordRow = {
   id: string;
   landlordName: string;
@@ -104,6 +117,8 @@ export type PropertyRow = {
   landlordId: string;
   ownerAgentId: string;
   propertyRef: string;
+  title: string | null;
+  description: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
@@ -135,6 +150,7 @@ export type PropertyRow = {
     agentDisplayName: string;
     email?: string;
   };
+  images?: MediaAssetRow[];
   sales?: SaleRow[];
   rooms?: PropertyRoomRow[];
   // Backward compatibility for legacy screens still expecting one sale.
@@ -390,6 +406,8 @@ export type RoomDraftInput = {
 export type PropertyDraftPayload = {
   landlordId?: string;
   propertyRef?: string;
+  title?: string | null;
+  description?: string | null;
   addressLine1?: string | null;
   addressLine2?: string | null;
   city?: string | null;
@@ -414,6 +432,7 @@ export type PropertyDraftPayload = {
   childrenAllowed?: boolean | null;
   availabilityDate?: string | null;
   livingLandlord?: boolean | null;
+  mediaAssetIds?: string[];
   rooms?: RoomDraftInput[];
 };
 
@@ -627,6 +646,19 @@ export function updateProperty(
   message?: string;
 }>> {
   return apiPatch(`/api/properties/${propertyId}`, payload);
+}
+
+export function listMediaLibrary(): Promise<ApiResult<{ assets: MediaAssetRow[] }>> {
+  return apiGet("/api/media-library");
+}
+
+export function uploadMediaAssets(payload: {
+  files: Array<{
+    name?: string;
+    dataUrl: string;
+  }>;
+}): Promise<ApiResult<{ assets: MediaAssetRow[] }>> {
+  return apiPost("/api/media-library", payload);
 }
 
 export function createTenant(payload: {

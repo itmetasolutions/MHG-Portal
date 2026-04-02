@@ -10,6 +10,12 @@ import {
   canViewProperty,
 } from "@/server/policies";
 import { queueEditApproval } from "@/server/edit-approvals";
+import {
+  assertMediaAssetsExist,
+  buildPropertyMediaRows,
+  normalizeMediaAssetIds,
+  serializePropertyImages,
+} from "@/server/property-media";
 
 const propertyIdSchema = z.string().uuid("property id must be a valid UUID");
 
@@ -17,6 +23,8 @@ const agentUpdateSchema = z
   .object({
     landlordId: z.string().uuid().optional(),
     propertyRef: z.string().trim().min(1).optional(),
+    title: z.string().trim().min(1).max(200).nullable().optional(),
+    description: z.string().trim().min(1).max(10000).nullable().optional(),
     addressLine1: z.string().trim().min(1).nullable().optional(),
     addressLine2: z.string().trim().min(1).nullable().optional(),
     city: z.string().trim().min(1).nullable().optional(),
@@ -40,6 +48,7 @@ const agentUpdateSchema = z
     childrenAllowed: z.boolean().nullable().optional(),
     availabilityDate: z.string().datetime({ offset: true }).nullable().optional(),
     livingLandlord: z.boolean().nullable().optional(),
+    mediaAssetIds: z.array(z.string().uuid()).max(50).optional(),
   })
   .strict();
 
@@ -60,6 +69,8 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   landlordId: true,
   ownerAgentId: true,
   propertyRef: true,
+  title: true,
+  description: true,
   addressLine1: true,
   addressLine2: true,
   city: true,
@@ -69,6 +80,7 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   beds: true,
   baths: true,
   status: true,
+  vacancyType: true,
   landlordDemand: true,
   expectedCommissionPct: true,
   expectedCommissionAmt: true,
@@ -107,6 +119,28 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
       otherCosts: true,
       profit: true,
       closedAt: true,
+    },
+  },
+  mediaLinks: {
+    orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+    select: {
+      sortOrder: true,
+      mediaAsset: {
+        select: {
+          id: true,
+          name: true,
+          mimeType: true,
+          dataUrl: true,
+          createdAt: true,
+          uploadedBy: {
+            select: {
+              id: true,
+              agentDisplayName: true,
+              email: true,
+            },
+          },
+        },
+      },
     },
   },
 });
@@ -157,7 +191,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     );
   }
 
-  return NextResponse.json({ property });
+  return NextResponse.json({ property: serializePropertyImages(property) });
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -242,6 +276,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     auth.user.role === "ADMIN"
       ? payload.ownerAgentId ?? currentProperty.ownerAgentId
       : currentProperty.ownerAgentId;
+  const normalizedMediaAssetIds =
+    payload.mediaAssetIds !== undefined
+      ? normalizeMediaAssetIds(payload.mediaAssetIds)
+      : undefined;
 
   if (
     !canCreateProperty(auth.user, {
@@ -266,6 +304,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       },
       { status: 400 },
     );
+  }
+
+  if (normalizedMediaAssetIds !== undefined) {
+    try {
+      await assertMediaAssetsExist(db, normalizedMediaAssetIds);
+    } catch (error) {
+      if (error instanceof Error && error.message === "MEDIA_ASSET_NOT_FOUND") {
+        return NextResponse.json(
+          {
+            error: "MEDIA_ASSET_NOT_FOUND",
+            message: "One or more selected media items could not be found.",
+          },
+          { status: 400 },
+        );
+      }
+
+      throw error;
+    }
   }
 
   if (payload.status === "CLOSED" && currentProperty.sales.length === 0) {
@@ -302,6 +358,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     updateData.propertyRef = payload.propertyRef;
     proposedChanges.propertyRef = payload.propertyRef;
     changedFields.push("reference");
+    hasChanges = true;
+  }
+  if (payload.title !== undefined && payload.title !== currentProperty.title) {
+    updateData.title = payload.title;
+    proposedChanges.title = payload.title;
+    changedFields.push("title");
+    hasChanges = true;
+  }
+  if (payload.description !== undefined && payload.description !== currentProperty.description) {
+    updateData.description = payload.description;
+    proposedChanges.description = payload.description;
+    changedFields.push("description");
     hasChanges = true;
   }
   if (payload.addressLine1 !== undefined && payload.addressLine1 !== currentProperty.addressLine1) {
@@ -456,6 +524,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     changedFields.push("living landlord");
     hasChanges = true;
   }
+  if (normalizedMediaAssetIds !== undefined) {
+    const currentMediaAssetIds = currentProperty.mediaLinks.map((link) => link.mediaAsset.id);
+    const mediaChanged =
+      currentMediaAssetIds.length !== normalizedMediaAssetIds.length ||
+      currentMediaAssetIds.some((id, index) => id !== normalizedMediaAssetIds[index]);
+
+    if (mediaChanged) {
+      proposedChanges.mediaAssetIds = normalizedMediaAssetIds;
+      changedFields.push("images");
+      hasChanges = true;
+    }
+  }
 
   if (!hasChanges) {
     return NextResponse.json(
@@ -483,7 +563,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return NextResponse.json(
       {
-        property: currentProperty,
+        property: serializePropertyImages(currentProperty),
         approvalRequired: true,
         approvalRequest: approval,
         message: "Changes submitted for admin approval.",
@@ -493,9 +573,28 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const property = await db.$transaction(async (tx) => {
-    const updated = await tx.property.update({
+    if (Object.keys(updateData).length > 0) {
+      await tx.property.update({
+        where: { id: currentProperty.id },
+        data: updateData,
+        select: { id: true },
+      });
+    }
+
+    if (normalizedMediaAssetIds !== undefined) {
+      await tx.propertyMedia.deleteMany({
+        where: { propertyId: currentProperty.id },
+      });
+
+      if (normalizedMediaAssetIds.length > 0) {
+        await tx.propertyMedia.createMany({
+          data: buildPropertyMediaRows(currentProperty.id, normalizedMediaAssetIds),
+        });
+      }
+    }
+
+    const updated = await tx.property.findUniqueOrThrow({
       where: { id: currentProperty.id },
-      data: updateData,
       select: propertySelect,
     });
 
@@ -518,7 +617,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return updated;
   });
 
-  return NextResponse.json({ property });
+  return NextResponse.json({ property: serializePropertyImages(property) });
 }
 
 export async function DELETE(request: NextRequest, { params }: Params) {

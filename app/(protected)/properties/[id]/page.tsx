@@ -7,15 +7,18 @@ import { formatDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 function yesNo(value: boolean | null | undefined) {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "-";
   return value ? "Yes" : "No";
 }
 
-function money(value: unknown, symbol = "£") {
-  if (value === null || value === undefined) return "—";
+function money(value: unknown, prefix = "GBP ") {
+  if (value === null || value === undefined) return "-";
   const num = Number(String(value));
-  if (isNaN(num)) return "—";
-  return `${symbol}${num.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (Number.isNaN(num)) return "-";
+  return `${prefix}${num.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 type Props = { params: { id: string } };
@@ -29,6 +32,8 @@ export default async function PropertyDetailPage({ params }: Props) {
     select: {
       id: true,
       propertyRef: true,
+      title: true,
+      description: true,
       addressLine1: true,
       addressLine2: true,
       city: true,
@@ -68,6 +73,18 @@ export default async function PropertyDetailPage({ params }: Props) {
       },
       ownerAgent: {
         select: { id: true, agentDisplayName: true },
+      },
+      mediaLinks: {
+        orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+        select: {
+          mediaAsset: {
+            select: {
+              id: true,
+              name: true,
+              dataUrl: true,
+            },
+          },
+        },
       },
       rooms: {
         orderBy: { createdAt: "asc" },
@@ -118,14 +135,20 @@ export default async function PropertyDetailPage({ params }: Props) {
 
   if (!property) notFound();
 
-  // Agents can only see their own properties
   if (session.role !== "ADMIN" && property.ownerAgentId !== session.userId) {
     redirect("/properties");
   }
 
-  const fullAddress = [property.addressLine1, property.addressLine2, property.city, property.county, property.postcode]
+  const fullAddress = [
+    property.addressLine1,
+    property.addressLine2,
+    property.city,
+    property.county,
+    property.postcode,
+  ]
     .filter(Boolean)
     .join(", ");
+  const propertyImages = property.mediaLinks.map((link) => link.mediaAsset);
 
   const statusBadge: Record<string, string> = {
     AVAILABLE: "badge-active",
@@ -142,8 +165,10 @@ export default async function PropertyDetailPage({ params }: Props) {
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">{property.propertyRef}</h1>
-          <p className="page-subtitle">{fullAddress || "No address recorded"}</p>
+          <h1 className="page-title">{property.title || property.propertyRef}</h1>
+          <p className="page-subtitle">
+            {[property.propertyRef, fullAddress || "No address recorded"].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <div className="inline-row">
           <Link className="btn btn-secondary" href={`/landlords/${property.landlord.id}/properties`}>
@@ -155,7 +180,6 @@ export default async function PropertyDetailPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Status + type badges */}
       <div className="inline-row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
         <span className={`badge ${statusBadge[property.status] ?? "badge-draft"}`}>
           {statusLabel[property.status] ?? property.status}
@@ -165,10 +189,11 @@ export default async function PropertyDetailPage({ params }: Props) {
         </span>
       </div>
 
-      {/* Landlord Details */}
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Landlord Details</h2>
+          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+            Landlord Details
+          </h2>
         </div>
         <div style={{ padding: "1.25rem" }}>
           <div className="detail-grid">
@@ -184,7 +209,7 @@ export default async function PropertyDetailPage({ params }: Props) {
             </div>
             <div className="detail-item">
               <span className="detail-label">Email Address</span>
-              <span className="detail-value">{property.landlord.email ?? "—"}</span>
+              <span className="detail-value">{property.landlord.email ?? "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Managing Agent</span>
@@ -194,10 +219,11 @@ export default async function PropertyDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Property Information */}
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Property Information</h2>
+          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+            Property Information
+          </h2>
         </div>
         <div style={{ padding: "1.25rem" }}>
           <div className="detail-grid">
@@ -206,12 +232,16 @@ export default async function PropertyDetailPage({ params }: Props) {
               <span className="detail-value"><code>{property.propertyRef}</code></span>
             </div>
             <div className="detail-item">
+              <span className="detail-label">Property Title</span>
+              <span className="detail-value">{property.title ?? "-"}</span>
+            </div>
+            <div className="detail-item">
               <span className="detail-label">Full Address</span>
-              <span className="detail-value">{fullAddress || "—"}</span>
+              <span className="detail-value">{fullAddress || "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Property Type</span>
-              <span className="detail-value">{property.propertyType ?? "—"}</span>
+              <span className="detail-value">{property.propertyType ?? "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Property Category</span>
@@ -220,16 +250,16 @@ export default async function PropertyDetailPage({ params }: Props) {
             <div className="detail-item">
               <span className="detail-label">Beds / Baths</span>
               <span className="detail-value">
-                {property.beds != null ? property.beds : "—"} beds / {property.baths != null ? property.baths : "—"} baths
+                {property.beds != null ? property.beds : "-"} beds / {property.baths != null ? property.baths : "-"} baths
               </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Total Number of Rooms</span>
-              <span className="detail-value">{property.totalRooms ?? "—"}</span>
+              <span className="detail-value">{property.totalRooms ?? "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Available Rooms</span>
-              <span className="detail-value">{property.availableRooms ?? "—"}</span>
+              <span className="detail-value">{property.availableRooms ?? "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Rent per Month</span>
@@ -245,7 +275,7 @@ export default async function PropertyDetailPage({ params }: Props) {
             </div>
             <div className="detail-item">
               <span className="detail-label">Number of Persons Allowed</span>
-              <span className="detail-value">{property.personsAllowed ?? "—"}</span>
+              <span className="detail-value">{property.personsAllowed ?? "-"}</span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Pets Allowed</span>
@@ -262,21 +292,69 @@ export default async function PropertyDetailPage({ params }: Props) {
             <div className="detail-item">
               <span className="detail-label">Property Availability Date</span>
               <span className="detail-value">
-                {property.availabilityDate ? formatDate(property.availabilityDate) : "—"}
+                {property.availabilityDate ? formatDate(property.availabilityDate) : "-"}
               </span>
             </div>
             <div className="detail-item">
               <span className="detail-label">Living Landlord</span>
               <span className="detail-value">{yesNo(property.livingLandlord)}</span>
             </div>
+            <div className="detail-item" style={{ gridColumn: "1 / -1" }}>
+              <span className="detail-label">Property Description</span>
+              <span className="detail-value" style={{ whiteSpace: "pre-wrap" }}>
+                {property.description ?? "-"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Financial */}
+      {propertyImages.length > 0 && (
+        <div className="panel">
+          <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
+            <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+              Property Images
+            </h2>
+          </div>
+          <div
+            style={{
+              padding: "1.25rem",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.9rem",
+            }}
+          >
+            {propertyImages.map((image) => (
+              <figure
+                key={image.id}
+                style={{
+                  margin: 0,
+                  border: "1px solid var(--border)",
+                  borderRadius: "0.85rem",
+                  overflow: "hidden",
+                  background: "var(--surface-alt, #1a1a24)",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image.dataUrl}
+                  alt={image.name}
+                  style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", display: "block" }}
+                />
+                <figcaption style={{ padding: "0.7rem 0.85rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                  {image.name}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Financial</h2>
+          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+            Financial
+          </h2>
         </div>
         <div style={{ padding: "1.25rem" }}>
           <div className="detail-grid">
@@ -290,15 +368,14 @@ export default async function PropertyDetailPage({ params }: Props) {
                 {property.expectedCommissionAmt != null
                   ? money(property.expectedCommissionAmt)
                   : property.expectedCommissionPct != null
-                  ? `${property.expectedCommissionPct}%`
-                  : "—"}
+                    ? `${property.expectedCommissionPct}%`
+                    : "-"}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Rooms (shared properties) */}
       {property.vacancyType === "MULTIPLE" && property.rooms.length > 0 && (
         <div className="panel">
           <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
@@ -326,9 +403,9 @@ export default async function PropertyDetailPage({ params }: Props) {
                       </span>
                     </td>
                     <td>{money(room.landlordDemand)}</td>
-                    <td>{room.expectedCommissionPct != null ? `${room.expectedCommissionPct}%` : "—"}</td>
-                    <td>{room.sale?.tenant?.fullName ?? "—"}</td>
-                    <td>{room.sale ? money(room.sale.finalAmount) : "—"}</td>
+                    <td>{room.expectedCommissionPct != null ? `${room.expectedCommissionPct}%` : "-"}</td>
+                    <td>{room.sale?.tenant?.fullName ?? "-"}</td>
+                    <td>{room.sale ? money(room.sale.finalAmount) : "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -337,22 +414,25 @@ export default async function PropertyDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Sales */}
       {property.sales.length > 0 && (
         <div className="panel">
           <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-            <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Sale History</h2>
+            <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
+              Sale History
+            </h2>
           </div>
           {property.sales.map((sale) => (
             <div key={sale.id} style={{ padding: "1.25rem", borderBottom: "1px solid var(--border)" }}>
               <div className="detail-grid">
                 <div className="detail-item">
                   <span className="detail-label">Final Amount</span>
-                  <span className="detail-value" style={{ color: "#4ade80", fontWeight: 700 }}>{money(sale.finalAmount)}</span>
+                  <span className="detail-value" style={{ color: "#4ade80", fontWeight: 700 }}>
+                    {money(sale.finalAmount)}
+                  </span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Commission</span>
-                  <span className="detail-value">{String(sale.commissionPct)}% → {money(sale.commissionAmount)}</span>
+                  <span className="detail-value">{String(sale.commissionPct)}% -&gt; {money(sale.commissionAmount)}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Other Costs</span>
@@ -374,16 +454,16 @@ export default async function PropertyDetailPage({ params }: Props) {
                     </div>
                     <div className="detail-item">
                       <span className="detail-label">Tenant Email</span>
-                      <span className="detail-value">{sale.tenant.email ?? "—"}</span>
+                      <span className="detail-value">{sale.tenant.email ?? "-"}</span>
                     </div>
                     <div className="detail-item">
                       <span className="detail-label">Tenant Phone</span>
-                      <span className="detail-value">{sale.tenant.phone ?? "—"}</span>
+                      <span className="detail-value">{sale.tenant.phone ?? "-"}</span>
                     </div>
                     <div className="detail-item">
                       <span className="detail-label">Move-In Date</span>
                       <span className="detail-value">
-                        {sale.tenant.moveInDate ? formatDate(sale.tenant.moveInDate) : "—"}
+                        {sale.tenant.moveInDate ? formatDate(sale.tenant.moveInDate) : "-"}
                       </span>
                     </div>
                     <div className="detail-item">
@@ -396,7 +476,7 @@ export default async function PropertyDetailPage({ params }: Props) {
                     </div>
                     <div className="detail-item">
                       <span className="detail-label">Current Address</span>
-                      <span className="detail-value">{sale.tenant.currentAddress ?? "—"}</span>
+                      <span className="detail-value">{sale.tenant.currentAddress ?? "-"}</span>
                     </div>
                     {sale.tenant.notes && (
                       <div className="detail-item" style={{ gridColumn: "1 / -1" }}>
@@ -412,7 +492,6 @@ export default async function PropertyDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Meta */}
       <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", paddingBottom: "2rem" }}>
         Added {formatDate(property.createdAt)} · Last updated {formatDate(property.updatedAt)}
       </div>

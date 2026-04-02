@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { AuthActivityTracker } from "@/components/auth-activity-tracker";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
 import { AgentShell } from "./agent-shell";
@@ -45,6 +46,7 @@ export default async function ProtectedLayout({
         profilePicture: c.profilePicture,
       }))}
     >
+      <AuthActivityTracker />
       {children}
     </AgentShell>
   );

@@ -4,6 +4,12 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { normalizeUkPhone } from "@/server/phone";
+import {
+  assertMediaAssetsExist,
+  buildPropertyMediaRows,
+  normalizeMediaAssetIds,
+  serializePropertyImages,
+} from "@/server/property-media";
 
 const nullableStringSchema = z.union([z.string().trim().min(1), z.literal(""), z.null()]).optional();
 
@@ -29,6 +35,8 @@ const intakeSchema = z
     property: z
       .object({
         propertyRef: z.string().trim().min(1).optional(),
+        title: nullableStringSchema,
+        description: nullableStringSchema,
         addressLine1: nullableStringSchema,
         addressLine2: nullableStringSchema,
         city: nullableStringSchema,
@@ -53,6 +61,7 @@ const intakeSchema = z
         childrenAllowed: z.boolean().nullable().optional(),
         availabilityDate: z.string().datetime({ offset: true }).nullable().optional(),
         livingLandlord: z.boolean().nullable().optional(),
+        mediaAssetIds: z.array(z.string().uuid()).max(50).optional(),
         rooms: z.array(roomInputSchema).max(200).optional(),
       })
       .strict(),
@@ -74,6 +83,8 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   landlordId: true,
   ownerAgentId: true,
   propertyRef: true,
+  title: true,
+  description: true,
   addressLine1: true,
   addressLine2: true,
   city: true,
@@ -141,6 +152,28 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
     },
     orderBy: [{ closedAt: "desc" }, { id: "desc" }],
   },
+  mediaLinks: {
+    orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+    select: {
+      sortOrder: true,
+      mediaAsset: {
+        select: {
+          id: true,
+          name: true,
+          mimeType: true,
+          dataUrl: true,
+          createdAt: true,
+          uploadedBy: {
+            select: {
+              id: true,
+              agentDisplayName: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  },
 });
 
 function generatePropertyRef(landlordId: string): string {
@@ -191,12 +224,15 @@ async function createPropertyWithinTx(tx: Prisma.TransactionClient, params: {
   property: z.infer<typeof intakeSchema>["property"];
 }) {
   const normalized = normalizePropertyForCreate(params.property);
+  const mediaAssetIds = normalizeMediaAssetIds(params.property.mediaAssetIds);
 
   const created = await tx.property.create({
     data: {
       landlordId: params.landlord.id,
       ownerAgentId: params.landlord.ownerAgentId,
       propertyRef: params.property.propertyRef?.trim() || generatePropertyRef(params.landlord.id),
+      title: params.property.title?.trim() || null,
+      description: params.property.description?.trim() || null,
       addressLine1: params.property.addressLine1?.trim() || null,
       addressLine2: params.property.addressLine2?.trim() || null,
       city: params.property.city?.trim() || null,
@@ -232,6 +268,17 @@ async function createPropertyWithinTx(tx: Prisma.TransactionClient, params: {
             }
           : undefined,
     },
+    select: { id: true },
+  });
+
+  if (mediaAssetIds.length > 0) {
+    await tx.propertyMedia.createMany({
+      data: buildPropertyMediaRows(created.id, mediaAssetIds),
+    });
+  }
+
+  const propertyWithImages = await tx.property.findUniqueOrThrow({
+    where: { id: created.id },
     select: propertySelect,
   });
 
@@ -239,21 +286,21 @@ async function createPropertyWithinTx(tx: Prisma.TransactionClient, params: {
     data: {
       userId: params.actorUserId,
       entityType: "PROPERTY",
-      entityId: created.id,
+      entityId: propertyWithImages.id,
       action: "CREATE_PROPERTY",
       metadata: {
         landlordId: params.landlord.id,
         ownerAgentId: params.landlord.ownerAgentId,
         phoneLast10: params.landlord.phoneLast10,
-        vacancyType: created.vacancyType,
-        roomsCount: created.rooms.length,
+        vacancyType: propertyWithImages.vacancyType,
+        roomsCount: propertyWithImages.rooms.length,
       },
       beforeJson: Prisma.JsonNull,
-      afterJson: created,
+      afterJson: propertyWithImages,
     },
   });
 
-  return created;
+  return propertyWithImages;
 }
 
 async function createPropertyForLandlord(params: {
@@ -311,6 +358,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const mediaAssetIds = normalizeMediaAssetIds(payload.property.mediaAssetIds);
+  try {
+    await assertMediaAssetsExist(db, mediaAssetIds);
+  } catch (error) {
+    if (error instanceof Error && error.message === "MEDIA_ASSET_NOT_FOUND") {
+      return NextResponse.json(
+        {
+          error: "MEDIA_ASSET_NOT_FOUND",
+          message: "One or more selected media items could not be found.",
+        },
+        { status: 400 },
+      );
+    }
+
+    throw error;
+  }
+
   const existingLandlord = await db.landlord.findUnique({
     where: { phoneLast10: normalized.phoneLast10 },
     select: {
@@ -361,7 +425,7 @@ export async function POST(request: NextRequest) {
       {
         landlordCreated: false,
         landlord: landlordForProperty,
-        property,
+        property: serializePropertyImages(property),
       },
       { status: 201 },
     );
@@ -453,7 +517,7 @@ export async function POST(request: NextRequest) {
       {
         landlordCreated: true,
         landlord: result.landlord,
-        property: result.property,
+        property: serializePropertyImages(result.property),
       },
       { status: 201 },
     );
@@ -493,7 +557,7 @@ export async function POST(request: NextRequest) {
           {
             landlordCreated: false,
             landlord,
-            property,
+            property: serializePropertyImages(property),
           },
           { status: 201 },
         );
@@ -503,4 +567,3 @@ export async function POST(request: NextRequest) {
     throw error;
   }
 }
-

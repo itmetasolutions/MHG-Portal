@@ -3,6 +3,7 @@ import type { UserRole } from "@prisma/client";
 import { env } from "@/lib/env";
 import { db } from "@/server/db";
 import { sendOtpLoginEmail } from "@/server/email";
+import { isOtpRequiredForLogin } from "./activity";
 import { generateOtpCode, getOtpExpiresAt, hashOtpCode, verifyOtpCodeHash } from "./otp";
 import { verifyPassword } from "./password";
 import { checkOtpSendRateLimit, checkOtpVerifyRateLimit } from "./rate-limit";
@@ -14,7 +15,8 @@ type AuthUser = {
 };
 
 type LoginResult =
-  | { ok: true }
+  | { ok: true; requiresOtp: true }
+  | { ok: true; requiresOtp: false; user: AuthUser }
   | {
       ok: false;
       code:
@@ -61,6 +63,7 @@ export async function loginWithPassword(params: {
       role: true,
       passwordHash: true,
       isActive: true,
+      lastActivityAt: true,
     },
   });
 
@@ -81,6 +84,24 @@ export async function loginWithPassword(params: {
     };
   }
 
+  const now = new Date();
+  if (!isOtpRequiredForLogin(user.lastActivityAt, now)) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastActivityAt: now },
+    });
+
+    return {
+      ok: true,
+      requiresOtp: false,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
   const sendRateLimit = await checkOtpSendRateLimit(user.id);
   if (!sendRateLimit.allowed) {
     return {
@@ -93,7 +114,6 @@ export async function loginWithPassword(params: {
   const otpCode = generateOtpCode();
   const codeHash = hashOtpCode(user.id, otpCode);
   const expiresAt = getOtpExpiresAt();
-  const now = new Date();
 
   await db.$transaction([
     db.oTPCode.updateMany({
@@ -131,7 +151,7 @@ export async function loginWithPassword(params: {
     return { ok: false, code: "OTP_DELIVERY_FAILED" };
   }
 
-  return { ok: true };
+  return { ok: true, requiresOtp: true };
 }
 
 export async function verifyOtpForLogin(params: {
@@ -213,12 +233,22 @@ export async function verifyOtpForLogin(params: {
     return { ok: false, code: "OTP_INVALID", attemptsRemaining };
   }
 
-  await db.oTPCode.update({
-    where: { id: otpRecord.id },
-    data: {
-      expiresAt: new Date(),
-    },
-  });
+  const now = new Date();
+
+  await db.$transaction([
+    db.oTPCode.update({
+      where: { id: otpRecord.id },
+      data: {
+        expiresAt: now,
+      },
+    }),
+    db.user.update({
+      where: { id: user.id },
+      data: {
+        lastActivityAt: now,
+      },
+    }),
+  ]);
 
   return {
     ok: true,
