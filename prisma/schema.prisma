@@ -94,6 +94,7 @@ model User {
   role             UserRole
   agentDisplayName String
   profilePicture   String?
+  agentPhone       String?
   isActive         Boolean  @default(true)
   lastActivityAt   DateTime?
   createdAt        DateTime @default(now())
@@ -190,6 +191,7 @@ model Property {
   childrenAllowed       Boolean?
   availabilityDate      DateTime?
   livingLandlord        Boolean?
+  publishedToWebsite    Boolean        @default(false)
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 

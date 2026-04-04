@@ -143,6 +143,7 @@ export type PropertyRow = {
   childrenAllowed: boolean | null;
   availabilityDate: string | null;
   livingLandlord: boolean | null;
+  publishedToWebsite?: boolean;
   createdAt: string;
   updatedAt: string;
   ownerAgent?: {
@@ -646,6 +647,13 @@ export function updateProperty(
   message?: string;
 }>> {
   return apiPatch(`/api/properties/${propertyId}`, payload);
+}
+
+export function togglePropertyWebsitePublish(
+  propertyId: string,
+  publishedToWebsite: boolean
+): Promise<ApiResult<{ property: PropertyRow }>> {
+  return apiPatch(`/api/properties/${propertyId}/publish`, { publishedToWebsite });
 }
 
 export function listMediaLibrary(): Promise<ApiResult<{ assets: MediaAssetRow[] }>> {

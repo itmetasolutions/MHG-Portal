@@ -8,3 +8,6 @@ coverage
 .env.test.local
 .env.production.local
 .prisma
+
+# Separate Website App
+mhg-website/

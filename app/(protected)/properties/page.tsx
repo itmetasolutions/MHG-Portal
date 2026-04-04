@@ -7,7 +7,7 @@ import { PropertyPreviewCard } from "@/components/property-preview-card";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { closePropertySale, closePropertyRoomSale, fetchProperties } from "@/lib/portal-api";
+import { closePropertySale, closePropertyRoomSale, fetchProperties, togglePropertyWebsitePublish } from "@/lib/portal-api";
 import { formatDate } from "@/lib/format";
 import { PropertyStatusDropdown } from "@/components/property-status-dropdown";
 
@@ -42,6 +42,7 @@ type PropertyRow = {
   createdAt: string;
   images?: Array<{ id: string; name: string; dataUrl: string }>;
   landlord: { id: string; landlordName: string };
+  publishedToWebsite?: boolean;
   rooms?: RoomRow[];
 };
 
@@ -282,7 +283,27 @@ export default function PropertiesPage() {
                     footer={(
                       <div className="property-preview-footer-stack">
                         <div className="property-card-footer-note">Added {formatDate(prop.createdAt)}</div>
-                        <div className="property-card-action-row">
+                        <div className="property-card-action-row" style={{ flexWrap: "wrap", gap: "0.5rem", display: "flex", alignItems: "center" }}>
+                          <UIButton
+                            type="button"
+                            variant="secondary"
+                            className="property-card-action-btn"
+                            style={{ 
+                              color: prop.publishedToWebsite ? "var(--success)" : "inherit",
+                              borderColor: prop.publishedToWebsite ? "var(--success)" : "inherit"
+                            }}
+                            onClick={async () => {
+                              const newStatus = !prop.publishedToWebsite;
+                              setProperties(prev => prev.map(p => p.id === prop.id ? { ...p, publishedToWebsite: newStatus } : p));
+                              const res = await togglePropertyWebsitePublish(prop.id, newStatus);
+                              if (!res.ok) {
+                                setProperties(prev => prev.map(p => p.id === prop.id ? { ...p, publishedToWebsite: !newStatus } : p));
+                                setMessage({ type: "error", text: res.message || "Failed to publish." });
+                              }
+                            }}
+                          >
+                            {prop.publishedToWebsite ? "✓ Published" : "Publish to Web"}
+                          </UIButton>
                           <PropertyStatusDropdown
                             propertyId={prop.id}
                             status={prop.status}
