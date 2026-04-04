@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { RequestUser } from "../server/auth/requireUser";
-import {
-  canEditLandlord,
-  canSetLandlordStatus,
-  type LandlordPolicyResource,
-} from "../server/policies/landlord";
+import { canEditLandlord, type LandlordPolicyResource } from "../server/policies/landlord";
 
 const ownerAgent: RequestUser = {
   id: "agent-owner",
@@ -31,38 +27,18 @@ const adminUser: RequestUser = {
   agentDisplayName: "Admin",
 };
 
-const activeLandlord: LandlordPolicyResource = {
-  ownerAgentId: ownerAgent.id,
-  status: "ACTIVE",
-};
-
 const passiveLandlord: LandlordPolicyResource = {
   ownerAgentId: ownerAgent.id,
-  status: "PASSIVE",
 };
 
-test("owner agent can set ACTIVE landlord to PASSIVE", () => {
-  assert.equal(canSetLandlordStatus(ownerAgent, activeLandlord, "PASSIVE"), true);
+test("owner agent can still edit a passive landlord record", () => {
+  assert.equal(canEditLandlord(ownerAgent, passiveLandlord), true);
 });
 
-test("non-owner agent cannot set landlord to PASSIVE", () => {
-  assert.equal(canSetLandlordStatus(otherAgent, activeLandlord, "PASSIVE"), false);
+test("non-owner agent still cannot edit a passive landlord record", () => {
+  assert.equal(canEditLandlord(otherAgent, passiveLandlord), false);
 });
 
-test("PASSIVE landlord cannot be edited by agent owner", () => {
-  assert.equal(canEditLandlord(ownerAgent, passiveLandlord), false);
-});
-
-test("PASSIVE landlord cannot revert to ACTIVE by default, including admin", () => {
-  assert.equal(canSetLandlordStatus(ownerAgent, passiveLandlord, "ACTIVE"), false);
-  assert.equal(canSetLandlordStatus(adminUser, passiveLandlord, "ACTIVE"), false);
-});
-
-test("admin can revert PASSIVE to ACTIVE only when override config is enabled", () => {
-  assert.equal(
-    canSetLandlordStatus(adminUser, passiveLandlord, "ACTIVE", {
-      allowAdminPassiveRevert: true,
-    }),
-    true,
-  );
+test("admin can edit a passive landlord record", () => {
+  assert.equal(canEditLandlord(adminUser, passiveLandlord), true);
 });

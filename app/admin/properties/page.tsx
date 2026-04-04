@@ -2,6 +2,7 @@ import { UserRole, PropertyStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getAuthSession } from "@/server/auth";
+import { serializePropertyImageList } from "@/server/property-media";
 import { AdminPropertiesClient } from "./admin-properties-client";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function AdminPropertiesPage() {
       select: {
         id: true,
         propertyRef: true,
+        title: true,
+        description: true,
         addressLine1: true,
         city: true,
         postcode: true,
@@ -32,9 +35,22 @@ export default async function AdminPropertiesPage() {
         beds: true,
         baths: true,
         status: true,
+        vacancyType: true,
         createdAt: true,
         landlord: { select: { id: true, landlordName: true } },
         ownerAgent: { select: { id: true, agentDisplayName: true } },
+        mediaLinks: {
+          orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+          select: {
+            mediaAsset: {
+              select: {
+                id: true,
+                name: true,
+                dataUrl: true,
+              },
+            },
+          },
+        },
       },
     }),
   ]);
@@ -92,7 +108,7 @@ export default async function AdminPropertiesPage() {
             <p className="muted" style={{ margin: 0, textAlign: "center" }}>No properties yet.</p>
           </div>
         ) : (
-          <AdminPropertiesClient properties={properties} />
+          <AdminPropertiesClient properties={serializePropertyImageList(properties)} />
         )}
       </div>
     </div>

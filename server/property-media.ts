@@ -44,11 +44,17 @@ type MediaLinkLike = {
   mediaAsset: unknown;
 };
 
+type MediaAssetFromProperty<T> = T extends {
+  mediaLinks?: Array<{ mediaAsset: infer TMedia }>;
+}
+  ? TMedia
+  : never;
+
 export function serializePropertyImages<
   T extends {
     mediaLinks?: MediaLinkLike[];
   },
->(property: T): Omit<T, "mediaLinks"> & { images: unknown[] } {
+>(property: T): Omit<T, "mediaLinks"> & { images: MediaAssetFromProperty<T>[] } {
   const { mediaLinks = [], ...rest } = property as T & {
     mediaLinks?: MediaLinkLike[];
   };
@@ -56,13 +62,13 @@ export function serializePropertyImages<
   return {
     ...rest,
     images: mediaLinks.map((link) => link.mediaAsset),
-  };
+  } as Omit<T, "mediaLinks"> & { images: MediaAssetFromProperty<T>[] };
 }
 
 export function serializePropertyImageList<
   T extends {
     mediaLinks?: MediaLinkLike[];
   },
->(properties: T[]): Array<Omit<T, "mediaLinks"> & { images: unknown[] }> {
+>(properties: T[]): Array<Omit<T, "mediaLinks"> & { images: MediaAssetFromProperty<T>[] }> {
   return properties.map((property) => serializePropertyImages(property));
 }

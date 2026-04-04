@@ -5,8 +5,10 @@ import { db } from "@/server/db";
 import { formatDate, formatDateTime, formatCurrency, formatPKR, gbpToPkr, GBP_TO_PKR } from "@/lib/format";
 import { calcAgentCommissionGBP, describeCommission, type CommissionConfigData, type FlexibleRange } from "@/lib/commission";
 import { getAuthSession } from "@/server/auth";
+import { PropertyPreviewCard } from "@/components/property-preview-card";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
+import { serializePropertyImageList } from "@/server/property-media";
 
 export const dynamic = "force-dynamic";
 
@@ -154,15 +156,36 @@ export default async function AdminPage({ searchParams }: PageProps) {
           select: {
             id: true,
             propertyRef: true,
+            title: true,
+            description: true,
             addressLine1: true,
             city: true,
             postcode: true,
+            propertyType: true,
+            beds: true,
+            baths: true,
+            status: true,
+            vacancyType: true,
             landlord: { select: { id: true, landlordName: true } },
             ownerAgent: { select: { id: true, agentDisplayName: true } },
+            mediaLinks: {
+              orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+              select: {
+                mediaAsset: {
+                  select: {
+                    id: true,
+                    name: true,
+                    dataUrl: true,
+                  },
+                },
+              },
+            },
           },
         })
       : Promise.resolve([]),
   ]);
+
+  const postcodePropertyCards = serializePropertyImageList(postcodeMatches);
 
   const commissionConfig: CommissionConfigData = commissionRaw
     ? {
@@ -258,50 +281,32 @@ export default async function AdminPage({ searchParams }: PageProps) {
           </form>
 
           {postcode ? (
-            <div className="table-wrap" style={{ marginTop: "1rem", borderRadius: "0.75rem" }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Property</th>
-                    <th>Landlord</th>
-                    <th>Agent</th>
-                    <th>Postcode</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {postcodeMatches.length > 0 ? (
-                    postcodeMatches.map((property) => (
-                      <tr key={property.id}>
-                        <td>
-                          <Link href={`/admin/properties/${property.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none", fontWeight: 600 }}>
-                            {property.addressLine1 ?? property.propertyRef}
-                          </Link>
-                          <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                            {[property.city, property.postcode].filter(Boolean).join(", ")}
-                          </span>
-                        </td>
-                        <td>
-                          <Link href={`/landlords/${property.landlord.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
-                            {property.landlord.landlordName}
-                          </Link>
-                        </td>
-                        <td>
-                          <Link href={`/admin/agents/${property.ownerAgent.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
-                            {property.ownerAgent.agentDisplayName}
-                          </Link>
-                        </td>
-                        <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                          {property.postcode ?? "-"}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="muted">No properties found for that postcode.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div style={{ marginTop: "1rem" }}>
+              {postcodePropertyCards.length > 0 ? (
+                <div className="property-card-grid">
+                  {postcodePropertyCards.map((property) => (
+                    <PropertyPreviewCard
+                      key={property.id}
+                      href={`/admin/properties/${property.id}`}
+                      property={property}
+                      landlord={{
+                        label: "Landlord",
+                        name: property.landlord.landlordName,
+                        href: `/landlords/${property.landlord.id}`,
+                      }}
+                      agent={{
+                        label: "Agent",
+                        name: property.ownerAgent.agentDisplayName,
+                        href: `/admin/agents/${property.ownerAgent.id}`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  No properties found for that postcode.
+                </p>
+              )}
             </div>
           ) : null}
         </div>

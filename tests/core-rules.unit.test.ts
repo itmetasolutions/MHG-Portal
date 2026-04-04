@@ -1,34 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canEditLandlord, canSetLandlordStatus } from "../server/policies/landlord";
+import { canEditLandlord } from "../server/policies/landlord";
 import { canViewProperty } from "../server/policies/property";
-
-type LandlordStatus = "ACTIVE" | "PASSIVE";
 
 type MockLandlord = {
   id: string;
-  landlordNumber: string;
-  status: LandlordStatus;
+  phoneLast10: string;
 };
 
 class MockLandlordStore {
   private rows: MockLandlord[] = [];
 
   create(record: Omit<MockLandlord, "id">): MockLandlord {
-    if (
-      record.status === "ACTIVE" &&
-      this.rows.some(
-        (existing) =>
-          existing.status === "ACTIVE" && existing.landlordNumber === record.landlordNumber,
-      )
-    ) {
-      throw new Error("ACTIVE_LANDLORD_NUMBER_CONFLICT");
+    if (this.rows.some((existing) => existing.phoneLast10 === record.phoneLast10)) {
+      throw new Error("PHONE_LAST10_CONFLICT");
     }
 
     const created: MockLandlord = {
       id: `${this.rows.length + 1}`,
-      landlordNumber: record.landlordNumber,
-      status: record.status,
+      phoneLast10: record.phoneLast10,
     };
     this.rows.push(created);
     return created;
@@ -59,49 +49,25 @@ const adminUser = {
   agentDisplayName: "Admin User",
 };
 
-test("mock rule: cannot create 2 ACTIVE landlords with same landlordNumber", () => {
+test("mock rule: cannot create 2 landlords with same phoneLast10", () => {
   const store = new MockLandlordStore();
 
-  store.create({ landlordNumber: "L-100", status: "ACTIVE" });
-  assert.throws(
-    () => store.create({ landlordNumber: "L-100", status: "ACTIVE" }),
-    /ACTIVE_LANDLORD_NUMBER_CONFLICT/,
-  );
+  store.create({ phoneLast10: "0712345678" });
+  assert.throws(() => store.create({ phoneLast10: "0712345678" }), /PHONE_LAST10_CONFLICT/);
 });
 
-test("mock rule: can create PASSIVE duplicates with same landlordNumber", () => {
-  const store = new MockLandlordStore();
-
-  const first = store.create({ landlordNumber: "L-200", status: "PASSIVE" });
-  const second = store.create({ landlordNumber: "L-200", status: "PASSIVE" });
-
-  assert.notEqual(first.id, second.id);
+test("owner agent can edit their own landlord", () => {
+  const landlord = { ownerAgentId: ownerAgent.id };
+  assert.equal(canEditLandlord(ownerAgent, landlord), true);
 });
 
-test("ACTIVE -> PASSIVE is allowed only for owner agent or admin", () => {
-  const landlord = { ownerAgentId: ownerAgent.id, status: "ACTIVE" as const };
-
-  assert.equal(canSetLandlordStatus(ownerAgent, landlord, "PASSIVE"), true);
-  assert.equal(canSetLandlordStatus(adminUser, landlord, "PASSIVE"), true);
-  assert.equal(canSetLandlordStatus(otherAgent, landlord, "PASSIVE"), false);
-});
-
-test("PASSIVE cannot be changed back to ACTIVE by default", () => {
-  const landlord = { ownerAgentId: ownerAgent.id, status: "PASSIVE" as const };
-
-  assert.equal(canSetLandlordStatus(ownerAgent, landlord, "ACTIVE"), false);
-  assert.equal(canSetLandlordStatus(adminUser, landlord, "ACTIVE"), false);
-});
-
-test("PASSIVE cannot be edited by agent", () => {
-  const landlord = { ownerAgentId: ownerAgent.id, status: "PASSIVE" as const };
-
-  assert.equal(canEditLandlord(ownerAgent, landlord), false);
+test("admin can edit any landlord", () => {
+  const landlord = { ownerAgentId: ownerAgent.id };
+  assert.equal(canEditLandlord(adminUser, landlord), true);
 });
 
 test("agent cannot edit another agent landlord", () => {
-  const landlord = { ownerAgentId: ownerAgent.id, status: "ACTIVE" as const };
-
+  const landlord = { ownerAgentId: ownerAgent.id };
   assert.equal(canEditLandlord(otherAgent, landlord), false);
 });
 

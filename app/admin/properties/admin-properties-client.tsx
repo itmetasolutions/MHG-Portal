@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AdminDeleteButton } from "@/components/admin/admin-delete-button";
+import { PropertyPreviewCard } from "@/components/property-preview-card";
 import { PropertyStatusDropdown } from "@/components/property-status-dropdown";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -12,6 +13,8 @@ import type { PropertyStatus } from "@/lib/portal-api";
 type PropertyRow = {
   id: string;
   propertyRef: string;
+  title: string | null;
+  description: string | null;
   addressLine1: string | null;
   city: string | null;
   postcode: string | null;
@@ -19,7 +22,9 @@ type PropertyRow = {
   beds: number | null;
   baths: number | null;
   status: PropertyStatus;
+  vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: Date;
+  images?: Array<{ id: string; name: string; dataUrl: string }>;
   landlord: { id: string; landlordName: string };
   ownerAgent: { id: string; agentDisplayName: string };
 };
@@ -37,6 +42,8 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
   const filteredProperties = properties.filter((property) => {
     const haystack = [
       property.propertyRef,
+      property.title,
+      property.description,
       property.addressLine1,
       property.city,
       property.postcode,
@@ -65,105 +72,69 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
               setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Address, ref, landlord, agent, postcode"
+            placeholder="Title, address, ref, landlord, agent, postcode"
           />
         </label>
       </div>
 
-      <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Address</th>
-              <th>Ref</th>
-              <th>Type</th>
-              <th>Beds</th>
-              <th>Landlord</th>
-              <th>Agent</th>
-              <th>Status</th>
-              <th>Added</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
+      <div style={{ padding: "0 1.25rem" }}>
+        {visibleProperties.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            No properties match your search.
+          </p>
+        ) : (
+          <div className="property-card-grid">
             {visibleProperties.map((prop) => (
-              <tr key={prop.id}>
-                <td>
-                  <Link
-                    href={`/admin/properties/${prop.id}`}
-                    style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block", textDecoration: "none" }}
-                  >
-                    {prop.addressLine1 || prop.propertyRef}
-                  </Link>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                    {[prop.city, prop.postcode].filter(Boolean).join(", ")}
-                  </span>
-                </td>
-                <td>
-                  <Link href={`/admin/properties/${prop.id}`} style={{ color: "var(--text-muted)", textDecoration: "none" }}>
-                    <code style={{ fontSize: "0.78rem" }}>{prop.propertyRef}</code>
-                  </Link>
-                </td>
-                <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  {prop.propertyType ?? "â€”"}
-                </td>
-                <td style={{ color: "var(--text-muted)" }}>
-                  {prop.beds != null
-                    ? `${prop.beds}${prop.baths != null ? ` / ${prop.baths}` : ""}`
-                    : "â€”"}
-                </td>
-                <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  {prop.landlord.landlordName}
-                </td>
-                <td>
-                  <Link
-                    href={`/admin/agents/${prop.ownerAgent.id}`}
-                    style={{ fontSize: "0.82rem", color: "var(--brand-gold)" }}
-                  >
-                    {prop.ownerAgent.agentDisplayName}
-                  </Link>
-                </td>
-                <td>
-                  <PropertyStatusDropdown
-                    propertyId={prop.id}
-                    status={prop.status}
-                    onUpdated={(newStatus) => {
-                      setProperties((prev) =>
-                        prev.map((p) => (p.id === prop.id ? { ...p, status: newStatus as PropertyStatus } : p)),
-                      );
-                    }}
-                  />
-                </td>
-                <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                  {formatDate(prop.createdAt)}
-                </td>
-                <td>
-                  <div className="inline-row">
-                    <Link
-                      href={`/properties/${prop.id}/edit`}
-                      className="btn btn-secondary"
-                      style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
-                    >
-                      Edit
-                    </Link>
-                    <AdminDeleteButton
-                      label="Delete"
-                      confirmMessage={`Permanently delete "${prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
-                      deleteUrl={`/api/properties/${prop.id}`}
-                    />
-                  </div>
-                </td>
-              </tr>
+              <PropertyPreviewCard
+                key={prop.id}
+                href={`/admin/properties/${prop.id}`}
+                property={prop}
+                landlord={{
+                  label: "Landlord",
+                  name: prop.landlord.landlordName,
+                  href: `/landlords/${prop.landlord.id}`,
+                }}
+                agent={{
+                  label: "Agent",
+                  name: prop.ownerAgent.agentDisplayName,
+                  href: `/admin/agents/${prop.ownerAgent.id}`,
+                }}
+                footer={(
+                  <>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                      Added {formatDate(prop.createdAt)}
+                    </div>
+                    <div className="inline-row" style={{ justifyContent: "flex-end" }}>
+                      <PropertyStatusDropdown
+                        propertyId={prop.id}
+                        status={prop.status}
+                        onUpdated={(newStatus) => {
+                          setProperties((prev) =>
+                            prev.map((item) =>
+                              item.id === prop.id ? { ...item, status: newStatus as PropertyStatus } : item,
+                            ),
+                          );
+                        }}
+                      />
+                      <Link
+                        href={`/properties/${prop.id}/edit`}
+                        className="btn btn-secondary"
+                        style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
+                      >
+                        Edit
+                      </Link>
+                      <AdminDeleteButton
+                        label="Delete"
+                        confirmMessage={`Permanently delete "${prop.title || prop.addressLine1 || prop.propertyRef}"? This will also delete all associated rooms, sales, and tenant records. This cannot be undone.`}
+                        deleteUrl={`/api/properties/${prop.id}`}
+                      />
+                    </div>
+                  </>
+                )}
+              />
             ))}
-            {visibleProperties.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="muted">
-                  No properties match your search.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "0 1.25rem 1.25rem" }}>

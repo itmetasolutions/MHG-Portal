@@ -27,15 +27,19 @@ type RoomRow = {
 type PropertyRow = {
   id: string;
   propertyRef: string;
+  title: string | null;
+  description: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
   postcode: string | null;
   propertyType: string | null;
   beds: number | null;
+  baths: number | null;
   status: "DRAFT" | "AVAILABLE" | "CLOSED";
   vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: string;
+  images?: Array<{ id: string; name: string; dataUrl: string }>;
   landlord: { id: string; landlordName: string };
   rooms?: RoomRow[];
 };
@@ -192,7 +196,7 @@ export default function PropertiesPage() {
               setSearch(event.target.value);
               setPage(1);
             }}
-            placeholder="Address, postcode, landlord, property ref"
+            placeholder="Title, description, address, postcode, landlord, property ref"
           />
         </label>
       </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prisma, UserRole, PropertyStatus } from "@prisma/client";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
+import { PropertyPreviewCard } from "@/components/property-preview-card";
 import {
   formatDate,
   formatCurrency,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/format";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
+import { serializePropertyImageList } from "@/server/property-media";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +119,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       select: {
         id: true,
         propertyRef: true,
+        title: true,
+        description: true,
         addressLine1: true,
         city: true,
         postcode: true,
@@ -124,8 +128,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         beds: true,
         baths: true,
         status: true,
+        vacancyType: true,
         landlord: { select: { id: true, landlordName: true } },
         ownerAgent: { select: { agentDisplayName: true } },
+        mediaLinks: {
+          orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+          select: {
+            mediaAsset: {
+              select: {
+                id: true,
+                name: true,
+                dataUrl: true,
+              },
+            },
+          },
+        },
       },
     }),
     db.sale.findMany({
@@ -190,15 +207,37 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           select: {
             id: true,
             propertyRef: true,
+            title: true,
+            description: true,
             addressLine1: true,
             city: true,
             postcode: true,
+            propertyType: true,
+            beds: true,
+            baths: true,
+            status: true,
+            vacancyType: true,
             landlord: { select: { id: true, landlordName: true } },
             ownerAgent: { select: { id: true, agentDisplayName: true } },
+            mediaLinks: {
+              orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+              select: {
+                mediaAsset: {
+                  select: {
+                    id: true,
+                    name: true,
+                    dataUrl: true,
+                  },
+                },
+              },
+            },
           },
         })
       : Promise.resolve([]),
   ]);
+
+  const recentPropertyCards = serializePropertyImageList(recentProperties);
+  const postcodePropertyCards = serializePropertyImageList(postcodeMatches);
 
   const displayName    = user?.agentDisplayName ?? session.email;
   const landlordsPassive = landlordsTotal - landlordsActive;
@@ -266,48 +305,31 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </form>
 
         {postcode ? (
-          <div className="table-wrap" style={{ marginTop: "1rem", border: "1px solid var(--border)" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Landlord</th>
-                  <th>Agent</th>
-                  <th>Postcode</th>
-                </tr>
-              </thead>
-              <tbody>
-                {postcodeMatches.length > 0 ? (
-                  postcodeMatches.map((property) => (
-                    <tr key={property.id}>
-                      <td>
-                        <Link href={`/properties/${property.id}/edit`} style={{ color: "var(--brand-gold)", textDecoration: "none", fontWeight: 600 }}>
-                          {property.addressLine1 ?? property.propertyRef}
-                        </Link>
-                        <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                          {[property.city, property.postcode].filter(Boolean).join(", ")}
-                        </span>
-                      </td>
-                      <td>
-                        <Link href={`/landlords/${property.landlord.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
-                          {property.landlord.landlordName}
-                        </Link>
-                      </td>
-                      <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                        {property.ownerAgent.agentDisplayName}
-                      </td>
-                      <td style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
-                        {property.postcode ?? "-"}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="muted">No properties found for that postcode.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div style={{ marginTop: "1rem" }}>
+            {postcodePropertyCards.length > 0 ? (
+              <div className="property-card-grid">
+                {postcodePropertyCards.map((property) => (
+                  <PropertyPreviewCard
+                    key={property.id}
+                    href={`/properties/${property.id}/edit`}
+                    property={property}
+                    landlord={{
+                      label: "Landlord",
+                      name: property.landlord.landlordName,
+                      href: `/landlords/${property.landlord.id}`,
+                    }}
+                    agent={{
+                      label: "Agent",
+                      name: property.ownerAgent.agentDisplayName,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="muted" style={{ margin: 0 }}>
+                No properties found for that postcode.
+              </p>
+            )}
           </div>
         ) : null}
       </div>
@@ -486,7 +508,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               Via Landlords →
             </Link>
           </div>
-          {recentProperties.length === 0 ? (
+          {recentPropertyCards.length === 0 ? (
             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
               No properties added yet.<br />
               <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
@@ -494,54 +516,26 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               </span>
             </div>
           ) : (
-            <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Address</th>
-                    <th>Landlord</th>
-                    <th>Status</th>
-                    {isAdmin && <th>Agent</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentProperties.map((prop) => (
-                    <tr key={prop.id}>
-                      <td>
-                        <Link
-                          href={`/landlords/${prop.landlord.id}`}
-                          style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}
-                        >
-                          {prop.addressLine1}
-                        </Link>
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                          {[prop.city, prop.postcode].filter(Boolean).join(", ")}
-                          {prop.beds != null ? ` · ${prop.beds} bed` : ""}
-                          {prop.propertyType ? ` · ${prop.propertyType}` : ""}
-                        </span>
-                      </td>
-                      <td>
-                        <Link
-                          href={`/landlords/${prop.landlord.id}`}
-                          style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}
-                        >
-                          {prop.landlord.landlordName}
-                        </Link>
-                      </td>
-                      <td>
-                        <span className={`badge ${STATUS_CONFIG[prop.status].badgeClass}`}>
-                          {STATUS_CONFIG[prop.status].label}
-                        </span>
-                      </td>
-                      {isAdmin && (
-                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                          {prop.ownerAgent?.agentDisplayName ?? "—"}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ padding: "1.25rem" }}>
+              <div className="property-card-grid">
+                {recentPropertyCards.map((prop) => (
+                  <PropertyPreviewCard
+                    key={prop.id}
+                    href={`/properties/${prop.id}/edit`}
+                    property={prop}
+                    landlord={{
+                      label: "Landlord",
+                      name: prop.landlord.landlordName,
+                      href: `/landlords/${prop.landlord.id}`,
+                    }}
+                    agent={
+                      isAdmin && prop.ownerAgent?.agentDisplayName
+                        ? { label: "Agent", name: prop.ownerAgent.agentDisplayName }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

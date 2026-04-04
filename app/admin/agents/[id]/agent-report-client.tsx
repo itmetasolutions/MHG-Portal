@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { PropertyPreviewCard } from "@/components/property-preview-card";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
@@ -25,6 +26,8 @@ type TransferTarget = {
 type PropertyRow = {
   id: string;
   propertyRef: string;
+  title: string | null;
+  description: string | null;
   addressLine1: string | null;
   city: string | null;
   postcode: string | null;
@@ -32,7 +35,9 @@ type PropertyRow = {
   beds: number | null;
   baths: number | null;
   status: "AVAILABLE" | "DRAFT" | "CLOSED";
+  vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: Date;
+  images?: Array<{ id: string; name: string; dataUrl: string }>;
   landlord: { id: string; landlordName: string };
 };
 
@@ -159,12 +164,6 @@ const DEFAULT_BULK_CATEGORIES: AgentTransferCategory[] = [
   "POTENTIAL_LANDLORDS",
 ];
 
-function statusBadge(status: PropertyRow["status"]) {
-  if (status === "AVAILABLE") return "badge-active";
-  if (status === "CLOSED") return "badge-sold";
-  return "badge-draft";
-}
-
 function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
 }
@@ -224,7 +223,16 @@ export function AgentReportClient({
     switch (tab) {
       case "properties":
         return properties.filter((row) =>
-          includesQuery([row.propertyRef, row.addressLine1, row.city, row.postcode, row.propertyType, row.landlord.landlordName]),
+          includesQuery([
+            row.propertyRef,
+            row.title,
+            row.description,
+            row.addressLine1,
+            row.city,
+            row.postcode,
+            row.propertyType,
+            row.landlord.landlordName,
+          ]),
         );
       case "landlords":
         return landlords.filter((row) =>
@@ -376,64 +384,45 @@ export function AgentReportClient({
     switch (tab) {
       case "properties":
         return (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Address</th>
-                <th>Type / Beds</th>
-                <th>Landlord</th>
-                <th>Status</th>
-                <th>Added</th>
-                <th>Transfer</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div style={{ padding: "1.25rem" }}>
+            <div className="property-card-grid">
               {(visibleRows as PropertyRow[]).map((property) => (
-                <tr key={property.id}>
-                  <td>
-                    <Link href={`/admin/properties/${property.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none", fontWeight: 600 }}>
-                      {property.addressLine1 ?? property.propertyRef}
-                    </Link>
-                    <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                      {[property.city, property.postcode].filter(Boolean).join(", ")}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                    {property.propertyType ?? "-"}
-                    {property.beds != null ? ` | ${property.beds} bed` : ""}
-                    {property.baths != null ? ` / ${property.baths} bath` : ""}
-                  </td>
-                  <td>
-                    <Link href={`/landlords/${property.landlord.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
-                      {property.landlord.landlordName}
-                    </Link>
-                  </td>
-                  <td>
-                    <span className={`badge ${statusBadge(property.status)}`}>{property.status}</span>
-                  </td>
-                  <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{formatDate(property.createdAt)}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      style={{ fontSize: "0.76rem", padding: "0.3rem 0.6rem" }}
-                      onClick={() =>
-                        openTransferDialog({
-                          entityType: "PROPERTY",
-                          entityId: property.id,
-                          label: property.addressLine1 ?? property.propertyRef,
-                          helperText: "If this property shares its landlord with other properties, transfer the landlord instead so ownership stays aligned.",
-                        })
-                      }
-                      disabled={!hasTargets || isRefreshing}
-                    >
-                      Transfer
-                    </button>
-                  </td>
-                </tr>
+                <PropertyPreviewCard
+                  key={property.id}
+                  href={`/admin/properties/${property.id}`}
+                  property={property}
+                  landlord={{
+                    label: "Landlord",
+                    name: property.landlord.landlordName,
+                    href: `/landlords/${property.landlord.id}`,
+                  }}
+                  footer={(
+                    <>
+                      <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                        Added {formatDate(property.createdAt)}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: "0.76rem", padding: "0.3rem 0.6rem" }}
+                        onClick={() =>
+                          openTransferDialog({
+                            entityType: "PROPERTY",
+                            entityId: property.id,
+                            label: property.title ?? property.addressLine1 ?? property.propertyRef,
+                            helperText: "If this property shares its landlord with other properties, transfer the landlord instead so ownership stays aligned.",
+                          })
+                        }
+                        disabled={!hasTargets || isRefreshing}
+                      >
+                        Transfer
+                      </button>
+                    </>
+                  )}
+                />
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
         );
       case "landlords":
         return (

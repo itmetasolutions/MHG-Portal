@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { canListProperties } from "@/server/policies";
+import { serializePropertyImageList } from "@/server/property-media";
 
 const listQuerySchema = z
   .object({
@@ -116,6 +117,8 @@ export async function GET(request: NextRequest) {
   if (search) {
     const searchFilters: Prisma.PropertyWhereInput[] = [
       { propertyRef: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
       { addressLine1: { contains: search, mode: "insensitive" } },
       { addressLine2: { contains: search, mode: "insensitive" } },
       { city: { contains: search, mode: "insensitive" } },
@@ -184,6 +187,27 @@ export async function GET(request: NextRequest) {
           },
         },
         vacancyType: true,
+        mediaLinks: {
+          orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+          select: {
+            mediaAsset: {
+              select: {
+                id: true,
+                name: true,
+                mimeType: true,
+                dataUrl: true,
+                createdAt: true,
+                uploadedBy: {
+                  select: {
+                    id: true,
+                    agentDisplayName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         sales: {
           select: {
             id: true,
@@ -219,7 +243,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({
-    properties,
+    properties: serializePropertyImageList(properties),
     pagination: {
       page,
       pageSize,

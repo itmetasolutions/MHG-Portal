@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getAuthSession } from "@/server/auth";
 import { db } from "@/server/db";
+import { serializePropertyImageList } from "@/server/property-media";
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 import { AgentReportClient } from "./agent-report-client";
@@ -56,12 +57,19 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
         agentDisplayName: true,
         isActive: true,
         createdAt: true,
+        dialerSetting: {
+          select: {
+            extensionNumber: true,
+          },
+        },
         _count: { select: { ownedLandlords: true, ownedProperties: true } },
         ownedProperties: {
           orderBy: { createdAt: "desc" },
           select: {
             id: true,
             propertyRef: true,
+            title: true,
+            description: true,
             addressLine1: true,
             city: true,
             postcode: true,
@@ -69,8 +77,21 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
             beds: true,
             baths: true,
             status: true,
+            vacancyType: true,
             createdAt: true,
             landlord: { select: { id: true, landlordName: true } },
+            mediaLinks: {
+              orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
+              select: {
+                mediaAsset: {
+                  select: {
+                    id: true,
+                    name: true,
+                    dataUrl: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -191,6 +212,8 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
 
   if (!agent) notFound();
 
+  const agentNumber = agent.dialerSetting?.extensionNumber?.trim() || null;
+  const agentProperties = serializePropertyImageList(agent.ownedProperties);
   const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
   const totalCommission = sales.reduce((sum, sale) => sum + Number(sale.commissionAmount), 0);
   const totalProfit = sales.reduce((sum, sale) => sum + Number(sale.profit), 0);
@@ -214,7 +237,9 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
           </Link>
           <h1 className="page-title">{agent.agentDisplayName}</h1>
           <p className="page-subtitle">
-            {agent.email} · {agent.isActive ? "Active" : "Disabled"} · Joined {formatDate(agent.createdAt)}
+            {[agentNumber ? `Agent Number ${agentNumber}` : null, agent.email, agent.isActive ? "Active" : "Disabled", `Joined ${formatDate(agent.createdAt)}`]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
         <span
@@ -288,7 +313,7 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
         sourceAgentId={agent.id}
         sourceAgentName={agent.agentDisplayName}
         transferTargets={transferTargets}
-        properties={agent.ownedProperties}
+        properties={agentProperties}
         landlords={landlords}
         tenants={tenants.map((tenant) => ({
           ...tenant,
