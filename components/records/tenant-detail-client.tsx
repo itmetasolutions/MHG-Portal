@@ -165,7 +165,7 @@ export function TenantDetailClient({
   const propertyHref = tenant.sale?.property
     ? adminMode
       ? `/admin/properties/${tenant.sale.property.id}`
-      : `/properties/${tenant.sale.property.id}/edit`
+      : `/properties/${tenant.sale.property.id}`
     : null;
 
   return (

@@ -149,6 +149,8 @@ export default async function PropertyDetailPage({ params }: Props) {
     .filter(Boolean)
     .join(", ");
   const propertyImages = property.mediaLinks.map((link) => link.mediaAsset);
+  const featuredImage = propertyImages[0] ?? null;
+  const galleryImages = propertyImages.slice(1);
 
   const statusBadge: Record<string, string> = {
     AVAILABLE: "badge-active",
@@ -176,6 +178,9 @@ export default async function PropertyDetailPage({ params }: Props) {
           </Link>
           <Link className="btn btn-secondary" href="/properties">
             All Properties
+          </Link>
+          <Link className="btn btn-secondary" href={`/properties/${property.id}/edit`}>
+            Edit Property
           </Link>
         </div>
       </header>
@@ -309,46 +314,34 @@ export default async function PropertyDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {propertyImages.length > 0 && (
+      {featuredImage ? (
         <div className="panel">
           <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
             <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
               Property Images
             </h2>
           </div>
-          <div
-            style={{
-              padding: "1.25rem",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "0.9rem",
-            }}
-          >
-            {propertyImages.map((image) => (
-              <figure
-                key={image.id}
-                style={{
-                  margin: 0,
-                  border: "1px solid var(--border)",
-                  borderRadius: "0.85rem",
-                  overflow: "hidden",
-                  background: "var(--surface-alt, #1a1a24)",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image.dataUrl}
-                  alt={image.name}
-                  style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", display: "block" }}
-                />
-                <figcaption style={{ padding: "0.7rem 0.85rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  {image.name}
-                </figcaption>
-              </figure>
-            ))}
+          <div className="property-detail-gallery" style={{ padding: "1.25rem" }}>
+            <figure className="property-detail-hero">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={featuredImage.dataUrl} alt={featuredImage.name} />
+              <figcaption>{featuredImage.name}</figcaption>
+            </figure>
+
+            {galleryImages.length > 0 ? (
+              <div className="property-detail-grid">
+                {galleryImages.map((image) => (
+                  <figure key={image.id} className="property-detail-thumb">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.dataUrl} alt={image.name} />
+                    <figcaption>{image.name}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>

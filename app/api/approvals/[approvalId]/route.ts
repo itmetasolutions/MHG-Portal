@@ -14,6 +14,7 @@ import {
   buildPropertyMediaRows,
   normalizeMediaAssetIds,
 } from "@/server/property-media";
+import { syncPropertyRoomCounts } from "@/server/property-rooms";
 
 const approvalIdSchema = z.string().uuid("approval id must be a valid UUID");
 
@@ -33,6 +34,105 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function jsonValue(value: unknown) {
   return value as Prisma.InputJsonValue;
+}
+
+type PropertyRoomAction = {
+  type: "UPDATE" | "DELETE";
+  roomId: string;
+  updates?: Record<string, unknown>;
+};
+
+function parsePropertyRoomActions(proposed: Record<string, unknown>): PropertyRoomAction[] {
+  const roomActions = proposed.roomActions;
+  if (!Array.isArray(roomActions)) {
+    return [];
+  }
+
+  return roomActions.flatMap((action) => {
+    if (!action || typeof action !== "object" || Array.isArray(action)) {
+      return [];
+    }
+
+    const record = action as Record<string, unknown>;
+    if ((record.type !== "UPDATE" && record.type !== "DELETE") || typeof record.roomId !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        type: record.type,
+        roomId: record.roomId,
+        updates: asRecord(record.updates),
+      },
+    ];
+  });
+}
+
+async function applyPropertyRoomActions(
+  tx: Prisma.TransactionClient,
+  propertyId: string,
+  roomActions: PropertyRoomAction[],
+) {
+  if (roomActions.length === 0) {
+    return;
+  }
+
+  for (const action of roomActions) {
+    const currentRoom = await tx.propertyRoom.findUnique({
+      where: { id: action.roomId },
+      select: {
+        id: true,
+        propertyId: true,
+        roomName: true,
+        landlordDemand: true,
+        expectedCommissionPct: true,
+        status: true,
+        sale: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!currentRoom || currentRoom.propertyId !== propertyId) {
+      throw new Error("ROOM_NOT_FOUND");
+    }
+
+    if (action.type === "DELETE") {
+      if (currentRoom.sale) {
+        throw new Error("ROOM_HAS_SALE");
+      }
+
+      await tx.propertyRoom.delete({
+        where: { id: currentRoom.id },
+      });
+      continue;
+    }
+
+    const updates = action.updates ?? {};
+    const roomUpdateData: Prisma.PropertyRoomUncheckedUpdateInput = {};
+
+    if (Object.prototype.hasOwnProperty.call(updates, "roomName") && typeof updates.roomName === "string") {
+      roomUpdateData.roomName = updates.roomName;
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, "landlordDemand")) {
+      roomUpdateData.landlordDemand = updates.landlordDemand as number | null;
+    }
+    if (Object.prototype.hasOwnProperty.call(updates, "expectedCommissionPct")) {
+      roomUpdateData.expectedCommissionPct = updates.expectedCommissionPct as number | null;
+    }
+
+    if (Object.keys(roomUpdateData).length > 0) {
+      await tx.propertyRoom.update({
+        where: { id: currentRoom.id },
+        data: roomUpdateData,
+        select: { id: true },
+      });
+    }
+  }
+
+  await syncPropertyRoomCounts(tx, propertyId);
 }
 
 async function applyLandlordApproval(
@@ -180,6 +280,33 @@ async function applyPropertyApproval(
           },
         },
       },
+      rooms: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          propertyId: true,
+          roomName: true,
+          landlordDemand: true,
+          expectedCommissionPct: true,
+          status: true,
+          createdAt: true,
+          sale: {
+            select: {
+              id: true,
+              finalAmount: true,
+              commissionAmount: true,
+              profit: true,
+              closedAt: true,
+              tenant: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -223,6 +350,7 @@ async function applyPropertyApproval(
         proposed.mediaAssetIds.filter((value): value is string => typeof value === "string"),
       )
     : undefined;
+  const roomActions = parsePropertyRoomActions(proposed);
 
   if (normalizedMediaAssetIds !== undefined) {
     await assertMediaAssetsExist(tx, normalizedMediaAssetIds);
@@ -247,6 +375,8 @@ async function applyPropertyApproval(
       });
     }
   }
+
+  await applyPropertyRoomActions(tx, approval.entityId, roomActions);
 
   const updated = await tx.property.findUniqueOrThrow({
     where: { id: approval.entityId },
@@ -296,6 +426,33 @@ async function applyPropertyApproval(
               mimeType: true,
               dataUrl: true,
               createdAt: true,
+            },
+          },
+        },
+      },
+      rooms: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          propertyId: true,
+          roomName: true,
+          landlordDemand: true,
+          expectedCommissionPct: true,
+          status: true,
+          createdAt: true,
+          sale: {
+            select: {
+              id: true,
+              finalAmount: true,
+              commissionAmount: true,
+              profit: true,
+              closedAt: true,
+              tenant: {
+                select: {
+                  id: true,
+                  fullName: true,
+                },
+              },
             },
           },
         },
@@ -695,9 +852,11 @@ export async function PATCH(
     });
   } catch (error) {
     const message =
-      error instanceof Error && error.message.endsWith("_NOT_FOUND")
-        ? "The original entry no longer exists."
-        : "Failed to process approval request.";
+      error instanceof Error && error.message === "ROOM_HAS_SALE"
+        ? "Rooms with an existing sale record cannot be deleted."
+        : error instanceof Error && error.message.endsWith("_NOT_FOUND")
+          ? "The original entry no longer exists."
+          : "Failed to process approval request.";
     return NextResponse.json({ error: "APPROVAL_PROCESS_FAILED", message }, { status: 400 });
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import {
   fetchLandlordsForDropdown,
   updateProperty,
   addPropertyRoom,
+  updatePropertyRoom,
+  deletePropertyRoom,
   type LandlordRow,
   type PropertyStatus,
 } from "@/lib/portal-api";
@@ -73,13 +75,18 @@ type Props = { params: { id: string } };
 
 export default function EditPropertyPage({ params }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const propertyId = params.id;
+  const adminMode = pathname?.startsWith("/admin/") ?? false;
+  const detailHref = adminMode ? `/admin/properties/${propertyId}` : `/properties/${propertyId}`;
 
   const [loading, setLoading] = useState(true);
   const [original, setOriginal] = useState<PropertyDetail | null>(null);
   const [landlords, setLandlords] = useState<LandlordRow[]>([]);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [roomBusyId, setRoomBusyId] = useState<string | null>(null);
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
   // Editable fields
   const [selectedLandlordId, setSelectedLandlordId] = useState("");
@@ -225,7 +232,7 @@ export default function EditPropertyPage({ params }: Props) {
     }
 
     setMessage({ type: "success", text: "Property updated." });
-    setTimeout(() => router.push("/properties"), 800);
+    setTimeout(() => router.push(detailHref), 800);
   }
 
   async function handleAddRoom() {
@@ -244,6 +251,88 @@ export default function EditPropertyPage({ params }: Props) {
     setRooms((prev) => [...prev, result.data.room as unknown as RoomRow]);
     setNewRoom({ roomName: ROOM_TYPES[0], landlordDemand: "", expectedCommissionPct: "" });
     setMessage({ type: "success", text: "Room added." });
+  }
+
+  function updateRoomField(
+    roomId: string,
+    key: keyof Pick<RoomRow, "roomName" | "landlordDemand" | "expectedCommissionPct">,
+    value: string,
+  ) {
+    setRooms((prev) =>
+      prev.map((room) =>
+        room.id === roomId
+          ? {
+              ...room,
+              [key]: value,
+            }
+          : room,
+      ),
+    );
+  }
+
+  async function handleSaveRoom(room: RoomRow) {
+    setRoomBusyId(room.id);
+    setMessage(null);
+
+    const result = await updatePropertyRoom(propertyId, room.id, {
+      roomName: room.roomName.trim(),
+      landlordDemand:
+        room.landlordDemand !== "" && room.landlordDemand != null ? Number(room.landlordDemand) : null,
+      expectedCommissionPct:
+        room.expectedCommissionPct !== "" && room.expectedCommissionPct != null
+          ? Number(room.expectedCommissionPct)
+          : null,
+    });
+
+    setRoomBusyId(null);
+
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to update room." });
+      return;
+    }
+
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Room changes submitted for admin approval.",
+      });
+      return;
+    }
+
+    if (result.data.room) {
+      setRooms((prev) =>
+        prev.map((item) => (item.id === room.id ? (result.data.room as unknown as RoomRow) : item)),
+      );
+    }
+    setMessage({ type: "success", text: result.data.message ?? "Room updated." });
+  }
+
+  async function handleDeleteRoom(room: RoomRow) {
+    if (!window.confirm(`Remove "${room.roomName}" from this property?`)) {
+      return;
+    }
+
+    setDeletingRoomId(room.id);
+    setMessage(null);
+
+    const result = await deletePropertyRoom(propertyId, room.id);
+    setDeletingRoomId(null);
+
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to delete room." });
+      return;
+    }
+
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Room deletion submitted for admin approval.",
+      });
+      return;
+    }
+
+    setRooms((prev) => prev.filter((item) => item.id !== room.id));
+    setMessage({ type: "success", text: result.data.message ?? "Room deleted." });
   }
 
   if (loading) {
@@ -268,8 +357,8 @@ export default function EditPropertyPage({ params }: Props) {
           <h1 className="page-title">Edit Property</h1>
           <p className="page-subtitle">{fullAddress || original.propertyRef}</p>
         </div>
-        <UIButton variant="secondary" onClick={() => router.push("/properties")}>
-          Back to Properties
+        <UIButton variant="secondary" onClick={() => router.push(detailHref)}>
+          Back to Property
         </UIButton>
       </header>
 
@@ -512,32 +601,89 @@ export default function EditPropertyPage({ params }: Props) {
                         <th>Status</th>
                         <th>Demand (£)</th>
                         <th>Commission (%)</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rooms.length === 0 ? (
                         <tr>
-                          <td colSpan={4} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                          <td colSpan={5} style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                             No rooms yet
                           </td>
                         </tr>
                       ) : (
-                        rooms.map((room) => (
+                        rooms.map((room) => {
+                          const roomBusy = roomBusyId === room.id;
+                          const roomDeleting = deletingRoomId === room.id;
+
+                          return (
                           <tr key={room.id}>
-                            <td style={{ fontWeight: 600 }}>{room.roomName}</td>
+                            <td style={{ minWidth: "180px" }}>
+                              <UIInput
+                                value={room.roomName}
+                                onChange={(e) => updateRoomField(room.id, "roomName", e.target.value)}
+                                disabled={roomBusy || roomDeleting}
+                              />
+                              {room.sale ? (
+                                <div className="hint-text" style={{ marginTop: "0.35rem" }}>
+                                  Linked sale recorded for this room.
+                                </div>
+                              ) : null}
+                            </td>
                             <td>
                               <span className={`badge ${room.status === "AVAILABLE" ? "badge-active" : room.status === "CLOSED" ? "badge-sold" : "badge-draft"}`}>
                                 {room.status}
                               </span>
                             </td>
-                            <td style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                            <td style={{ minWidth: "145px" }}>
+                              <UIInput
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={room.landlordDemand ?? ""}
+                                onChange={(e) => updateRoomField(room.id, "landlordDemand", e.target.value)}
+                                disabled={roomBusy || roomDeleting}
+                              />
+                              <span hidden>
                               {room.landlordDemand != null ? `£${Number(room.landlordDemand).toLocaleString("en-GB")}` : "—"}
+                              </span>
                             </td>
-                            <td style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                            <td style={{ minWidth: "145px" }}>
+                              <UIInput
+                                type="number"
+                                min={0}
+                                step="0.1"
+                                value={room.expectedCommissionPct ?? ""}
+                                onChange={(e) => updateRoomField(room.id, "expectedCommissionPct", e.target.value)}
+                                disabled={roomBusy || roomDeleting}
+                              />
+                              <span hidden>
                               {room.expectedCommissionPct != null ? `${room.expectedCommissionPct}%` : "—"}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="inline-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+                                <UIButton
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => void handleSaveRoom(room)}
+                                  disabled={roomBusy || roomDeleting}
+                                >
+                                  {roomBusy ? "Saving..." : "Save"}
+                                </UIButton>
+                                <UIButton
+                                  type="button"
+                                  variant="danger"
+                                  onClick={() => void handleDeleteRoom(room)}
+                                  disabled={roomBusy || roomDeleting || Boolean(room.sale)}
+                                  title={room.sale ? "Rooms with a sale cannot be deleted." : "Delete room"}
+                                >
+                                  {roomDeleting ? "Deleting..." : "Delete"}
+                                </UIButton>
+                              </div>
                             </td>
                           </tr>
-                        ))
+                        )})
                       )}
                       {/* Add room row */}
                       <tr style={{ background: "var(--surface-alt, #1a1a24)" }}>
@@ -551,12 +697,12 @@ export default function EditPropertyPage({ params }: Props) {
                           <UIInput type="number" min={0} step="0.01" value={newRoom.landlordDemand} onChange={(e) => setNewRoom((p) => ({ ...p, landlordDemand: e.target.value }))} placeholder="Optional" disabled={addingRoom} />
                         </td>
                         <td>
-                          <div className="inline-row">
-                            <UIInput type="number" min={0} step="0.1" value={newRoom.expectedCommissionPct} onChange={(e) => setNewRoom((p) => ({ ...p, expectedCommissionPct: e.target.value }))} placeholder="Optional" disabled={addingRoom} />
-                            <UIButton type="button" onClick={() => void handleAddRoom()} disabled={addingRoom || !newRoom.roomName.trim()}>
-                              {addingRoom ? "..." : "Add"}
-                            </UIButton>
-                          </div>
+                          <UIInput type="number" min={0} step="0.1" value={newRoom.expectedCommissionPct} onChange={(e) => setNewRoom((p) => ({ ...p, expectedCommissionPct: e.target.value }))} placeholder="Optional" disabled={addingRoom} />
+                        </td>
+                        <td>
+                          <UIButton type="button" onClick={() => void handleAddRoom()} disabled={addingRoom || !newRoom.roomName.trim()}>
+                            {addingRoom ? "Adding..." : "Add Room"}
+                          </UIButton>
                         </td>
                       </tr>
                     </tbody>
@@ -569,7 +715,7 @@ export default function EditPropertyPage({ params }: Props) {
               <UIButton onClick={() => void handleSave()} disabled={!canSubmit || saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </UIButton>
-              <UIButton variant="secondary" onClick={() => router.push("/properties")} disabled={saving}>Cancel</UIButton>
+              <UIButton variant="secondary" onClick={() => router.push(detailHref)} disabled={saving}>Cancel</UIButton>
             </div>
 
           </div>

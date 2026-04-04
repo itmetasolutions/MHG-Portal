@@ -143,6 +143,33 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
       },
     },
   },
+  rooms: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      propertyId: true,
+      roomName: true,
+      landlordDemand: true,
+      expectedCommissionPct: true,
+      status: true,
+      createdAt: true,
+      sale: {
+        select: {
+          id: true,
+          finalAmount: true,
+          commissionAmount: true,
+          profit: true,
+          closedAt: true,
+          tenant: {
+            select: {
+              id: true,
+              fullName: true,
+            },
+          },
+        },
+      },
+    },
+  },
 });
 
 export async function GET(request: NextRequest, { params }: Params) {

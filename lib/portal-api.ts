@@ -709,6 +709,49 @@ export function addPropertyRoom(
   return apiPost(`/api/properties/${propertyId}/rooms`, payload);
 }
 
+export function updatePropertyRoom(
+  propertyId: string,
+  roomId: string,
+  payload: Partial<RoomDraftInput>,
+): Promise<
+  ApiResult<{
+    room?: PropertyRoomRow;
+    approvalRequired?: boolean;
+    approvalRequest?: {
+      id: string;
+      status: string;
+      entityType: string;
+      entityId: string;
+      summary: string | null;
+      createdAt: string;
+    };
+    message?: string;
+  }>
+> {
+  return apiPatch(`/api/properties/${propertyId}/rooms/${roomId}`, payload);
+}
+
+export function deletePropertyRoom(
+  propertyId: string,
+  roomId: string,
+): Promise<
+  ApiResult<{
+    deletedRoomId?: string;
+    approvalRequired?: boolean;
+    approvalRequest?: {
+      id: string;
+      status: string;
+      entityType: string;
+      entityId: string;
+      summary: string | null;
+      createdAt: string;
+    };
+    message?: string;
+  }>
+> {
+  return apiDelete(`/api/properties/${propertyId}/rooms/${roomId}`);
+}
+
 export function closePropertySale(
   propertyId: string,
   payload: CloseSalePayload,

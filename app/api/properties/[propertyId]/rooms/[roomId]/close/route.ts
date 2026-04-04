@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { canEditProperty } from "@/server/policies";
+import { syncPropertyRoomCounts } from "@/server/property-rooms";
 
 type Params = { params: { propertyId: string; roomId: string } };
 
@@ -153,6 +154,8 @@ export async function POST(request: NextRequest, { params }: Params) {
       where: { id: room.id },
       data: { status: "CLOSED" },
     });
+
+    await syncPropertyRoomCounts(tx, room.propertyId);
 
     // Check if ALL rooms of this property are now CLOSED
     const openRoomsCount = await tx.propertyRoom.count({

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { canEditProperty } from "@/server/policies";
+import { syncPropertyRoomCounts } from "@/server/property-rooms";
 
 type Params = { params: { propertyId: string } };
 
@@ -102,21 +103,26 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  const room = await db.propertyRoom.create({
-    data: {
-      propertyId: params.propertyId,
-      roomName: payload.roomName,
-      landlordDemand: payload.landlordDemand ?? null,
-      expectedCommissionPct: payload.expectedCommissionPct ?? null,
-    },
-    select: {
-      id: true,
-      roomName: true,
-      landlordDemand: true,
-      expectedCommissionPct: true,
-      status: true,
-      createdAt: true,
-    },
+  const room = await db.$transaction(async (tx) => {
+    const createdRoom = await tx.propertyRoom.create({
+      data: {
+        propertyId: params.propertyId,
+        roomName: payload.roomName,
+        landlordDemand: payload.landlordDemand ?? null,
+        expectedCommissionPct: payload.expectedCommissionPct ?? null,
+      },
+      select: {
+        id: true,
+        roomName: true,
+        landlordDemand: true,
+        expectedCommissionPct: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    await syncPropertyRoomCounts(tx, params.propertyId);
+    return createdRoom;
   });
 
   return NextResponse.json({ room }, { status: 201 });

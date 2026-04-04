@@ -100,11 +100,11 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
                   href: `/admin/agents/${prop.ownerAgent.id}`,
                 }}
                 footer={(
-                  <>
-                    <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                  <div className="property-preview-footer-stack">
+                    <div className="property-card-footer-note">
                       Added {formatDate(prop.createdAt)}
                     </div>
-                    <div className="inline-row" style={{ justifyContent: "flex-end" }}>
+                    <div className="property-card-action-row">
                       <PropertyStatusDropdown
                         propertyId={prop.id}
                         status={prop.status}
@@ -117,9 +117,8 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
                         }}
                       />
                       <Link
-                        href={`/properties/${prop.id}/edit`}
-                        className="btn btn-secondary"
-                        style={{ fontSize: "0.78rem", padding: "0.3rem 0.6rem" }}
+                        href={`/admin/properties/${prop.id}/edit`}
+                        className="btn btn-secondary property-card-action-btn"
                       >
                         Edit
                       </Link>
@@ -129,7 +128,7 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
                         deleteUrl={`/api/properties/${prop.id}`}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
               />
             ))}

@@ -152,6 +152,8 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
     .filter(Boolean)
     .join(", ");
   const propertyImages = property.mediaLinks.map((link) => link.mediaAsset);
+  const featuredImage = propertyImages[0] ?? null;
+  const galleryImages = propertyImages.slice(1);
 
   const statusBadge: Record<string, string> = {
     AVAILABLE: "badge-active",
@@ -177,7 +179,7 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
           <Link className="btn btn-secondary" href="/admin/properties">
             All Properties
           </Link>
-          <Link className="btn btn-secondary" href={`/properties/${property.id}/edit`}>
+          <Link className="btn btn-secondary" href={`/admin/properties/${property.id}/edit`}>
             Edit Property
           </Link>
           <Link className="btn btn-secondary" href={`/admin/agents/${property.ownerAgent.id}`}>
@@ -324,44 +326,34 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {propertyImages.length > 0 && (
+      {featuredImage ? (
         <div className="admin-card">
           <div className="admin-card-header">
             <h2 className="admin-card-title">Property Images</h2>
           </div>
-          <div
-            className="admin-card-body"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "0.9rem",
-            }}
-          >
-            {propertyImages.map((image) => (
-              <figure
-                key={image.id}
-                style={{
-                  margin: 0,
-                  border: "1px solid var(--border)",
-                  borderRadius: "0.85rem",
-                  overflow: "hidden",
-                  background: "var(--surface-alt, #1a1a24)",
-                }}
-              >
+          <div className="admin-card-body">
+            <div className="property-detail-gallery">
+              <figure className="property-detail-hero">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={image.dataUrl}
-                  alt={image.name}
-                  style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", display: "block" }}
-                />
-                <figcaption style={{ padding: "0.7rem 0.85rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  {image.name}
-                </figcaption>
+                <img src={featuredImage.dataUrl} alt={featuredImage.name} />
+                <figcaption>{featuredImage.name}</figcaption>
               </figure>
-            ))}
+
+              {galleryImages.length > 0 ? (
+                <div className="property-detail-grid">
+                  {galleryImages.map((image) => (
+                    <figure key={image.id} className="property-detail-thumb">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={image.dataUrl} alt={image.name} />
+                      <figcaption>{image.name}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="admin-card">
         <div className="admin-card-header">

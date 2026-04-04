@@ -91,16 +91,28 @@ export function PropertyPreviewCard({ href, property, landlord, agent, extra, fo
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewImage.dataUrl} alt={previewImage.name || title} />
         ) : (
-          <div className="property-preview-placeholder">No image</div>
+          <div className="property-preview-placeholder">
+            <span>No featured image</span>
+          </div>
         )}
+
+        {(normalizedStatus || vacancy) ? (
+          <div className="property-preview-media-overlay">
+            <div className="property-preview-pills">
+              {normalizedStatus ? (
+                <span className={`badge ${statusBadgeClass(property.status)}`}>{normalizedStatus}</span>
+              ) : null}
+              {vacancy ? (
+                <span className={`badge ${property.vacancyType === "MULTIPLE" ? "badge-offer" : "badge-active"}`}>
+                  {vacancy}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </Link>
 
       <div className="property-preview-content">
-        <div className="property-preview-pills">
-          {normalizedStatus ? <span className={`badge ${statusBadgeClass(property.status)}`}>{normalizedStatus}</span> : null}
-          {vacancy ? <span className={`badge ${property.vacancyType === "MULTIPLE" ? "badge-offer" : "badge-active"}`}>{vacancy}</span> : null}
-        </div>
-
         <div className="stack" style={{ gap: "0.35rem" }}>
           <Link href={href} className="property-preview-title">
             {title}
@@ -108,14 +120,18 @@ export function PropertyPreviewCard({ href, property, landlord, agent, extra, fo
           <div className="property-preview-subtitle">{location || property.propertyRef}</div>
         </div>
 
+        {description ? <p className="property-preview-description">{description}</p> : null}
+
         <div className="property-preview-meta">
-          <code>{property.propertyRef}</code>
+          <span className="property-preview-meta-chip">
+            <code>{property.propertyRef}</code>
+          </span>
           {specs.map((value) => (
-            <span key={value}>{value}</span>
+            <span key={value} className="property-preview-meta-chip">
+              {value}
+            </span>
           ))}
         </div>
-
-        {description ? <p className="property-preview-description">{description}</p> : null}
 
         {landlord || agent ? (
           <div className="property-preview-links">

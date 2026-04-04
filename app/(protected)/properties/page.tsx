@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
+import { PropertyPreviewCard } from "@/components/property-preview-card";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -71,7 +72,6 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -83,6 +83,7 @@ export default function PropertiesPage() {
   const [saleForm, setSaleForm] = useState(emptySaleForm);
   const [tenantForm, setTenantForm] = useState(emptyTenant);
   const [closeBusy, setCloseBusy] = useState(false);
+  const expanded = new Set<string>();
 
   async function load() {
     setLoading(true);
@@ -103,14 +104,6 @@ export default function PropertiesPage() {
 
   useEffect(() => { void load(); }, [page, pageSize, search]);
 
-  function toggleExpand(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
-      return next;
-    });
-  }
-
   function openCloseSale(prop: PropertyRow, roomId?: string, roomName?: string) {
     const address = [prop.addressLine1, prop.city, prop.postcode].filter(Boolean).join(", ") || prop.propertyRef;
     setCloseSale({ propertyId: prop.id, roomId, roomName, address });
@@ -118,6 +111,8 @@ export default function PropertiesPage() {
     setTenantForm(emptyTenant);
     setMessage(null);
   }
+
+  function toggleExpand(_id?: string) {}
 
   async function handleCloseSale() {
     if (!closeSale) return;
@@ -234,6 +229,94 @@ export default function PropertiesPage() {
             No properties yet. <Link href="/properties/new" style={{ color: "var(--brand-gold)" }}>Add one →</Link>
           </div>
         ) : (
+          <>
+          <div style={{ padding: "1.25rem" }}>
+            <div className="property-card-grid">
+              {properties.map((prop) => {
+                const isMultiple = prop.vacancyType === "MULTIPLE";
+                const canClose = prop.status !== "CLOSED" && !isMultiple;
+
+                return (
+                  <PropertyPreviewCard
+                    key={prop.id}
+                    href={`/properties/${prop.id}`}
+                    property={prop}
+                    landlord={{
+                      label: "Landlord",
+                      name: prop.landlord.landlordName,
+                      href: `/landlords/${prop.landlord.id}`,
+                    }}
+                    extra={
+                      isMultiple ? (
+                        <div className="stack" style={{ gap: "0.75rem" }}>
+                          <div className="property-preview-section-label">Rooms</div>
+                          <div className="room-chip-list">
+                            {(prop.rooms ?? []).map((room) => (
+                              <div key={room.id} className="room-chip">
+                                <div className="room-chip-head">
+                                  <strong>{room.roomName}</strong>
+                                  <span className={`badge ${room.status === "AVAILABLE" ? "badge-active" : room.status === "CLOSED" ? "badge-sold" : "badge-offer"}`}>
+                                    {room.status}
+                                  </span>
+                                </div>
+                                <div className="room-chip-sub">
+                                  {room.landlordDemand ? money(room.landlordDemand) : "No demand"}
+                                  {room.sale?.tenant?.fullName ? ` | ${room.sale.tenant.fullName}` : ""}
+                                </div>
+                                {room.status !== "CLOSED" ? (
+                                  <UIButton
+                                    type="button"
+                                    variant="secondary"
+                                    className="property-card-inline-action"
+                                    onClick={() => openCloseSale(prop, room.id, room.roomName)}
+                                  >
+                                    Close Sale
+                                  </UIButton>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    }
+                    footer={(
+                      <div className="property-preview-footer-stack">
+                        <div className="property-card-footer-note">Added {formatDate(prop.createdAt)}</div>
+                        <div className="property-card-action-row">
+                          <PropertyStatusDropdown
+                            propertyId={prop.id}
+                            status={prop.status}
+                            onUpdated={(newStatus) => {
+                              setProperties((prev) =>
+                                prev.map((item) =>
+                                  item.id === prop.id ? { ...item, status: newStatus as PropertyRow["status"] } : item,
+                                ),
+                              );
+                            }}
+                            onMessage={setMessage}
+                          />
+                          <Link href={`/properties/${prop.id}/edit`} className="btn btn-secondary property-card-action-btn">
+                            Edit
+                          </Link>
+                          {canClose ? (
+                            <UIButton
+                              type="button"
+                              variant="secondary"
+                              className="property-card-action-btn property-card-action-btn-accent"
+                              onClick={() => openCloseSale(prop)}
+                            >
+                              Close Sale
+                            </UIButton>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+                  />
+                );
+              })}
+            </div>
+          </div>
+          {false ? (
           <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
             <table className="table">
               <thead>
@@ -372,6 +455,8 @@ export default function PropertiesPage() {
               </tbody>
             </table>
           </div>
+          ) : null}
+          </>
         )}
 
         {!loading && total > 0 ? (

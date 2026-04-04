@@ -96,7 +96,7 @@ export default async function SaleDetailPage({ params }: Props) {
       }}
       backHref="/sales"
       backLabel="Back to Sales"
-      propertyHref={`/properties/${sale.property.id}/edit`}
+      propertyHref={`/properties/${sale.property.id}`}
       tenantHref={sale.tenant ? `/tenants/${sale.tenant.id}` : null}
     />
   );

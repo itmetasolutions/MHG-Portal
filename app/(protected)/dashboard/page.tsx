@@ -311,7 +311,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 {postcodePropertyCards.map((property) => (
                   <PropertyPreviewCard
                     key={property.id}
-                    href={`/properties/${property.id}/edit`}
+                    href={`/properties/${property.id}`}
                     property={property}
                     landlord={{
                       label: "Landlord",
@@ -521,7 +521,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 {recentPropertyCards.map((prop) => (
                   <PropertyPreviewCard
                     key={prop.id}
-                    href={`/properties/${prop.id}/edit`}
+                    href={`/properties/${prop.id}`}
                     property={prop}
                     landlord={{
                       label: "Landlord",
