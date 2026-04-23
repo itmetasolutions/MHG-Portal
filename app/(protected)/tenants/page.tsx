@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
-import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { createTenant, updateTenant, type TenantRow } from "@/lib/portal-api";
+import type { TenantRow } from "@/lib/portal-api";
 import { apiGet } from "@/lib/api-client";
 
 type TenantWithProperty = TenantRow & {
@@ -22,11 +21,6 @@ type TenantWithProperty = TenantRow & {
   } | null;
 };
 
-const emptyAddForm = {
-  fullName: "", phone: "", email: "", currentAddress: "",
-  moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
-};
-
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<TenantWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,17 +31,6 @@ export default function TenantsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState(emptyAddForm);
-  const [addBusy, setAddBusy] = useState(false);
-
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
-    fullName: "", email: "", currentAddress: "",
-    moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
-  });
-  const [editBusy, setEditBusy] = useState(false);
-
   async function load() {
     setLoading(true);
     const query = new URLSearchParams();
@@ -57,12 +40,7 @@ export default function TenantsPage() {
 
     const result = await apiGet<{
       tenants: TenantWithProperty[];
-      pagination: {
-        page: number;
-        pageSize: number;
-        total: number;
-        totalPages: number;
-      };
+      pagination: { page: number; pageSize: number; total: number; totalPages: number };
     }>(`/api/tenants?${query.toString()}`);
     setLoading(false);
     if (!result.ok) {
@@ -76,92 +54,13 @@ export default function TenantsPage() {
 
   useEffect(() => { void load(); }, [page, pageSize, search]);
 
-  async function handleAdd() {
-    if (!addForm.fullName.trim() || !addForm.phone.trim()) {
-      setMessage({ type: "error", text: "Full name and phone number are required." });
-      return;
-    }
-    setAddBusy(true);
-    setMessage(null);
-    const result = await createTenant({
-      fullName: addForm.fullName.trim(),
-      phone: addForm.phone.trim(),
-      email: addForm.email.trim() || null,
-      currentAddress: addForm.currentAddress.trim() || null,
-      moveInDate: addForm.moveInDate ? new Date(addForm.moveInDate).toISOString() : null,
-      rentAmount: addForm.rentAmount ? Number(addForm.rentAmount) : null,
-      depositAmount: addForm.depositAmount ? Number(addForm.depositAmount) : null,
-      notes: addForm.notes.trim() || null,
-    });
-    setAddBusy(false);
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to create tenant." });
-      return;
-    }
-    setMessage({ type: "success", text: "Tenant created." });
-    setShowAddForm(false);
-    setAddForm(emptyAddForm);
-    setPage(1);
-    await load();
-  }
-
-  function startEdit(tenant: TenantWithProperty) {
-    setEditId(tenant.id);
-    setEditForm({
-      fullName: tenant.fullName,
-      email: tenant.email ?? "",
-      currentAddress: tenant.currentAddress ?? "",
-      moveInDate: tenant.moveInDate ? new Date(tenant.moveInDate).toISOString().slice(0, 10) : "",
-      rentAmount: tenant.rentAmount ?? "",
-      depositAmount: tenant.depositAmount ?? "",
-      notes: tenant.notes ?? "",
-    });
-    setMessage(null);
-  }
-
-  async function saveEdit() {
-    if (!editId) return;
-    setEditBusy(true);
-    const result = await updateTenant(editId, {
-      fullName: editForm.fullName.trim() || undefined,
-      email: editForm.email.trim() || null,
-      currentAddress: editForm.currentAddress.trim() || null,
-      moveInDate: editForm.moveInDate ? new Date(editForm.moveInDate).toISOString() : null,
-      rentAmount: editForm.rentAmount.trim() ? Number(editForm.rentAmount) : null,
-      depositAmount: editForm.depositAmount.trim() ? Number(editForm.depositAmount) : null,
-      notes: editForm.notes.trim() || null,
-    });
-    setEditBusy(false);
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to update tenant." });
-      return;
-    }
-
-    if (result.data.approvalRequired) {
-      setMessage({
-        type: "success",
-        text: result.data.message ?? "Changes submitted for admin approval.",
-      });
-      setEditId(null);
-      return;
-    }
-
-    setMessage({ type: "success", text: "Tenant updated." });
-    setEditId(null);
-    await load();
-  }
-
-  const totalRecords = total;
   return (
     <div className="stack">
       <header className="page-header">
         <div>
           <h1 className="page-title">Tenants</h1>
-          <p className="page-subtitle">{totalRecords} tenant {totalRecords === 1 ? "record" : "records"}.</p>
+          <p className="page-subtitle">{total} tenant {total === 1 ? "record" : "records"}. Tenants are created via the Close Sale flow.</p>
         </div>
-        <UIButton onClick={() => { setShowAddForm((v) => !v); setMessage(null); }}>
-          {showAddForm ? "Cancel" : "+ Add New Tenant"}
-        </UIButton>
       </header>
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
@@ -171,67 +70,11 @@ export default function TenantsPage() {
           <span className="label">Search</span>
           <UIInput
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Tenant, phone, email, property, landlord, agent"
           />
         </label>
       </div>
-
-      {showAddForm && (
-        <div className="panel" style={{ padding: "1.25rem" }}>
-          <p className="section-label" style={{ marginBottom: "1rem" }}>New Tenant</p>
-          <div className="field-grid">
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Full Name <span style={{ color: "var(--danger)" }}>*</span></span>
-                <UIInput value={addForm.fullName} onChange={(e) => setAddForm((p) => ({ ...p, fullName: e.target.value }))} placeholder="Jane Doe" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Phone <span style={{ color: "var(--danger)" }}>*</span></span>
-                <UIInput value={addForm.phone} onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))} placeholder="07911 122233" disabled={addBusy} />
-                <span className="hint-text">UK number — used as unique identifier, cannot be changed later.</span>
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Email (optional)</span>
-                <UIInput type="email" value={addForm.email} onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))} placeholder="jane@example.com" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Current Address (optional)</span>
-                <UIInput value={addForm.currentAddress} onChange={(e) => setAddForm((p) => ({ ...p, currentAddress: e.target.value }))} placeholder="123 Old Street..." disabled={addBusy} />
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Move-In Date (optional)</span>
-                <UIInput type="date" value={addForm.moveInDate} onChange={(e) => setAddForm((p) => ({ ...p, moveInDate: e.target.value }))} disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Rent/mo (optional)</span>
-                <UIInput type="number" min={0} step="0.01" value={addForm.rentAmount} onChange={(e) => setAddForm((p) => ({ ...p, rentAmount: e.target.value }))} placeholder="e.g. 900" disabled={addBusy} />
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Deposit (optional)</span>
-                <UIInput type="number" min={0} step="0.01" value={addForm.depositAmount} onChange={(e) => setAddForm((p) => ({ ...p, depositAmount: e.target.value }))} placeholder="e.g. 1200" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Notes (optional)</span>
-                <UIInput value={addForm.notes} onChange={(e) => setAddForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Any notes..." disabled={addBusy} />
-              </label>
-            </div>
-            <div className="inline-row">
-              <UIButton onClick={() => void handleAdd()} disabled={addBusy}>{addBusy ? "Creating..." : "Create Tenant"}</UIButton>
-              <UIButton variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm); }}>Cancel</UIButton>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
@@ -257,113 +100,76 @@ export default function TenantsPage() {
                   <th>Move-In</th>
                   <th>Rent / Deposit</th>
                   <th>Notes</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {tenants.map((tenant) => {
-                  const editing = editId === tenant.id;
-                  return (
-                    <tr key={tenant.id}>
-                      <td style={{ fontWeight: 600 }}>
-                        {editing ? (
-                          <UIInput value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} disabled={editBusy} />
-                        ) : (
-                          <Link href={`/tenants/${tenant.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
-                            {tenant.fullName}
+                {tenants.map((tenant) => (
+                  <tr key={tenant.id}>
+                    <td style={{ fontWeight: 600 }}>
+                      <Link href={`/tenants/${tenant.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                        {tenant.fullName}
+                      </Link>
+                    </td>
+                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                      {tenant.phone ?? "—"}
+                    </td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {tenant.email ?? "—"}
+                    </td>
+                    <td>
+                      {tenant.sale?.property ? (
+                        <>
+                          <Link href={`/landlords/${tenant.sale.property.landlord.id}`}
+                            style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}>
+                            {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
                           </Link>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                        {tenant.phone ?? "—"}
-                        <span className="hint-text" style={{ display: "block" }}>read-only</span>
-                      </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        {editing ? (
-                          <UIInput placeholder="Email" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} disabled={editBusy} />
-                        ) : (tenant.email ?? "—")}
-                      </td>
-                      <td>
-                        {tenant.sale?.property ? (
-                          <>
-                            <Link href={`/landlords/${tenant.sale.property.landlord.id}`}
-                              style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}>
-                              {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
-                            </Link>
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                              {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
-                            </span>
-                          </>
-                        ) : (
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No property yet</span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                        {editing ? (
-                          <UIInput type="date" value={editForm.moveInDate} onChange={(e) => setEditForm((p) => ({ ...p, moveInDate: e.target.value }))} disabled={editBusy} />
-                        ) : tenant.moveInDate
-                          ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                          : "—"}
-                      </td>
-                      <td style={{ fontSize: "0.82rem" }}>
-                        {editing ? (
-                          <div className="stack" style={{ gap: "0.35rem" }}>
-                            <UIInput type="number" min={0} step="0.01" placeholder="Rent/mo" value={editForm.rentAmount} onChange={(e) => setEditForm((p) => ({ ...p, rentAmount: e.target.value }))} disabled={editBusy} />
-                            <UIInput type="number" min={0} step="0.01" placeholder="Deposit" value={editForm.depositAmount} onChange={(e) => setEditForm((p) => ({ ...p, depositAmount: e.target.value }))} disabled={editBusy} />
-                          </div>
-                        ) : (
-                          <>
-                            {tenant.rentAmount
-                              ? <span style={{ color: "#4ade80", fontWeight: 600 }}>{'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
-                              : <span className="muted">—</span>}
-                            {tenant.depositAmount && (
-                              <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                                dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "12rem" }}>
-                        {editing ? (
-                          <UIInput placeholder="Notes" value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} disabled={editBusy} />
-                        ) : tenant.notes
-                          ? <span title={tenant.notes}>{tenant.notes.length > 50 ? tenant.notes.slice(0, 50) + "…" : tenant.notes}</span>
-                          : "—"}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <div className="inline-row">
-                            <UIButton onClick={() => void saveEdit()} disabled={editBusy}>{editBusy ? "Saving..." : "Save"}</UIButton>
-                            <UIButton variant="secondary" onClick={() => setEditId(null)} disabled={editBusy}>Cancel</UIButton>
-                          </div>
-                        ) : (
-                          <UIButton variant="secondary" onClick={() => startEdit(tenant)}>Edit</UIButton>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                            {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      {tenant.moveInDate
+                        ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                        : "—"}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>
+                      {tenant.rentAmount
+                        ? <span style={{ color: "#4ade80", fontWeight: 600 }}>{'£'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
+                        : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                      {tenant.depositAmount && (
+                        <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                          dep: {'£'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "12rem" }}>
+                      {tenant.notes
+                        ? <span title={tenant.notes}>{tenant.notes.length > 50 ? tenant.notes.slice(0, 50) + "…" : tenant.notes}</span>
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {!loading && totalRecords > 0 ? (
+        {!loading && total > 0 && (
           <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
             <PaginationControls
               page={page}
               pageSize={pageSize}
-              total={totalRecords}
+              total={total}
               totalPages={totalPages}
               onPageChange={setPage}
-              onPageSizeChange={(nextPageSize) => {
-                setPageSize(nextPageSize);
-                setPage(1);
-              }}
+              onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1); }}
             />
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

@@ -55,7 +55,10 @@ export async function GET(request: NextRequest) {
       select: { agentId: true, createdAt: true },
     }),
     db.potentialTenant.findMany({
-      where: { ...agentFilter, createdAt: createdAtFilter },
+      where: {
+        ...(effectiveAgentId ? { addedByAgentId: effectiveAgentId } : {}),
+        createdAt: createdAtFilter,
+      },
       select: { addedByAgentId: true, createdAt: true },
     }),
     db.sale.findMany({
