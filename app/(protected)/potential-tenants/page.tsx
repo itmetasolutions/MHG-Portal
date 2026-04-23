@@ -22,10 +22,26 @@ export default async function PotentialTenantsPage() {
     select: {
       id: true,
       fullName: true,
+      firstName: true,
+      lastName: true,
       email: true,
       phone: true,
-      interestedIn: true,
-      budget: true,
+      phoneLast10: true,
+      accommodationType: true,
+      countryOriginal: true,
+      nationality: true,
+      roomType: true,
+      numberOfOccupants: true,
+      numberOfChildren: true,
+      onDSS: true,
+      currentlyEmployed: true,
+      annualIncome: true,
+      currentLivingPostcode: true,
+      workplacePostcode: true,
+      maximumBudget: true,
+      workingProfession: true,
+      immigrationStatus: true,
+      moveInDate: true,
       notes: true,
       createdAt: true,
       addedByAgent: {
@@ -34,9 +50,11 @@ export default async function PotentialTenantsPage() {
     },
   });
 
-  // Serialize dates
   const serialized = tenants.map((t) => ({
     ...t,
+    annualIncome: t.annualIncome?.toString() ?? null,
+    maximumBudget: t.maximumBudget?.toString() ?? null,
+    moveInDate: t.moveInDate?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),
   }));
 

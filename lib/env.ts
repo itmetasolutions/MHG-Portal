@@ -3,6 +3,7 @@ import { z } from "zod";
 const baseEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  CRON_SECRET: z.string().optional(),
   APP_URL: z.string().url("APP_URL must be a valid URL").default("http://localhost:3000"),
   AUTH_SESSION_SECRET: z.string().min(32, "AUTH_SESSION_SECRET must be at least 32 chars"),
   AUTH_COOKIE_NAME: z.string().min(1).default("session_token"),
@@ -72,6 +73,7 @@ export const env = envSchema.parse({
   OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW: process.env.OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW,
   OTP_VERIFY_WINDOW_MINUTES: process.env.OTP_VERIFY_WINDOW_MINUTES,
   ALLOW_ADMIN_PASSIVE_REVERT: process.env.ALLOW_ADMIN_PASSIVE_REVERT,
+  CRON_SECRET: process.env.CRON_SECRET,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT,

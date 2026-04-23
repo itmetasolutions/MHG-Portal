@@ -141,6 +141,17 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Log lookup for daily report totalSearched metric (fire and forget)
+  const lookupResult = !landlord ? "NOT_FOUND" : landlord.ownerAgentId === auth.user.id ? "FOUND_OWN" : "FOUND_OTHER";
+  void db.landlordLookupLog.create({
+    data: {
+      agentId: auth.user.id,
+      phone: phoneInput,
+      phoneLast10: normalized.phoneLast10,
+      result: lookupResult,
+    },
+  }).catch(() => { /* non-critical */ });
+
   return NextResponse.json({
     phoneInput,
     phoneLast10: normalized.phoneLast10,

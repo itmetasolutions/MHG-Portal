@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { getEmailProvider } from "./factory";
 import { buildLoginOtpTemplate } from "./templates/login-otp";
 import { buildNumberSearchedTemplate } from "./templates/number-searched";
+import { buildFollowUpReminderTemplate } from "./templates/follow-up-reminder";
 
 type SendOtpLoginEmailInput = {
   to: string;
@@ -32,6 +33,28 @@ type SendNumberSearchedEmailInput = {
   landlordName: string;
   landlordPhone: string;
 };
+
+type SendFollowUpReminderEmailInput = {
+  to: string;
+  agentName: string;
+  landlordName: string;
+  landlordPhone: string;
+  scheduledAt: Date;
+  minutesUntil: number;
+  potentialLandlordId: string;
+};
+
+export async function sendFollowUpReminderEmail(input: SendFollowUpReminderEmailInput): Promise<void> {
+  const provider = getEmailProvider();
+  const template = buildFollowUpReminderTemplate(input);
+  await provider.send({
+    to: input.to,
+    from: env.OTP_EMAIL_FROM,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
+  });
+}
 
 export async function sendNumberSearchedEmail(input: SendNumberSearchedEmailInput): Promise<void> {
   const provider = getEmailProvider();

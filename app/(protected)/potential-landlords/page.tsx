@@ -17,13 +17,24 @@ export default async function PotentialLandlordsPage() {
   if (!user || !user.isActive) redirect("/login");
   if (user.role === UserRole.ADMIN) redirect("/admin/potential-landlords");
 
+  // Agents see only their own unconverted potential landlords
   const landlords = await db.potentialLandlord.findMany({
-    orderBy: { createdAt: "desc" },
+    where: {
+      addedByAgentId: session.userId,
+      landlordId: null,
+    },
+    orderBy: { scheduledAt: "asc" },
     select: {
       id: true,
       fullName: true,
+      firstName: true,
+      lastName: true,
       phone: true,
       phoneLast10: true,
+      email: true,
+      scheduledAt: true,
+      isLocked: true,
+      lockedUntil: true,
       createdAt: true,
       addedByAgent: {
         select: { id: true, agentDisplayName: true },
@@ -33,6 +44,8 @@ export default async function PotentialLandlordsPage() {
 
   const serialized = landlords.map((l) => ({
     ...l,
+    scheduledAt: l.scheduledAt?.toISOString() ?? null,
+    lockedUntil: l.lockedUntil?.toISOString() ?? null,
     createdAt: l.createdAt.toISOString(),
   }));
 

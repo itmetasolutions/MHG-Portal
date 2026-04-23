@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
 import { checkLandlordNumber, type LandlordLookupResponse } from "@/lib/portal-api";
 import { FloatingChat } from "@/components/floating-chat";
@@ -165,8 +165,17 @@ function TemplatesIcon() {
 }
 
 
+function StartIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm6.39-2.908a.75.75 0 0 1 .766.027l3.5 2.25a.75.75 0 0 1 0 1.262l-3.5 2.25A.75.75 0 0 1 8 12.25v-4.5a.75.75 0 0 1 .39-.658Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
+  { href: "/start", label: "Start Call", icon: StartIcon, exact: false },
   { href: "/dialer", label: "Dialpad", icon: DialerIcon, exact: true },
   { href: "/dialer/history", label: "Call History", icon: CallHistoryIcon, exact: false },
   { href: "/dialer/intercalling", label: "Intercalling", icon: IntercallingIcon, exact: false },
@@ -185,10 +194,13 @@ const navItems = [
 
 export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const [lookupInput, setLookupInput] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<LandlordLookupResponse | null>(null);
+  const [notInterestedBusy, setNotInterestedBusy] = useState(false);
+  const [notInterestedDone, setNotInterestedDone] = useState(false);
 
   const initials = user.name
     ? user.name
@@ -210,27 +222,39 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
 
   async function onLookupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const query = lookupInput.trim();
     if (!query) {
       setLookupResult(null);
       setLookupError("Enter landlord phone number first.");
       return;
     }
-
     setLookupBusy(true);
     setLookupError(null);
-
+    setNotInterestedDone(false);
     const result = await checkLandlordNumber(query);
     setLookupBusy(false);
-
     if (!result.ok) {
       setLookupResult(null);
       setLookupError(result.message ?? "Unable to check landlord details right now.");
       return;
     }
-
     setLookupResult(result.data);
+  }
+
+  async function onNotInterested() {
+    const phone = lookupResult?.phoneInput ?? lookupInput.trim();
+    if (!phone) return;
+    setNotInterestedBusy(true);
+    try {
+      await fetch("/api/start/not-interested", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      setNotInterestedDone(true);
+    } finally {
+      setNotInterestedBusy(false);
+    }
   }
 
   return (
@@ -314,28 +338,22 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
 
           {lookupResult ? (
             lookupResult.landlordExists && lookupResult.landlord ? (
-              <div
-                className={`agent-lookup-result ${
-                  lookupResult.canCreateProperty ? "agent-lookup-result-owned" : "agent-lookup-result-blocked"
-                }`}
-              >
+              <div className={`agent-lookup-result ${lookupResult.canCreateProperty ? "agent-lookup-result-owned" : "agent-lookup-result-blocked"}`}>
                 <div className="agent-lookup-copy">
                   <p className="agent-lookup-title">
                     {lookupResult.landlord.landlordName} ({lookupResult.landlord.phoneLast10})
                   </p>
                   <p className="agent-lookup-meta">
-                    Owner Agent: {lookupResult.landlord.ownerAgent.agentDisplayName} | Properties:{" "}
-                    {lookupResult.landlord._count.properties}
+                    Agent: {lookupResult.landlord.ownerAgent.agentDisplayName} &middot; {lookupResult.landlord._count.properties} {lookupResult.landlord._count.properties === 1 ? "property" : "properties"}
                   </p>
                   <p className="agent-lookup-status">
                     {lookupResult.canCreateProperty
-                      ? "This is your landlord. You can add more properties."
-                      : "This landlord is assigned to another agent. You cannot add properties."}
+                      ? "Your landlord — you can add a new property."
+                      : "Assigned to another agent — cannot add properties."}
                   </p>
                 </div>
-
                 {lookupResult.canCreateProperty ? (
-                  <Link className="btn btn-primary btn-sm" href={`/landlords/${lookupResult.landlord.id}/properties`}>
+                  <Link className="btn btn-primary btn-sm" href={`/start/interested?phone=${encodeURIComponent(lookupResult.phoneE164)}&landlordId=${lookupResult.landlord.id}`}>
                     Add Property
                   </Link>
                 ) : null}
@@ -343,14 +361,35 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
             ) : (
               <div className="agent-lookup-result agent-lookup-result-new">
                 <div className="agent-lookup-copy">
-                  <p className="agent-lookup-title">No landlord found for this number</p>
-                  <p className="agent-lookup-meta">
-                    You can create a new landlord and property entry from the intake form.
-                  </p>
+                  <p className="agent-lookup-title">Number not registered</p>
+                  <p className="agent-lookup-meta">How would you like to proceed?</p>
                 </div>
-                <Link className="btn btn-primary btn-sm" href="/landlords/new">
-                  Add New Landlord
-                </Link>
+                {notInterestedDone ? (
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Logged as Not Interested</span>
+                ) : (
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <Link
+                      className="btn btn-primary btn-sm"
+                      href={`/start/interested?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
+                    >
+                      Interested
+                    </Link>
+                    <Link
+                      className="btn btn-secondary btn-sm"
+                      href={`/start/follow-up?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
+                    >
+                      Follow Up
+                    </Link>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={onNotInterested}
+                      disabled={notInterestedBusy}
+                      type="button"
+                    >
+                      {notInterestedBusy ? "Logging..." : "Not Interested"}
+                    </button>
+                  </div>
+                )}
               </div>
             )
           ) : null}

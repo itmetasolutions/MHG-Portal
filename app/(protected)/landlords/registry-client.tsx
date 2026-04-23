@@ -72,9 +72,6 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
           <h1 className="page-title">Landlords</h1>
           <p className="page-subtitle">Manage your landlord records.</p>
         </div>
-        <Link className="btn btn-primary" href="/landlords/new">
-          + Add New Landlord
-        </Link>
       </header>
 
       <UICard>
