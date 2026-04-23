@@ -883,8 +883,9 @@ a {
   gap: 0;
 }
 .lp-logo {
-  height: 58px;
+  height: 40px;
   width: auto;
+  max-width: 220px;
   object-fit: contain;
   margin-bottom: 1.6rem;
 }

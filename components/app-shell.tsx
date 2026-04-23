@@ -18,6 +18,11 @@ type Props = {
 export function AppShell({ session, children }: Props) {
   const pathname = usePathname();
 
+  // Landing page has its own full-page layout — skip shell entirely
+  if (pathname === "/") {
+    return <>{children}</>;
+  }
+
   // Admin pages have their own full layout via AdminShell
   if (pathname?.startsWith("/admin")) {
     return <>{children}</>;
