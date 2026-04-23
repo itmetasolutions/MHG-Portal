@@ -105,17 +105,26 @@ export function AdminVerifyOtpClient({ initialEmail = "", reason }: Props) {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page auth-page-admin">
       <div className="auth-brand">
+        <p className="auth-kicker">Admin control access</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
         <h1 className="auth-title">Admin OTP Verification</h1>
         <p className="auth-subtitle">Enter the 6-digit code sent to your admin email address.</p>
+        <div className="auth-feature-list">
+          <span className="auth-feature-chip">6-digit verification</span>
+          <span className="auth-feature-chip">Admin protection</span>
+          <span className="auth-feature-chip">Secure re-entry</span>
+        </div>
+        <p className="auth-footnote">
+          The extra step protects sensitive admin actions while keeping the sign-in flow quick.
+        </p>
       </div>
 
-      <UICard style={{ width: "100%", maxWidth: 420 }}>
-        <UICardBody>
-          <form className="field-grid" onSubmit={onSubmit}>
+      <UICard className="auth-card">
+        <UICardBody className="auth-card-body">
+          <form className="field-grid auth-form" onSubmit={onSubmit}>
             <label className="field">
               <span className="label">Email address</span>
               <UIInput
@@ -147,9 +156,9 @@ export function AdminVerifyOtpClient({ initialEmail = "", reason }: Props) {
               {busy ? "Verifying..." : "Verify and Sign In"}
             </UIButton>
 
-            <p className="hint-text" style={{ textAlign: "center", marginTop: "0.25rem" }}>
+            <p className="hint-text auth-hint-text">
               Need a new code?{" "}
-              <Link href="/admin/login" style={{ color: "var(--primary)", fontWeight: 600 }}>
+              <Link href="/admin/login" className="auth-inline-link">
                 Go back to admin sign in
               </Link>
             </p>

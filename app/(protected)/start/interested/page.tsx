@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 
 const ROOM_TYPES = ["STUDIO_ROOM", "SINGLE_ROOM", "DOUBLE_ROOM", "ENSUITE_ROOM", "LOFT"] as const;
 type RoomType = typeof ROOM_TYPES[number];
@@ -23,7 +23,6 @@ function InterestedForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefillPhone = searchParams.get("phone") ?? "";
-  const prefillLandlordId = searchParams.get("landlordId") ?? "";
   const prefillPotentialLandlordId = searchParams.get("potentialLandlordId") ?? "";
 
   const [submitting, setSubmitting] = useState(false);

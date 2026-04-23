@@ -18,8 +18,7 @@ type Props = {
 export function AppShell({ session, children }: Props) {
   const pathname = usePathname();
 
-  // Landing page has its own full-page layout — skip shell entirely
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/login" || pathname?.startsWith("/verify-otp")) {
     return <>{children}</>;
   }
 

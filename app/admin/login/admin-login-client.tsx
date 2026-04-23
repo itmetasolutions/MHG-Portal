@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
@@ -108,17 +109,30 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page auth-page-admin">
       <div className="auth-brand">
+        <p className="auth-kicker">Admin control access</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
         <h1 className="auth-title">Admin Sign In</h1>
-        <p className="auth-subtitle">Use your admin credentials to sign in. OTP is only requested after 12 hours of inactivity.</p>
+        <p className="auth-subtitle">
+          Use your admin credentials to enter the control workspace. OTP is only requested after
+          12 hours of inactivity.
+        </p>
+        <div className="auth-feature-list">
+          <span className="auth-feature-chip">Admin-only flow</span>
+          <span className="auth-feature-chip">OTP protected</span>
+          <span className="auth-feature-chip">Audit ready</span>
+        </div>
+        <p className="auth-footnote">
+          This route is reserved for platform oversight, approvals, reporting, and operational
+          control.
+        </p>
       </div>
 
-      <UICard style={{ width: "100%", maxWidth: 420 }}>
-        <UICardBody>
-          <form className="field-grid" onSubmit={onSubmit}>
+      <UICard className="auth-card">
+        <UICardBody className="auth-card-body">
+          <form className="field-grid auth-form" onSubmit={onSubmit}>
             <label className="field">
               <span className="label">Email address</span>
               <UIInput
@@ -148,6 +162,13 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
             <UIButton type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
               {busy ? "Signing in..." : "Continue"}
             </UIButton>
+
+            <p className="hint-text auth-hint-text">
+              Agent account?{" "}
+              <Link href="/login" className="auth-inline-link">
+                Use the standard sign in
+              </Link>
+            </p>
           </form>
         </UICardBody>
       </UICard>

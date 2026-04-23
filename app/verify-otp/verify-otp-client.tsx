@@ -87,17 +87,26 @@ export function VerifyOtpClient({ initialEmail = "" }: Props) {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page auth-page-agent">
       <div className="auth-brand">
+        <p className="auth-kicker">Secure workspace access</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
         <h1 className="auth-title">Verify Your Code</h1>
         <p className="auth-subtitle">Enter the 6-digit code sent to your email address.</p>
+        <div className="auth-feature-list">
+          <span className="auth-feature-chip">6-digit verification</span>
+          <span className="auth-feature-chip">Session protection</span>
+          <span className="auth-feature-chip">Fast re-entry</span>
+        </div>
+        <p className="auth-footnote">
+          The code keeps access secure without slowing down your day once you are active again.
+        </p>
       </div>
 
-      <UICard style={{ width: "100%", maxWidth: 420 }}>
-        <UICardBody>
-          <form className="field-grid" onSubmit={onSubmit}>
+      <UICard className="auth-card">
+        <UICardBody className="auth-card-body">
+          <form className="field-grid auth-form" onSubmit={onSubmit}>
             <label className="field">
               <span className="label">Email address</span>
               <UIInput
@@ -129,9 +138,9 @@ export function VerifyOtpClient({ initialEmail = "" }: Props) {
               {busy ? "Verifying..." : "Verify and Sign In"}
             </UIButton>
 
-            <p className="hint-text" style={{ textAlign: "center", marginTop: "0.25rem" }}>
+            <p className="hint-text auth-hint-text">
               Did not receive a code?{" "}
-              <Link href="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>
+              <Link href="/login" className="auth-inline-link">
                 Go back to sign in
               </Link>
             </p>

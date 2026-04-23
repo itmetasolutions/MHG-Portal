@@ -113,7 +113,9 @@ export default function PropertiesPage() {
     setMessage(null);
   }
 
-  function toggleExpand(_id?: string) {}
+  function toggleExpand(id?: string) {
+    void id;
+  }
 
   async function handleCloseSale() {
     if (!closeSale) return;

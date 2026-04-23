@@ -17,12 +17,6 @@ import { serializePropertyImageList } from "@/server/property-media";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_CONFIG: Record<PropertyStatus, { label: string; badgeClass: string }> = {
-  AVAILABLE: { label: "Available", badgeClass: "badge-active" },
-  CLOSED:    { label: "Closed",    badgeClass: "badge-sold"   },
-  DRAFT:     { label: "Draft",     badgeClass: "badge-draft"  },
-};
-
 type PageProps = {
   searchParams?: {
     period?: string | string[];

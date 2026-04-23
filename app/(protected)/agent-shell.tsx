@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
 import { checkLandlordNumber, type LandlordLookupResponse } from "@/lib/portal-api";
 import { FloatingChat } from "@/components/floating-chat";
@@ -14,13 +14,27 @@ type AgentUser = {
   profilePicture?: string | null;
 };
 
-type ChatContact = { id: string; name: string; email: string; role?: string; profilePicture?: string | null };
+type ChatContact = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  profilePicture?: string | null;
+};
 
 type Props = {
   user: AgentUser;
   userId: string;
   chatContacts: ChatContact[];
   children: React.ReactNode;
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: () => React.JSX.Element;
+  exact: boolean;
+  description: string;
 };
 
 function DashboardIcon() {
@@ -75,7 +89,6 @@ function TenantsIcon() {
   );
 }
 
-
 function DialerIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -107,7 +120,11 @@ function IntercallingIcon() {
 function PotentialTenantsIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M10 1a.75.75 0 0 1 .683.438l1.842 3.73 4.116.598a.75.75 0 0 1 .416 1.279l-2.98 2.903.703 4.1a.75.75 0 0 1-1.088.791L10 12.775l-3.692 1.94a.75.75 0 0 1-1.088-.79l.704-4.101L2.943 7.02a.75.75 0 0 1 .416-1.28l4.116-.597L9.317 1.44A.75.75 0 0 1 10 1Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M10 1a.75.75 0 0 1 .683.438l1.842 3.73 4.116.598a.75.75 0 0 1 .416 1.279l-2.98 2.903.703 4.1a.75.75 0 0 1-1.088.791L10 12.775l-3.692 1.94a.75.75 0 0 1-1.088-.79l.704-4.101L2.943 7.02a.75.75 0 0 1 .416-1.28l4.116-.597L9.317 1.44A.75.75 0 0 1 10 1Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -115,7 +132,11 @@ function PotentialTenantsIcon() {
 function PotentialLandlordsIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -123,7 +144,11 @@ function PotentialLandlordsIcon() {
 function DailyReportIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M5 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4Zm3 0h4v1H8V4Zm-4 4h12v8H4V8Zm2 2a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M5 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4Zm3 0h4v1H8V4Zm-4 4h12v8H4V8Zm2 2a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -139,7 +164,11 @@ function CallRecordsIcon() {
 function NotesIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 0 4.243 3 3 0 0 0 4.243 0l.741-.741a.75.75 0 1 1 1.06 1.06l-.741.741a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.364 6.364l-4 4a2.25 2.25 0 0 1-3.182-3.182l5.5-5.5a.75.75 0 0 1 1.061 1.06l-5.5 5.5a.75.75 0 0 0 1.06 1.061l4-4a3 3 0 0 0 0-4.243Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 0 4.243 3 3 0 0 0 4.243 0l.741-.741a.75.75 0 1 1 1.06 1.06l-.741.741a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.364 6.364l-4 4a2.25 2.25 0 0 1-3.182-3.182l5.5-5.5a.75.75 0 0 1 1.061 1.06l-5.5 5.5a.75.75 0 0 0 1.06 1.061l4-4a3 3 0 0 0 0-4.243Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -159,42 +188,191 @@ function ContactsIcon() {
 function TemplatesIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H7Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H7Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
-
 
 function StartIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path fillRule="evenodd" d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm6.39-2.908a.75.75 0 0 1 .766.027l3.5 2.25a.75.75 0 0 1 0 1.262l-3.5 2.25A.75.75 0 0 1 8 12.25v-4.5a.75.75 0 0 1 .39-.658Z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm6.39-2.908a.75.75 0 0 1 .766.027l3.5 2.25a.75.75 0 0 1 0 1.262l-3.5 2.25A.75.75 0 0 1 8 12.25v-4.5a.75.75 0 0 1 .39-.658Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
-  { href: "/start", label: "Start Call", icon: StartIcon, exact: false },
-  { href: "/dialer", label: "Dialpad", icon: DialerIcon, exact: true },
-  { href: "/dialer/history", label: "Call History", icon: CallHistoryIcon, exact: false },
-  { href: "/dialer/intercalling", label: "Intercalling", icon: IntercallingIcon, exact: false },
-  { href: "/dialer/contacts", label: "Contacts", icon: ContactsIcon, exact: false },
-  { href: "/landlords", label: "Landlords", icon: LandlordsIcon, exact: false },
-  { href: "/properties", label: "Properties", icon: PropertiesIcon, exact: false },
-  { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
-  { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
-  { href: "/potential-tenants", label: "Potential Tenants", icon: PotentialTenantsIcon, exact: false },
-  { href: "/potential-landlords", label: "Potential Landlords", icon: PotentialLandlordsIcon, exact: false },
-  { href: "/daily-reports", label: "Daily Reports", icon: DailyReportIcon, exact: false },
-  { href: "/call-records", label: "Call Records", icon: CallRecordsIcon, exact: false },
-  { href: "/notes", label: "My Notes", icon: NotesIcon, exact: false },
-  { href: "/templates", label: "Templates", icon: TemplatesIcon, exact: false },
+const navSections: Array<{ label: string; items: NavItem[] }> = [
+  {
+    label: "Core",
+    items: [
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        icon: DashboardIcon,
+        exact: true,
+        description: "Track portfolio performance, sales momentum, and the latest activity at a glance.",
+      },
+      {
+        href: "/start",
+        label: "Start Call",
+        icon: StartIcon,
+        exact: false,
+        description: "Start from the right workflow so every landlord outcome is logged cleanly and owned properly.",
+      },
+      {
+        href: "/dialer",
+        label: "Dialpad",
+        icon: DialerIcon,
+        exact: true,
+        description: "Place and receive calls without leaving the portal.",
+      },
+      {
+        href: "/dialer/history",
+        label: "Call History",
+        icon: CallHistoryIcon,
+        exact: false,
+        description: "Review call performance, follow-ups, and recent outcomes.",
+      },
+      {
+        href: "/dialer/intercalling",
+        label: "Intercalling",
+        icon: IntercallingIcon,
+        exact: false,
+        description: "Reach teammates faster when you need handoffs or quick internal support.",
+      },
+      {
+        href: "/dialer/contacts",
+        label: "Contacts",
+        icon: ContactsIcon,
+        exact: false,
+        description: "Keep important numbers close and easy to reuse.",
+      },
+    ],
+  },
+  {
+    label: "Pipeline",
+    items: [
+      {
+        href: "/landlords",
+        label: "Landlords",
+        icon: LandlordsIcon,
+        exact: false,
+        description: "Manage landlord ownership, portfolio status, and relationship history.",
+      },
+      {
+        href: "/properties",
+        label: "Properties",
+        icon: PropertiesIcon,
+        exact: false,
+        description: "Manage listings, media, availability, and closing workflows in one view.",
+      },
+      {
+        href: "/sales",
+        label: "Sales",
+        icon: SalesIcon,
+        exact: false,
+        description: "Review closed deals, revenue, commission, and tenant handoff details.",
+      },
+      {
+        href: "/tenants",
+        label: "Tenants",
+        icon: TenantsIcon,
+        exact: false,
+        description: "Keep tenant records complete and accessible after every sale.",
+      },
+      {
+        href: "/potential-tenants",
+        label: "Potential Tenants",
+        icon: PotentialTenantsIcon,
+        exact: false,
+        description: "Follow promising leads before they convert into active records.",
+      },
+      {
+        href: "/potential-landlords",
+        label: "Potential Landlords",
+        icon: PotentialLandlordsIcon,
+        exact: false,
+        description: "Stay on top of prospects that still need nurturing or qualification.",
+      },
+    ],
+  },
+  {
+    label: "Support",
+    items: [
+      {
+        href: "/daily-reports",
+        label: "Daily Reports",
+        icon: DailyReportIcon,
+        exact: false,
+        description: "Review daily productivity with clearer reporting windows and totals.",
+      },
+      {
+        href: "/call-records",
+        label: "Call Records",
+        icon: CallRecordsIcon,
+        exact: false,
+        description: "Audit the details behind recent calls and interactions.",
+      },
+      {
+        href: "/notes",
+        label: "My Notes",
+        icon: NotesIcon,
+        exact: false,
+        description: "Capture context that helps you return to leads and listings faster.",
+      },
+      {
+        href: "/templates",
+        label: "Templates",
+        icon: TemplatesIcon,
+        exact: false,
+        description: "Reuse consistent messaging across your day-to-day communication.",
+      },
+    ],
+  },
 ];
+
+const navItems = navSections.flatMap((section) => section.items);
+
+function getInitials(name: string, email: string) {
+  const initials = name
+    ? name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : email[0]?.toUpperCase();
+
+  return initials || "AG";
+}
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M3 5.75A.75.75 0 0 1 3.75 5h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 5.75Zm0 4.25a.75.75 0 0 1 .75-.75h12.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 10Zm.75 3.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M5.22 5.22a.75.75 0 0 1 1.06 0L10 8.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L11.06 10l3.72 3.72a.75.75 0 0 1-1.06 1.06L10 11.06l-3.72 3.72a.75.75 0 1 1-1.06-1.06L8.94 10 5.22 6.28a.75.75 0 0 1 0-1.06Z" />
+    </svg>
+  );
+}
 
 export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lookupInput, setLookupInput] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -202,48 +380,48 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const [notInterestedBusy, setNotInterestedBusy] = useState(false);
   const [notInterestedDone, setNotInterestedDone] = useState(false);
 
-  const initials = user.name
-    ? user.name
-        .split(" ")
-        .map((word) => word[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : user.email[0].toUpperCase();
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
     return pathname?.startsWith(href) ?? false;
   }
 
-  const activeItem = navItems.find((item) =>
-    item.exact ? pathname === item.href : pathname?.startsWith(item.href),
-  );
+  const activeItem = navItems.find((item) => isActive(item.href, item.exact));
+  const initials = getInitials(user.name, user.email);
 
   async function onLookupSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const query = lookupInput.trim();
     if (!query) {
       setLookupResult(null);
-      setLookupError("Enter landlord phone number first.");
+      setLookupError("Enter a landlord phone number first.");
       return;
     }
+
     setLookupBusy(true);
     setLookupError(null);
     setNotInterestedDone(false);
+
     const result = await checkLandlordNumber(query);
     setLookupBusy(false);
+
     if (!result.ok) {
       setLookupResult(null);
       setLookupError(result.message ?? "Unable to check landlord details right now.");
       return;
     }
+
     setLookupResult(result.data);
   }
 
   async function onNotInterested() {
     const phone = lookupResult?.phoneInput ?? lookupInput.trim();
     if (!phone) return;
+
     setNotInterestedBusy(true);
     try {
       await fetch("/api/start/not-interested", {
@@ -258,158 +436,246 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
   }
 
   return (
-    <div className="agent-shell">
-      <aside className="agent-sidebar">
-        <div className="agent-sidebar-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/morehomesgroup-logo.png" alt="More Homes Group" />
-          <span className="agent-sidebar-badge">Agent</span>
-        </div>
+    <>
+      <div className="workspace-shell workspace-shell-agent">
+        <button
+          type="button"
+          className={`workspace-backdrop${sidebarOpen ? " is-visible" : ""}`}
+          aria-label="Close navigation"
+          onClick={() => setSidebarOpen(false)}
+        />
 
-        <nav className="agent-sidebar-nav">
-          <span className="agent-nav-section">Navigation</span>
-          {navItems.map(({ href, label, icon: Icon, exact }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`agent-nav-link${isActive(href, exact) ? " agent-nav-link-active" : ""}`}
-            >
-              <Icon />
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="agent-sidebar-footer">
-          <Link href="/profile" className="agent-user-card" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer" }}>
-            {user.profilePicture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.profilePicture} alt="Profile" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--brand-gold)" }} />
-            ) : (
-              <div className="agent-user-avatar">{initials}</div>
-            )}
-            <div className="agent-user-info">
-              <div className="agent-user-name">{user.name || "Agent"}</div>
-              <div className="agent-user-email">{user.email}</div>
-            </div>
-          </Link>
-          <NavLogoutButton />
-        </div>
-      </aside>
-
-      <div className="agent-content">
-        <div className="agent-topbar">
-          <div className="agent-topbar-left">
-            <div className="agent-topbar-breadcrumb">
-              <span>Agent</span>
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.4 }}>
-                <path
-                  fillRule="evenodd"
-                  d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-                <span className="current">{activeItem?.label ?? "Dashboard"}</span>
-            </div>
-          </div>
-
-          <div className="agent-topbar-right">
-            <NotificationsBell />
-            <span className="agent-topbar-meta">{user.name || user.email}</span>
-          </div>
-        </div>
-
-        <div className="agent-lookup-strip">
-          <form className="agent-lookup-form" onSubmit={onLookupSubmit}>
-            <span className="agent-lookup-label">Check landlord before calling</span>
-            <input
-              className="input agent-lookup-input"
-              value={lookupInput}
-              onChange={(event) => setLookupInput(event.target.value)}
-              placeholder="Enter phone number"
-              aria-label="Landlord phone lookup"
-            />
-            <button className="btn btn-secondary btn-sm agent-lookup-submit" type="submit" disabled={lookupBusy}>
-              {lookupBusy ? "Checking..." : "Check"}
-            </button>
-          </form>
-
-          {lookupError ? <p className="agent-lookup-error">{lookupError}</p> : null}
-
-          {lookupResult ? (
-            lookupResult.landlordExists && lookupResult.landlord ? (
-              <div className={`agent-lookup-result ${lookupResult.canCreateProperty ? "agent-lookup-result-owned" : "agent-lookup-result-blocked"}`}>
-                <div className="agent-lookup-copy">
-                  <p className="agent-lookup-title">
-                    {lookupResult.landlord.landlordName} ({lookupResult.landlord.phoneLast10})
-                  </p>
-                  <p className="agent-lookup-meta">
-                    Agent: {lookupResult.landlord.ownerAgent.agentDisplayName} &middot; {lookupResult.landlord._count.properties} {lookupResult.landlord._count.properties === 1 ? "property" : "properties"}
-                  </p>
-                  <p className="agent-lookup-status">
-                    {lookupResult.canCreateProperty
-                      ? "Your landlord — you can add a new property."
-                      : "Assigned to another agent — cannot add properties."}
-                  </p>
+        <aside className={`workspace-sidebar${sidebarOpen ? " is-open" : ""}`}>
+          <div className="workspace-sidebar-scroll">
+            <div className="workspace-sidebar-top">
+              <Link href="/dashboard" className="workspace-brand">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="workspace-brand-logo" />
+                <div className="workspace-brand-copy">
+                  <strong>More Homes Group</strong>
+                  <span>Agent workspace</span>
                 </div>
-                {lookupResult.canCreateProperty ? (
-                  <Link className="btn btn-primary btn-sm" href={`/start/interested?phone=${encodeURIComponent(lookupResult.phoneE164)}&landlordId=${lookupResult.landlord.id}`}>
-                    Add Property
-                  </Link>
-                ) : null}
+                <span className="workspace-brand-badge">Live</span>
+              </Link>
+
+              <button
+                type="button"
+                className="workspace-sidebar-close"
+                aria-label="Close navigation"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {navSections.map((section) => (
+              <div key={section.label} className="workspace-nav-group">
+                <p className="workspace-nav-label">{section.label}</p>
+                <div className="workspace-nav-list">
+                  {section.items.map(({ href, label, icon: Icon, exact }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`workspace-nav-link${isActive(href, exact) ? " is-active" : ""}`}
+                    >
+                      <span className="workspace-nav-icon">
+                        <Icon />
+                      </span>
+                      <span>{label}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="agent-lookup-result agent-lookup-result-new">
-                <div className="agent-lookup-copy">
-                  <p className="agent-lookup-title">Number not registered</p>
-                  <p className="agent-lookup-meta">How would you like to proceed?</p>
-                </div>
-                {notInterestedDone ? (
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Logged as Not Interested</span>
+            ))}
+
+            <div className="workspace-sidebar-note">
+              <p className="workspace-sidebar-note-label">Recommended flow</p>
+              <p className="workspace-sidebar-note-title">Check the landlord number before every call.</p>
+              <p className="workspace-sidebar-note-copy">
+                The lookup bar confirms ownership, protects follow-ups, and keeps property creation tidy.
+              </p>
+            </div>
+
+            <div className="workspace-account">
+              <Link href="/profile" className="workspace-user-card">
+                {user.profilePicture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.profilePicture}
+                    alt="Profile"
+                    className="workspace-user-avatar-image"
+                  />
                 ) : (
-                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <div className="workspace-user-avatar">{initials}</div>
+                )}
+                <div className="workspace-user-copy">
+                  <div className="workspace-user-name">{user.name || "Agent"}</div>
+                  <div className="workspace-user-email">{user.email}</div>
+                </div>
+              </Link>
+
+              <div className="workspace-account-actions">
+                <span className="workspace-account-pill">Agent access</span>
+                <NavLogoutButton />
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div className="workspace-main">
+          <header className="workspace-topbar">
+            <div className="workspace-topbar-main">
+              <button
+                type="button"
+                className="workspace-mobile-toggle"
+                aria-label="Open navigation"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <MenuIcon />
+              </button>
+
+              <div className="workspace-headline">
+                <div className="workspace-breadcrumb">
+                  <span>Agent</span>
+                  <span className="workspace-breadcrumb-sep" />
+                  <span className="is-current">{activeItem?.label ?? "Dashboard"}</span>
+                </div>
+                <h1 className="workspace-heading-title">{activeItem?.label ?? "Dashboard"}</h1>
+                <p className="workspace-heading-copy">
+                  {activeItem?.description ??
+                    "Manage calls, listings, follow-ups, and conversions from one clean workspace."}
+                </p>
+              </div>
+            </div>
+
+            <div className="workspace-topbar-actions">
+              <NotificationsBell />
+              <span className="workspace-status-pill">Live session</span>
+              <span className="workspace-user-pill">{user.name || user.email}</span>
+            </div>
+          </header>
+
+          <section className="workspace-utility-card">
+            <div className="workspace-utility-head">
+              <div>
+                <p className="workspace-utility-kicker">Quick lead check</p>
+                <h2 className="workspace-utility-title">Confirm the landlord before you move the lead forward</h2>
+                <p className="workspace-utility-copy">
+                  Search once, see ownership instantly, and choose the correct next step without leaving the page.
+                </p>
+              </div>
+            </div>
+
+            <form className="workspace-utility-form" onSubmit={onLookupSubmit}>
+              <label className="field workspace-utility-field">
+                <span className="label">Landlord phone number</span>
+                <input
+                  className="input workspace-utility-input"
+                  value={lookupInput}
+                  onChange={(event) => setLookupInput(event.target.value)}
+                  placeholder="Enter phone number"
+                  aria-label="Landlord phone lookup"
+                />
+              </label>
+              <button className="btn btn-primary workspace-utility-submit" type="submit" disabled={lookupBusy}>
+                {lookupBusy ? "Checking..." : "Check Number"}
+              </button>
+            </form>
+
+            {lookupError ? <p className="workspace-utility-error">{lookupError}</p> : null}
+
+            {lookupResult ? (
+              lookupResult.landlordExists && lookupResult.landlord ? (
+                <div
+                  className={`workspace-lookup-result${
+                    lookupResult.canCreateProperty ? " is-owned" : " is-locked"
+                  }`}
+                >
+                  <div className="workspace-lookup-result-main">
+                    <span className="workspace-lookup-result-badge">Registered landlord</span>
+                    <h3 className="workspace-lookup-result-title">
+                      {lookupResult.landlord.landlordName} ({lookupResult.landlord.phoneLast10})
+                    </h3>
+                    <p className="workspace-lookup-result-copy">
+                      Managed by {lookupResult.landlord.ownerAgent.agentDisplayName} with{" "}
+                      {lookupResult.landlord._count.properties}{" "}
+                      {lookupResult.landlord._count.properties === 1 ? "property" : "properties"} on file.
+                    </p>
+                    <p className="workspace-lookup-result-foot">
+                      {lookupResult.canCreateProperty
+                        ? "This lead belongs to you, so you can continue directly into property creation."
+                        : "This landlord is assigned to another agent, so new property creation is blocked here."}
+                    </p>
+                  </div>
+
+                  {lookupResult.canCreateProperty ? (
                     <Link
                       className="btn btn-primary btn-sm"
-                      href={`/start/interested?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
+                      href={`/start/interested?phone=${encodeURIComponent(
+                        lookupResult.phoneE164,
+                      )}&landlordId=${lookupResult.landlord.id}`}
                     >
-                      Interested
+                      Add Property
                     </Link>
-                    <Link
-                      className="btn btn-secondary btn-sm"
-                      href={`/start/follow-up?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
-                    >
-                      Follow Up
-                    </Link>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={onNotInterested}
-                      disabled={notInterestedBusy}
-                      type="button"
-                    >
-                      {notInterestedBusy ? "Logging..." : "Not Interested"}
-                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="workspace-lookup-result is-new">
+                  <div className="workspace-lookup-result-main">
+                    <span className="workspace-lookup-result-badge">New lead</span>
+                    <h3 className="workspace-lookup-result-title">Number not registered</h3>
+                    <p className="workspace-lookup-result-copy">
+                      Choose the correct outcome so the lead is tracked properly from the first touch.
+                    </p>
                   </div>
-                )}
-              </div>
-            )
-          ) : null}
-        </div>
 
-        <div className="agent-page">{children}</div>
+                  {notInterestedDone ? (
+                    <span className="workspace-lookup-success">Logged as Not Interested.</span>
+                  ) : (
+                    <div className="workspace-lookup-actions">
+                      <Link
+                        className="btn btn-primary btn-sm"
+                        href={`/start/interested?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
+                      >
+                        Interested
+                      </Link>
+                      <Link
+                        className="btn btn-secondary btn-sm"
+                        href={`/start/follow-up?phone=${encodeURIComponent(lookupResult.phoneInput)}`}
+                      >
+                        Follow Up
+                      </Link>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={onNotInterested}
+                        disabled={notInterestedBusy}
+                        type="button"
+                      >
+                        {notInterestedBusy ? "Logging..." : "Not Interested"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            ) : null}
+          </section>
 
-        <div className="shell-credit-wrap">
-          <a
-            className="shell-credit-pill"
-            href="https://itmetasolutions.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Design &amp; Development by IT Meta Solutions
-          </a>
+          <main className="workspace-page">{children}</main>
+
+          <div className="shell-credit-wrap">
+            <a
+              className="shell-credit-pill"
+              href="https://itmetasolutions.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Design &amp; Development by IT Meta Solutions
+            </a>
+          </div>
         </div>
       </div>
 
       <FloatingChat userId={userId} contacts={chatContacts} />
-    </div>
+    </>
   );
 }

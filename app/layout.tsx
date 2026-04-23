@@ -1,9 +1,21 @@
 import type { Metadata } from "next";
+import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
+import "./portal-redesign.css";
 import { getAuthSession } from "@/server/auth";
 import { AppShell } from "@/components/app-shell";
 
 export const dynamic = "force-dynamic";
+
+const sansFont = Manrope({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const displayFont = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   title: "More Homes Group - Letting Agency Portal",
@@ -26,7 +38,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <body className={`${sansFont.variable} ${displayFont.variable}`}>
         <AppShell session={sessionData}>{children}</AppShell>
       </body>
     </html>

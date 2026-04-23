@@ -10,13 +10,6 @@ const querySchema = z.object({
   to: z.string().date().optional(),
 });
 
-function dateRangeForDay(dateStr: string): { gte: Date; lt: Date } {
-  const d = new Date(dateStr);
-  const next = new Date(d);
-  next.setDate(next.getDate() + 1);
-  return { gte: d, lt: next };
-}
-
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;

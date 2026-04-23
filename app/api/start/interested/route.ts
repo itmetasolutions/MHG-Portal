@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
   const postcode = payload.property.postcode.toUpperCase().trim();
 
   const result = await db.$transaction(async (tx) => {
-    let landlord = existingLandlord
+    const landlord = existingLandlord
       ? await tx.landlord.findUniqueOrThrow({ where: { id: existingLandlord.id }, select: { id: true, ownerAgentId: true, phoneLast10: true, landlordName: true } })
       : await tx.landlord.create({
           data: {
