@@ -399,7 +399,7 @@ export default function EditPropertyPage({ params }: Props) {
 
             {/* Status & Reference */}
             <div className="form-section-divider">
-              <span className="form-section-label">Status &amp; Reference</span>
+              <span className="form-section-label">Status & Reference</span>
             </div>
 
             <div className="field-grid-2">
@@ -449,8 +449,11 @@ export default function EditPropertyPage({ params }: Props) {
             </div>
 
             <PropertyMediaLibrary
-              selectedAssetIds={selectedMediaIds}
-              onChange={setSelectedMediaIds}
+              selectedAssets={selectedMediaIds.map((mediaAssetId) => ({
+                mediaAssetId,
+                altText: "Property photo",
+              }))}
+              onChange={(mediaAssets) => setSelectedMediaIds(mediaAssets.map((asset) => asset.mediaAssetId))}
               disabled={saving}
             />
 

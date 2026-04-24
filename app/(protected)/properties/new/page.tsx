@@ -438,8 +438,11 @@ export default function AddPropertyPage() {
                 </div>
 
                 <PropertyMediaLibrary
-                  selectedAssetIds={selectedMediaIds}
-                  onChange={setSelectedMediaIds}
+                  selectedAssets={selectedMediaIds.map((mediaAssetId) => ({
+                    mediaAssetId,
+                    altText: "Property photo",
+                  }))}
+                  onChange={(mediaAssets) => setSelectedMediaIds(mediaAssets.map((asset) => asset.mediaAssetId))}
                   disabled={saving}
                 />
 
@@ -621,7 +624,7 @@ export default function AddPropertyPage() {
                 )}
 
                 <div className="form-section-divider">
-                  <span className="form-section-label">Reference &amp; Status</span>
+                  <span className="form-section-label">Reference & Status</span>
                 </div>
 
                 <div className="field-grid-2">

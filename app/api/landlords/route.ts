@@ -1,105 +1,23 @@
-import { Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { normalizeUkPhone } from "@/server/phone";
-import { canCreateLandlord, canViewLandlordRegistry } from "@/server/policies";
+import { requireUser } from "@/server/auth/requireUser";
+import { normalizeNamePart, normalizePhone } from "@/server/portal/normalize";
 
-const createLandlordSchema = z
-  .object({
-    fullName: z.string().trim().min(1, "fullName is required"),
-    phone: z.string().trim().min(1, "phone is required"),
-    email: z.string().trim().email("email must be valid").optional(),
-    notes: z.string().trim().max(5000).optional(),
-    ownerAgentId: z.string().uuid().optional(),
-  })
-  .strict();
+const prisma = db as any;
 
-const listQuerySchema = z
-  .object({
-    search: z.string().trim().min(1).optional(),
-    agent: z.string().trim().min(1).optional(),
-    phoneLast10: z.string().trim().regex(/^\d{10}$/).optional(),
-    mine: z.coerce.boolean().optional(),
-    dateFrom: z.coerce.date().optional(),
-    dateTo: z.coerce.date().optional(),
-    page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(200).default(50),
-  })
-  .superRefine((value, ctx) => {
-    if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "dateFrom must be before or equal to dateTo",
-      });
-    }
-  });
-
-const landlordListSelect = Prisma.validator<Prisma.LandlordSelect>()({
-  id: true,
-  landlordName: true,
-  landlordNumber: true,
-  phoneE164: true,
-  phoneLast10: true,
-  email: true,
-  notes: true,
-  isPassive: true,
-  passiveMarkedAt: true,
-  createdAt: true,
-  updatedAt: true,
-  ownerAgent: {
-    select: {
-      id: true,
-      agentDisplayName: true,
-    },
-  },
-  _count: {
-    select: {
-      properties: true,
-    },
-  },
-});
-
-const conflictSelect = Prisma.validator<Prisma.LandlordSelect>()({
-  id: true,
-  landlordName: true,
-  phoneE164: true,
-  phoneLast10: true,
-  ownerAgentId: true,
-  createdAt: true,
-  ownerAgent: {
-    select: {
-      id: true,
-      agentDisplayName: true,
-    },
-  },
-});
-
-type LandlordConflictSummary = Prisma.LandlordGetPayload<{ select: typeof conflictSelect }>;
-
-function conflictResponse(existingLandlord: LandlordConflictSummary) {
-  return NextResponse.json(
-    {
-      error: "LANDLORD_PHONE_CONFLICT",
-      message: "A landlord already exists with this phone (last 10 digits).",
-      existingLandlord,
-    },
-    { status: 409 },
-  );
-}
-
-async function ensureOwnerAgent(ownerAgentId: string) {
-  const ownerAgent = await db.user.findUnique({
-    where: { id: ownerAgentId },
-    select: { id: true, role: true, isActive: true },
-  });
-
-  if (!ownerAgent || !ownerAgent.isActive || ownerAgent.role !== "AGENT") {
-    return null;
-  }
-
-  return ownerAgent;
+function mapLandlord(landlord: any) {
+  return {
+    id: landlord.id,
+    landlordName: landlord.landlordName,
+    landlordNumber: landlord.landlordNumber,
+    phoneE164: landlord.phoneE164,
+    phoneLast10: landlord.phoneLast10,
+    email: landlord.email,
+    notes: landlord.notes,
+    ownerAgentId: landlord.ownerAgentId,
+    createdAt: landlord.createdAt,
+    updatedAt: landlord.updatedAt,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -108,124 +26,49 @@ export async function GET(request: NextRequest) {
     return auth.response;
   }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) {
-    return roleCheck.response;
-  }
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const phone = url.searchParams.get("phone")?.trim() ?? "";
+  const onlyMine = auth.user.role !== "ADMIN";
 
-  if (!canViewLandlordRegistry(auth.user)) {
-    return NextResponse.json({ error: "FORBIDDEN", message: "Access denied." }, { status: 403 });
-  }
+  const phoneDigits = phone ? phone.replace(/\D/g, "").slice(-10) : "";
+  const normalizedPhone = phone ? normalizePhone(phone) : null;
 
-  const queryParse = listQuerySchema.safeParse({
-    search: request.nextUrl.searchParams.get("search") ?? undefined,
-    agent: request.nextUrl.searchParams.get("agent") ?? undefined,
-    phoneLast10: request.nextUrl.searchParams.get("phoneLast10") ?? undefined,
-    mine: request.nextUrl.searchParams.get("mine") ?? undefined,
-    dateFrom: request.nextUrl.searchParams.get("dateFrom") ?? undefined,
-    dateTo: request.nextUrl.searchParams.get("dateTo") ?? undefined,
-    page: request.nextUrl.searchParams.get("page") ?? undefined,
-    pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
+  const landlords = await prisma.landlord.findMany({
+    where: {
+      ...(onlyMine ? { ownerAgentId: auth.user.id } : {}),
+      ...(q
+        ? {
+            OR: [
+              { landlordName: { contains: q, mode: "insensitive" } },
+              { landlordNumber: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+      ...(normalizedPhone && normalizedPhone.ok ? { phoneLast10: normalizedPhone.phoneLast10 } : {}),
+      ...(!normalizedPhone && phoneDigits ? { phoneLast10: phoneDigits } : {}),
+    },
+    include: {
+      ownerAgent: {
+        select: {
+          id: true,
+          agentDisplayName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 200,
   });
 
-  if (!queryParse.success) {
-    return NextResponse.json(
-      {
-        error: "INVALID_QUERY",
-        message: "Invalid query parameters.",
-        details: queryParse.error.flatten(),
-      },
-      { status: 400 },
-    );
-  }
-
-  const { search, agent, phoneLast10, mine, dateFrom, dateTo, page, pageSize } = queryParse.data;
-  const where: Prisma.LandlordWhereInput = {};
-
-  if (search) {
-    where.OR = [
-      { landlordName: { contains: search, mode: "insensitive" } },
-      { phoneLast10: { contains: search } },
-      { phoneE164: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-    ];
-  }
-
-  if (phoneLast10) {
-    where.phoneLast10 = phoneLast10;
-  }
-
-  if (auth.user.role === "AGENT") {
-    where.ownerAgentId = auth.user.id;
-  } else if (mine) {
-    where.ownerAgentId = auth.user.id;
-  }
-
-  if (auth.user.role === "ADMIN" && agent) {
-    where.ownerAgent = {
-      is: {
-        OR: [
-          { id: agent },
-          { email: { contains: agent, mode: "insensitive" } },
-          { agentDisplayName: { contains: agent, mode: "insensitive" } },
-        ],
-      },
-    };
-  }
-
-  if (dateFrom || dateTo) {
-    const createdAt: Prisma.DateTimeFilter = {};
-    if (dateFrom) {
-      createdAt.gte = dateFrom;
-    }
-    if (dateTo) {
-      const inclusiveDateTo = new Date(dateTo);
-      inclusiveDateTo.setHours(23, 59, 59, 999);
-      createdAt.lte = inclusiveDateTo;
-    }
-    where.createdAt = createdAt;
-  }
-
-  // Auto-passive sync: mark landlords with no sale after 7 months (210 days)
-  const passiveCutoff = new Date(Date.now() - 210 * 24 * 60 * 60 * 1000);
-  await Promise.all([
-    db.landlord.updateMany({
-      where: {
-        createdAt: { lt: passiveCutoff },
-        isPassive: false,
-        properties: { none: { sales: { some: {} } } },
-      },
-      data: { isPassive: true, passiveMarkedAt: new Date() },
-    }),
-    db.landlord.updateMany({
-      where: {
-        isPassive: true,
-        properties: { some: { sales: { some: {} } } },
-      },
-      data: { isPassive: false, passiveMarkedAt: null },
-    }),
-  ]);
-
-  const skip = (page - 1) * pageSize;
-  const [total, landlords] = await db.$transaction([
-    db.landlord.count({ where }),
-    db.landlord.findMany({
-      where,
-      skip,
-      take: pageSize,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      select: landlordListSelect,
-    }),
-  ]);
-
   return NextResponse.json({
-    landlords,
-    pagination: {
-      page,
-      pageSize,
-      total,
-      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
-    },
+    landlords: landlords.map((landlord: any) => ({
+      ...mapLandlord(landlord),
+      ownerAgent: landlord.ownerAgent,
+    })),
   });
 }
 
@@ -235,174 +78,56 @@ export async function POST(request: NextRequest) {
     return auth.response;
   }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) {
-    return roleCheck.response;
-  }
+  const body = await request.json().catch(() => null);
+  const firstName = String(body?.firstName ?? body?.landlordFirstName ?? "").trim();
+  const lastName = String(body?.lastName ?? body?.landlordLastName ?? "").trim();
+  const phoneInput = String(body?.phoneNo ?? body?.phone ?? body?.landlordNumber ?? "").trim();
+  const email = body?.email ? String(body.email).trim() : null;
 
-  let payload: z.infer<typeof createLandlordSchema>;
-  try {
-    payload = createLandlordSchema.parse(await request.json());
-  } catch (error) {
+  if (!firstName || !lastName || !phoneInput) {
     return NextResponse.json(
-      {
-        error: "INVALID_REQUEST",
-        message: "Invalid landlord payload.",
-        details: error instanceof z.ZodError ? error.flatten() : undefined,
-      },
+      { error: "FIRST_NAME_LAST_NAME_PHONE_REQUIRED" },
       { status: 400 },
     );
   }
 
-  const normalizedPhone = normalizeUkPhone(payload.phone);
+  const normalizedPhone = normalizePhone(phoneInput);
   if (!normalizedPhone.ok) {
-    return NextResponse.json(
-      {
-        error: "INVALID_PHONE",
-        message: normalizedPhone.message,
-      },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: normalizedPhone.message }, { status: 400 });
   }
 
-  const ownerAgentId =
-    auth.user.role === "ADMIN" ? payload.ownerAgentId ?? auth.user.id : auth.user.id;
-
-  if (!canCreateLandlord(auth.user, ownerAgentId)) {
-    return NextResponse.json(
-      {
-        error: "FORBIDDEN",
-        message: "You cannot create landlords for another owner.",
-      },
-      { status: 403 },
-    );
-  }
-
-  if (auth.user.role === "ADMIN" && !payload.ownerAgentId) {
-    return NextResponse.json(
-      {
-        error: "OWNER_AGENT_REQUIRED",
-        message: "ownerAgentId is required when an admin creates a landlord.",
-      },
-      { status: 400 },
-    );
-  }
-
-  const ownerAgent = await ensureOwnerAgent(ownerAgentId);
-  if (!ownerAgent) {
-    return NextResponse.json(
-      {
-        error: "INVALID_OWNER_AGENT",
-        message: "ownerAgentId must reference an active AGENT user.",
-      },
-      { status: 400 },
-    );
-  }
-
-  const existingLandlord = await db.landlord.findUnique({
+  const landlordName = `${normalizeNamePart(firstName)} ${normalizeNamePart(lastName)}`.trim();
+  const existing = await prisma.landlord.findUnique({
     where: {
       phoneLast10: normalizedPhone.phoneLast10,
     },
-    select: conflictSelect,
   });
 
-  if (existingLandlord) {
-    return conflictResponse(existingLandlord);
-  }
-
-  // Check for active potential-landlord lock held by a different agent
-  const lockCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const potentialLock = await db.potentialLandlord.findFirst({
-    where: {
-      phoneLast10: normalizedPhone.phoneLast10,
-      createdAt: { gte: lockCutoff },
-      NOT: { addedByAgentId: ownerAgentId },
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      createdAt: true,
-      addedByAgent: { select: { agentDisplayName: true } },
-    },
-  });
-
-  if (potentialLock) {
-    const lockExpiry = new Date(potentialLock.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return NextResponse.json(
-      {
-        error: "POTENTIAL_LANDLORD_LOCKED",
-        message: `This landlord is currently locked by ${potentialLock.addedByAgent.agentDisplayName} until ${lockExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. You cannot add their property yet.`,
-      },
-      { status: 409 },
-    );
-  }
-
-  try {
-    const landlord = await db.$transaction(async (tx) => {
-      const created = await tx.landlord.create({
+  const landlord = existing
+    ? await prisma.landlord.update({
+        where: { id: existing.id },
         data: {
-          landlordName: payload.fullName,
-          landlordNumber: normalizedPhone.phoneLast10,
+          landlordName,
+          landlordNumber: phoneInput,
+          phoneE164: normalizedPhone.phoneE164,
+          email,
+          updatedByUserId: auth.user.id,
+        },
+      })
+    : await prisma.landlord.create({
+        data: {
+          landlordName,
+          landlordNumber: phoneInput,
           phoneE164: normalizedPhone.phoneE164,
           phoneLast10: normalizedPhone.phoneLast10,
-          email: payload.email?.trim() || null,
-          notes: payload.notes?.trim() || null,
+          email,
           createdByUserId: auth.user.id,
           updatedByUserId: auth.user.id,
-          ownerAgentId: ownerAgent.id,
-        },
-        select: {
-          id: true,
-          landlordName: true,
-          landlordNumber: true,
-          phoneE164: true,
-          phoneLast10: true,
-          email: true,
-          notes: true,
-          ownerAgentId: true,
-          createdAt: true,
-          updatedAt: true,
-          ownerAgent: {
-            select: {
-              id: true,
-              agentDisplayName: true,
-            },
-          },
+          ownerAgentId: auth.user.id,
         },
       });
 
-      await tx.auditLog.create({
-        data: {
-          userId: auth.user.id,
-          entityType: "LANDLORD",
-          entityId: created.id,
-          action: "CREATE_LANDLORD",
-          metadata: {
-            phoneLast10: created.phoneLast10,
-            ownerAgentId: created.ownerAgentId,
-          },
-          beforeJson: Prisma.JsonNull,
-          afterJson: created,
-        },
-      });
-
-      return created;
-    });
-
-    return NextResponse.json({ landlord }, { status: 201 });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      const duplicate = await db.landlord.findUnique({
-        where: {
-          phoneLast10: normalizedPhone.phoneLast10,
-        },
-        select: conflictSelect,
-      });
-
-      if (duplicate) {
-        return conflictResponse(duplicate);
-      }
-    }
-
-    throw error;
-  }
+  return NextResponse.json({
+    landlord: mapLandlord(landlord),
+  });
 }

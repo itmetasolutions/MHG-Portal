@@ -1,89 +1,67 @@
-import { CallRecordStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { requireUser } from "@/server/auth/requireUser";
+import { createWorkflowCallLog } from "@/server/portal/workflows";
 
-const createCallRecordSchema = z.object({
-  phoneNumber: z.string().trim().min(1, "Phone number is required"),
-  status: z.nativeEnum(CallRecordStatus).default(CallRecordStatus.CONNECTED),
-  notes: z.string().trim().nullable().optional(),
-}).strict();
+const prisma = db as any;
+
+const ALLOWED_OUTCOMES = new Set(["CONFIRMED", "FOLLOW_UP", "NOT_INTERESTED"]);
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
+  const url = new URL(request.url);
+  const phone = url.searchParams.get("phone")?.trim() ?? "";
+  const outcome = url.searchParams.get("outcome")?.trim() ?? "";
+  const take = Math.min(Number(url.searchParams.get("take") ?? 100), 200);
 
-  const { searchParams } = new URL(request.url);
-  const dateFrom = searchParams.get("dateFrom");
-  const dateTo = searchParams.get("dateTo");
-
-  const records = await db.callRecord.findMany({
+  const records = await prisma.callRecord.findMany({
     where: {
       agentId: auth.user.id,
-      ...(dateFrom || dateTo ? {
-        createdAt: {
-          ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
-          ...(dateTo ? { lte: new Date(dateTo + "T23:59:59.999Z") } : {}),
-        },
-      } : {}),
+      ...(phone ? { phoneNumber: { contains: phone, mode: "insensitive" } } : {}),
+      ...(outcome && ALLOWED_OUTCOMES.has(outcome) ? { outcome } : {}),
     },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      phoneNumber: true,
-      status: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-      convertedToLandlordId: true,
-      convertedToTenantId: true,
-      convertedLandlord: { select: { id: true, landlordName: true } },
-      convertedTenant: { select: { id: true, fullName: true } },
+    orderBy: {
+      createdAt: "desc",
     },
+    take: Number.isFinite(take) && take > 0 ? take : 100,
   });
 
-  return NextResponse.json({ records });
+  return NextResponse.json({
+    records,
+  });
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  let payload: z.infer<typeof createCallRecordSchema>;
-  try {
-    payload = createCallRecordSchema.parse(await request.json());
-  } catch (error) {
-    return NextResponse.json(
-      { error: "INVALID_REQUEST", message: "Invalid call record payload.", details: error instanceof z.ZodError ? error.flatten() : undefined },
-      { status: 400 },
-    );
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  const record = await db.callRecord.create({
-    data: {
-      agentId: auth.user.id,
-      phoneNumber: payload.phoneNumber,
-      status: payload.status,
-      notes: payload.notes ?? null,
-    },
-    select: {
-      id: true,
-      phoneNumber: true,
-      status: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-      convertedToLandlordId: true,
-      convertedToTenantId: true,
-    },
+  const body = await request.json().catch(() => null);
+  const phoneNo = String(body?.phoneNo ?? body?.phone ?? "").trim();
+  const outcome = String(body?.outcome ?? "").trim();
+
+  if (!phoneNo || !ALLOWED_OUTCOMES.has(outcome)) {
+    return NextResponse.json({ error: "PHONE_AND_VALID_OUTCOME_REQUIRED" }, { status: 400 });
+  }
+
+  const record = await createWorkflowCallLog({
+    agentId: auth.user.id,
+    phoneNo,
+    outcome: outcome as "CONFIRMED" | "FOLLOW_UP" | "NOT_INTERESTED",
+    notes: body?.notes ? String(body.notes).trim() : null,
+    landlordName: body?.landlordName ? String(body.landlordName).trim() : null,
+    landlordId: body?.landlordId ?? null,
+    propertyId: body?.propertyId ?? null,
+    potentialLandlordId: body?.potentialLandlordId ?? null,
+    scheduledFollowUpAt: body?.scheduledFollowUpAt ?? null,
   });
 
-  return NextResponse.json({ record }, { status: 201 });
+  return NextResponse.json({
+    callRecord: record,
+  });
 }

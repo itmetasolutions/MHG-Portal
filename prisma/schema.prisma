@@ -23,6 +23,17 @@ enum PropertyStatus {
   CLOSED
 }
 
+enum PropertyCategory {
+  PRIVATE
+  SHARED
+}
+
+enum WorkflowCallOutcome {
+  CONFIRMED
+  FOLLOW_UP
+  NOT_INTERESTED
+}
+
 enum VacancyType {
   SINGLE
   MULTIPLE
@@ -117,6 +128,7 @@ model User {
   dialerDomainUpdates DialerDomainConfig[]    @relation("DialerDomainUpdatedBy")
   potentialTenants    PotentialTenant[]       @relation("PotentialTenantAddedBy")
   potentialLandlords  PotentialLandlord[]     @relation("PotentialLandlordAddedBy")
+  continuedPotentialLandlords PotentialLandlord[] @relation("PotentialLandlordContinuedBy")
   addedTenants        Tenant[]                @relation("TenantAddedBy")
   dailyReports        DailyReport[]           @relation("DailyReportAgent")
   callRecords         CallRecord[]            @relation("CallRecordAgent")
@@ -126,6 +138,7 @@ model User {
   requestedEditApprovals EditApproval[]       @relation("RequestedEditApprovals")
   reviewedEditApprovals  EditApproval[]       @relation("ReviewedEditApprovals")
   uploadedMediaAssets    MediaAsset[]         @relation("MediaAssetUploadedBy")
+  landlordLookupEvents   LandlordLookupEvent[] @relation("LandlordLookupAgent")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -150,8 +163,9 @@ model Landlord {
   createdBy   User         @relation("LandlordCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   updatedBy   User         @relation("LandlordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   ownerAgent  User         @relation("LandlordOwnerAgent", fields: [ownerAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  properties  Property[]
-  callRecords CallRecord[] @relation("CallRecordLandlord")
+  properties   Property[]
+  callRecords  CallRecord[] @relation("CallRecordLandlord")
+  lookupEvents  LandlordLookupEvent[] @relation("LookupEventLandlord")
 
   @@index([landlordName])
   @@index([landlordNumber])
@@ -172,17 +186,21 @@ model Property {
   city                  String?
   county                String?
   postcode              String?
+  postcodeCanonical     String?
   propertyType          String?
   beds                  Int?
   baths                 Int?
   status                PropertyStatus @default(DRAFT)
   vacancyType           VacancyType    @default(SINGLE)
+  propertyCategory      PropertyCategory @default(PRIVATE)
+  isSharedProperty      Boolean        @default(false)
   landlordDemand        Decimal?       @db.Decimal(14, 2)
   expectedCommissionPct Decimal?       @db.Decimal(5, 2)
   expectedCommissionAmt Decimal?       @db.Decimal(14, 2)
   totalRooms            Int?
   availableRooms        Int?
   rentPerMonth          Decimal?       @db.Decimal(14, 2)
+  rentPerWeek           Decimal?       @db.Decimal(14, 2)
   depositAmount         Decimal?       @db.Decimal(14, 2)
   isFurnished           Boolean?
   personsAllowed        Int?
@@ -207,6 +225,7 @@ model Property {
   @@index([status])
   @@index([city])
   @@index([postcode])
+  @@index([postcodeCanonical])
   @@index([createdAt])
   @@index([ownerAgentId, createdAt])
   @@index([landlordId, createdAt])
@@ -232,6 +251,7 @@ model PropertyMedia {
   propertyId   String @db.Uuid
   mediaAssetId String @db.Uuid
   sortOrder    Int    @default(0)
+  altText      String?
 
   property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -269,6 +289,8 @@ model PropertyRoom {
   roomName              String
   landlordDemand        Decimal?    @db.Decimal(14, 2)
   expectedCommissionPct Decimal?    @db.Decimal(5, 2)
+  rentPerWeek           Decimal?    @db.Decimal(14, 2)
+  sortOrder             Int         @default(0)
   status                RoomStatus  @default(AVAILABLE)
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
@@ -280,20 +302,30 @@ model PropertyRoom {
 }
 
 model Tenant {
-  id             String    @id @default(uuid()) @db.Uuid
-  saleId         String?   @unique @db.Uuid
-  addedByAgentId String?   @db.Uuid
-  fullName       String
-  email          String?
-  phone          String?
-  phoneLast10    String?
-  currentAddress String?
-  moveInDate     DateTime?
-  rentAmount     Decimal?  @db.Decimal(14, 2)
-  depositAmount  Decimal?  @db.Decimal(14, 2)
-  notes          String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                  String    @id @default(uuid()) @db.Uuid
+  saleId              String?   @unique @db.Uuid
+  addedByAgentId      String?   @db.Uuid
+  fullName            String
+  email               String?
+  phone               String?
+  phoneE164           String?
+  phoneLast10         String?
+  currentAddress      String?
+  postcode            String?
+  postcodeCanonical   String?
+  preferredArea       String?
+  budgetMin           Decimal?  @db.Decimal(14, 2)
+  budgetMax           Decimal?  @db.Decimal(14, 2)
+  moveInDate          DateTime?
+  moveInFlexible      Boolean?
+  householdSize       Int?
+  petsAllowed         Boolean?
+  childrenAllowed     Boolean?
+  rentAmount          Decimal?  @db.Decimal(14, 2)
+  depositAmount       Decimal?  @db.Decimal(14, 2)
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   sale         Sale?        @relation(fields: [saleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   addedByAgent User?        @relation("TenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -303,6 +335,7 @@ model Tenant {
   @@index([fullName])
   @@index([createdAt])
   @@index([phoneLast10])
+  @@index([postcodeCanonical])
   @@index([addedByAgentId])
 }
 
@@ -463,36 +496,79 @@ model DialerCall {
 }
 
 model PotentialTenant {
-  id           String   @id @default(uuid()) @db.Uuid
-  addedByAgent User     @relation("PotentialTenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  addedByAgentId String @db.Uuid
-  fullName     String
-  email        String?
-  phone        String?
-  interestedIn String?
-  budget       String?
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([addedByAgentId, createdAt])
-  @@index([createdAt])
-  @@index([fullName])
-}
-
-model PotentialLandlord {
   id             String   @id @default(uuid()) @db.Uuid
-  addedByAgent   User     @relation("PotentialLandlordAddedBy", fields: [addedByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  addedByAgent   User     @relation("PotentialTenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   addedByAgentId String   @db.Uuid
   fullName       String
-  phone          String
-  phoneLast10    String
+  email          String?
+  phone          String?
+  phoneLast10    String?
+  phoneE164      String?
+  postcode       String?
+  postcodeCanonical String?
+  preferredArea  String?
+  interestedIn   String?
+  budget         String?
+  budgetMin      String?
+  budgetMax      String?
+  moveInDate     DateTime?
+  moveInFlexible  Boolean?
+  notes          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([addedByAgentId, createdAt])
   @@index([createdAt])
+  @@index([fullName])
   @@index([phoneLast10])
+}
+
+model PotentialLandlord {
+  id                       String   @id @default(uuid()) @db.Uuid
+  addedByAgent             User     @relation("PotentialLandlordAddedBy", fields: [addedByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  addedByAgentId           String   @db.Uuid
+  fullName                 String
+  phone                    String
+  phoneLast10              String
+  phoneE164                String?
+  followUpScheduledAt      DateTime?
+  followUpLockedUntil      DateTime?
+  followUpContinuedAt      DateTime?
+  followUpContinuedByUserId String?  @db.Uuid
+  isFollowUpLocked         Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  followUpContinuedBy User? @relation("PotentialLandlordContinuedBy", fields: [followUpContinuedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  lookupEvents        LandlordLookupEvent[] @relation("LookupEventPotentialLandlord")
+
+  @@index([addedByAgentId, createdAt])
+  @@index([createdAt])
+  @@index([phoneLast10])
+}
+
+model LandlordLookupEvent {
+  id                  String   @id @default(uuid()) @db.Uuid
+  agentId             String   @db.Uuid
+  phoneNo             String
+  phoneLast10         String
+  phoneE164           String?
+  ownershipState      String
+  landlordId          String?  @db.Uuid
+  potentialLandlordId  String?  @db.Uuid
+  isLocked            Boolean  @default(false)
+  lockedUntil         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  agent            User              @relation("LandlordLookupAgent", fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  landlord         Landlord?         @relation("LookupEventLandlord", fields: [landlordId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  potentialLandlord PotentialLandlord? @relation("LookupEventPotentialLandlord", fields: [potentialLandlordId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([agentId, createdAt])
+  @@index([phoneLast10])
+  @@index([landlordId])
+  @@index([potentialLandlordId])
 }
 
 model DailyReport {
@@ -507,6 +583,13 @@ model DailyReport {
   viewingsArranged   Int      @default(0)
   successfulViewings Int      @default(0)
   followUp           Int      @default(0)
+  confirmedCalls     Int      @default(0)
+  followUpCalls      Int      @default(0)
+  notInterestedCalls Int      @default(0)
+  lookupEvents       Int      @default(0)
+  propertiesCreated  Int      @default(0)
+  tenantsCreated     Int      @default(0)
+  workflowSummary    Json?
   reSchedule         Int      @default(0)
   notes              String?
   createdAt          DateTime @default(now())
@@ -546,7 +629,14 @@ model CallRecord {
   id                    String           @id @default(uuid()) @db.Uuid
   agentId               String           @db.Uuid
   phoneNumber           String
+  phoneLast10           String?
+  phoneE164             String?
   status                CallRecordStatus @default(CONNECTED)
+  outcome               WorkflowCallOutcome?
+  landlordName          String?
+  followUpAt            DateTime?
+  propertyId            String?          @db.Uuid
+  potentialLandlordId   String?          @db.Uuid
   notes                 String?
   convertedToLandlordId String?          @db.Uuid
   convertedToTenantId   String?          @db.Uuid
@@ -560,6 +650,8 @@ model CallRecord {
   @@index([agentId, createdAt])
   @@index([createdAt])
   @@index([phoneNumber])
+  @@index([propertyId])
+  @@index([potentialLandlordId])
 }
 
 model Notification {

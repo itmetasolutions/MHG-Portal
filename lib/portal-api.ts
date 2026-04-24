@@ -1,10 +1,101 @@
 import { apiDelete, apiGet, apiPatch, apiPost, type ApiResult } from "./api-client";
+import { normalizePhoneNo, normalizePostcode } from "./normalize";
 
 export type SessionRole = "ADMIN" | "AGENT";
 
 export type PropertyStatus = "DRAFT" | "AVAILABLE" | "CLOSED";
 export type VacancyType = "SINGLE" | "MULTIPLE";
 export type RoomStatus = "AVAILABLE" | "UNDER_OFFER" | "CLOSED";
+
+export type WorkflowCallOutcome = "CONFIRMED" | "FOLLOW_UP" | "NOT_INTERESTED";
+
+export type DialingArea = "AREA_1" | "AREA_2" | "AREA_3" | "AREA_4" | "AREA_5";
+
+export type PropertyMediaSelection = {
+  mediaAssetId: string;
+  altText: string;
+};
+
+export type PotentialLandlordRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phoneNo: string;
+  phoneE164: string | null;
+  phoneLast10: string;
+  email: string | null;
+  notes: string | null;
+  followUpAt: string | null;
+  lockUntil: string | null;
+  canContinue: boolean;
+  continuationLeadId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  addedByAgent: {
+    id: string;
+    agentDisplayName: string;
+  };
+};
+
+export type PotentialTenantRow = {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phoneNo: string | null;
+  currentAddress: string | null;
+  currentPostcode: string | null;
+  preferredPostcode: string | null;
+  interestedIn: string | null;
+  budget: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  addedByAgent: {
+    id: string;
+    agentDisplayName: string;
+  };
+};
+
+export type WorkflowCallRecordRow = {
+  id: string;
+  phoneNo: string;
+  outcome: WorkflowCallOutcome;
+  landlordName: string | null;
+  landlordId: string | null;
+  propertyId: string | null;
+  propertyRef: string | null;
+  followUpAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  agent: {
+    id: string;
+    agentDisplayName: string;
+    email: string;
+  };
+};
+
+export type DailyReportSummaryRow = {
+  id: string;
+  reportDate: string;
+  agent?: {
+    id: string;
+    agentDisplayName: string;
+    email: string;
+  };
+  dialingArea: DialingArea | null;
+  callsMade: number;
+  callsConnected: number;
+  callsFailed: number;
+  landlordConfirm: number;
+  viewingsArranged: number;
+  successfulViewings: number;
+  followUp: number;
+  reSchedule: number;
+  notes: string | null;
+  createdAt: string;
+};
 
 export type TenantRow = {
   id: string;
@@ -395,11 +486,15 @@ export type LandlordLookupResponse = {
   ownershipConflict: boolean;
   canCreateLandlord: boolean;
   canCreateProperty: boolean;
+  lockUntil: string | null;
+  leadId: string | null;
   landlord: (LandlordRow & { ownerAgentId: string; _count: { properties: number } }) | null;
 };
 
 export type RoomDraftInput = {
   roomName: string;
+  rentPerMonth?: number | string | null;
+  rentPerWeek?: number | string | null;
   landlordDemand?: number | string | null;
   expectedCommissionPct?: number | string | null;
 };
@@ -415,6 +510,7 @@ export type PropertyDraftPayload = {
   county?: string | null;
   postcode?: string | null;
   propertyType?: string | null;
+  propertyCategory?: "PRIVATE" | "SHARED";
   beds?: number | null;
   baths?: number | null;
   status?: PropertyStatus;
@@ -424,8 +520,9 @@ export type PropertyDraftPayload = {
   expectedCommissionAmt?: number | string | null;
   totalRooms?: number | null;
   availableRooms?: number | null;
-  rentPerMonth?: number | null;
-  depositAmount?: number | null;
+  rentPerMonth?: number | string | null;
+  rentPerWeek?: number | string | null;
+  depositAmount?: number | string | null;
   isFurnished?: boolean | null;
   personsAllowed?: number | null;
   petsAllowed?: boolean | null;
@@ -434,6 +531,7 @@ export type PropertyDraftPayload = {
   availabilityDate?: string | null;
   livingLandlord?: boolean | null;
   mediaAssetIds?: string[];
+  mediaAssets?: PropertyMediaSelection[];
   rooms?: RoomDraftInput[];
 };
 
@@ -441,10 +539,15 @@ export type CloseSaleTenantPayload = {
   fullName: string;
   email?: string;
   phone?: string;
+  phoneNo?: string;
   currentAddress?: string;
+  currentPostcode?: string;
+  preferredPostcode?: string;
   moveInDate?: string;
   rentAmount?: number;
   depositAmount?: number;
+  interestedIn?: string;
+  budget?: string;
   notes?: string;
 };
 
@@ -454,6 +557,149 @@ export type CloseSalePayload = {
   otherCosts?: number;
   tenant: CloseSaleTenantPayload;
 };
+
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: "", lastName: "" };
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+function normalizeLandlordCreatePayload(
+  payload:
+    | {
+        firstName: string;
+        lastName: string;
+        phoneNo: string;
+        email?: string;
+        notes?: string;
+        ownerAgentId?: string;
+      }
+    | {
+        fullName: string;
+        phone: string;
+        email?: string;
+        notes?: string;
+        ownerAgentId?: string;
+      },
+) {
+  if ("firstName" in payload) {
+    return {
+      firstName: payload.firstName.trim(),
+      lastName: payload.lastName.trim(),
+      phoneNo: normalizePhoneNo(payload.phoneNo),
+      email: payload.email?.trim() || undefined,
+      notes: payload.notes?.trim() || undefined,
+      ownerAgentId: payload.ownerAgentId,
+    };
+  }
+
+  const name = splitFullName(payload.fullName);
+  return {
+    firstName: name.firstName,
+    lastName: name.lastName,
+    phoneNo: normalizePhoneNo(payload.phone),
+    email: payload.email?.trim() || undefined,
+    notes: payload.notes?.trim() || undefined,
+    ownerAgentId: payload.ownerAgentId,
+  };
+}
+
+function normalizeTenantCreatePayload(
+  payload:
+    | {
+        fullName: string;
+        phoneNo: string;
+        email?: string | null;
+        currentAddress?: string | null;
+        currentPostcode?: string | null;
+        preferredPostcode?: string | null;
+        moveInDate?: string | null;
+        rentAmount?: number | null;
+        depositAmount?: number | null;
+        interestedIn?: string | null;
+        budget?: string | null;
+        notes?: string | null;
+      }
+    | {
+        fullName: string;
+        phone: string;
+        email?: string | null;
+        currentAddress?: string | null;
+        moveInDate?: string | null;
+        rentAmount?: number | null;
+        depositAmount?: number | null;
+        notes?: string | null;
+      },
+) {
+  if ("phoneNo" in payload) {
+    return {
+      fullName: payload.fullName.trim(),
+      phoneNo: normalizePhoneNo(payload.phoneNo),
+      email: payload.email?.trim() || null,
+      currentAddress: payload.currentAddress?.trim() || null,
+      currentPostcode: payload.currentPostcode ? normalizePostcode(payload.currentPostcode) : null,
+      preferredPostcode: payload.preferredPostcode ? normalizePostcode(payload.preferredPostcode) : null,
+      moveInDate: payload.moveInDate || null,
+      rentAmount: payload.rentAmount ?? null,
+      depositAmount: payload.depositAmount ?? null,
+      interestedIn: payload.interestedIn?.trim() || null,
+      budget: payload.budget?.trim() || null,
+      notes: payload.notes?.trim() || null,
+    };
+  }
+
+  return {
+    fullName: payload.fullName.trim(),
+    phoneNo: normalizePhoneNo(payload.phone),
+    email: payload.email?.trim() || null,
+    currentAddress: payload.currentAddress?.trim() || null,
+    currentPostcode: null,
+    preferredPostcode: null,
+    moveInDate: payload.moveInDate || null,
+    rentAmount: payload.rentAmount ?? null,
+    depositAmount: payload.depositAmount ?? null,
+    interestedIn: null,
+    budget: null,
+    notes: payload.notes?.trim() || null,
+  };
+}
+
+function normalizePropertyDraftPayload(payload: PropertyDraftPayload) {
+  return {
+    ...payload,
+    propertyRef: payload.propertyRef?.trim() || undefined,
+    title: payload.title?.trim() || null,
+    description: payload.description?.trim() || null,
+    addressLine1: payload.addressLine1?.trim() || null,
+    addressLine2: payload.addressLine2?.trim() || null,
+    city: payload.city?.trim() || null,
+    county: payload.county?.trim() || null,
+    postcode: payload.postcode ? normalizePostcode(payload.postcode) : null,
+    propertyType: payload.propertyType?.trim() || null,
+    propertyCategory: payload.propertyCategory ?? undefined,
+    landlordDemand: payload.landlordDemand ?? null,
+    expectedCommissionPct: payload.expectedCommissionPct ?? null,
+    expectedCommissionAmt: payload.expectedCommissionAmt ?? null,
+    totalRooms: payload.totalRooms ?? null,
+    availableRooms: payload.availableRooms ?? null,
+    rentPerMonth: payload.rentPerMonth ?? null,
+    rentPerWeek: payload.rentPerWeek ?? null,
+    depositAmount: payload.depositAmount ?? null,
+    availabilityDate: payload.availabilityDate ?? null,
+    mediaAssets: payload.mediaAssets ?? [],
+    rooms:
+      payload.rooms?.map((room) => ({
+        roomName: room.roomName.trim(),
+        rentPerMonth: room.rentPerMonth ?? null,
+        rentPerWeek: room.rentPerWeek ?? null,
+        expectedCommissionPct: room.expectedCommissionPct ?? null,
+      })) ?? [],
+  };
+}
 
 export function fetchLandlords(params: {
   search?: string;
@@ -486,17 +732,28 @@ export function fetchLandlordsForDropdown(): Promise<ApiResult<LandlordListRespo
 export function checkLandlordNumber(
   phone: string,
 ): Promise<ApiResult<LandlordLookupResponse>> {
-  return apiGet(`/api/landlords/check-number?phone=${encodeURIComponent(phone)}`);
+  return apiGet(`/api/landlords/check-number?phone=${encodeURIComponent(normalizePhoneNo(phone))}`);
 }
 
-export function createLandlord(payload: {
-  fullName: string;
-  phone: string;
-  email?: string;
-  notes?: string;
-  ownerAgentId?: string;
-}): Promise<ApiResult<{ landlord: LandlordRow }>> {
-  return apiPost("/api/landlords", payload);
+export function createLandlord(
+  payload:
+    | {
+        firstName: string;
+        lastName: string;
+        phoneNo: string;
+        email?: string;
+        notes?: string;
+        ownerAgentId?: string;
+      }
+    | {
+        fullName: string;
+        phone: string;
+        email?: string;
+        notes?: string;
+        ownerAgentId?: string;
+      },
+): Promise<ApiResult<{ landlord: LandlordRow }>> {
+  return apiPost("/api/landlords", normalizeLandlordCreatePayload(payload));
 }
 
 export function fetchLandlordDetails(id: string): Promise<ApiResult<{ landlord: LandlordDetails }>> {
@@ -558,13 +815,17 @@ export function createLandlordProperty(
   landlordId: string,
   payload: PropertyDraftPayload,
 ): Promise<ApiResult<{ property: PropertyRow }>> {
-  return apiPost(`/api/landlords/${landlordId}/properties`, payload);
+  return apiPost(`/api/landlords/${landlordId}/properties`, normalizePropertyDraftPayload(payload));
 }
 
 export function createPropertyIntake(payload: {
-  landlord: {
+  landlordId?: string;
+  landlord?: {
+    firstName?: string;
+    lastName?: string;
     fullName?: string;
-    phone: string;
+    phoneNo?: string;
+    phone?: string;
     email?: string | null;
     notes?: string | null;
     ownerAgentId?: string;
@@ -580,9 +841,173 @@ export function createPropertyIntake(payload: {
       phoneLast10: string;
     };
     property: PropertyRow;
+    callRecord?: WorkflowCallRecordRow | null;
   }>
 > {
-  return apiPost("/api/properties/intake", payload);
+  return apiPost("/api/properties/intake", {
+    landlordId: payload.landlordId,
+    landlord: payload.landlord
+      ? payload.landlord.phoneNo || payload.landlord.phone
+        ? {
+            firstName:
+              payload.landlord.firstName ??
+              splitFullName(payload.landlord.fullName ?? "").firstName,
+            lastName:
+              payload.landlord.lastName ??
+              splitFullName(payload.landlord.fullName ?? "").lastName,
+            phoneNo: normalizePhoneNo(payload.landlord.phoneNo ?? payload.landlord.phone ?? ""),
+            email: payload.landlord.email?.trim() || undefined,
+            notes: payload.landlord.notes?.trim() || undefined,
+            ownerAgentId: payload.landlord.ownerAgentId,
+          }
+        : undefined
+      : undefined,
+    property: normalizePropertyDraftPayload(payload.property),
+  });
+}
+
+export function createPotentialLandlordLead(payload: {
+  firstName: string;
+  lastName: string;
+  phoneNo: string;
+  email?: string;
+  followUpAt?: string | null;
+  notes?: string | null;
+  continuationLeadId?: string | null;
+}): Promise<ApiResult<{ potentialLandlord: PotentialLandlordRow; callRecord?: WorkflowCallRecordRow | null }>> {
+  return apiPost("/api/potential-landlords", {
+    firstName: payload.firstName.trim(),
+    lastName: payload.lastName.trim(),
+    phoneNo: normalizePhoneNo(payload.phoneNo),
+    email: payload.email?.trim() || undefined,
+    followUpAt: payload.followUpAt ?? null,
+    notes: payload.notes?.trim() || null,
+    continuationLeadId: payload.continuationLeadId ?? null,
+  });
+}
+
+export function createFollowUpLead(payload: {
+  firstName: string;
+  lastName: string;
+  phoneNo: string;
+  email?: string;
+  followUpAt?: string | null;
+  notes?: string | null;
+  continuationLeadId?: string | null;
+}): Promise<ApiResult<{ potentialLandlord: PotentialLandlordRow; callRecord?: WorkflowCallRecordRow | null }>> {
+  return createPotentialLandlordLead(payload);
+}
+
+export function createPotentialTenant(payload: {
+  fullName: string;
+  email?: string | null;
+  phoneNo: string;
+  currentAddress?: string | null;
+  currentPostcode?: string | null;
+  preferredPostcode?: string | null;
+  moveInDate?: string | null;
+  rentAmount?: number | null;
+  depositAmount?: number | null;
+  interestedIn?: string | null;
+  budget?: string | null;
+  notes?: string | null;
+}): Promise<ApiResult<{ potentialTenant: PotentialTenantRow }>> {
+  return apiPost("/api/potential-tenants", {
+    fullName: payload.fullName.trim(),
+    email: payload.email?.trim() || null,
+    phoneNo: normalizePhoneNo(payload.phoneNo),
+    currentAddress: payload.currentAddress?.trim() || null,
+    currentPostcode: payload.currentPostcode ? normalizePostcode(payload.currentPostcode) : null,
+    preferredPostcode: payload.preferredPostcode ? normalizePostcode(payload.preferredPostcode) : null,
+    moveInDate: payload.moveInDate || null,
+    rentAmount: payload.rentAmount ?? null,
+    depositAmount: payload.depositAmount ?? null,
+    interestedIn: payload.interestedIn?.trim() || null,
+    budget: payload.budget?.trim() || null,
+    notes: payload.notes?.trim() || null,
+  });
+}
+
+export function createWorkflowCallLog(payload: {
+  phoneNo: string;
+  outcome: WorkflowCallOutcome;
+  landlordName?: string | null;
+  landlordId?: string | null;
+  propertyId?: string | null;
+  propertyRef?: string | null;
+  followUpAt?: string | null;
+  notes?: string | null;
+  leadId?: string | null;
+}): Promise<ApiResult<{ record: WorkflowCallRecordRow }>> {
+  return apiPost("/api/call-records", {
+    phoneNo: normalizePhoneNo(payload.phoneNo),
+    outcome: payload.outcome,
+    landlordName: payload.landlordName?.trim() || null,
+    landlordId: payload.landlordId ?? null,
+    propertyId: payload.propertyId ?? null,
+    propertyRef: payload.propertyRef?.trim() || null,
+    followUpAt: payload.followUpAt ?? null,
+    notes: payload.notes?.trim() || null,
+    leadId: payload.leadId ?? null,
+  });
+}
+
+export function fetchPotentialLandlords(params?: {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResult<{ potentialLandlords: PotentialLandlordRow[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } }>> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/potential-landlords${suffix}`);
+}
+
+export function fetchPotentialTenants(params?: {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResult<{ potentialTenants: PotentialTenantRow[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } }>> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/potential-tenants${suffix}`);
+}
+
+export function fetchWorkflowCallRecords(params?: {
+  search?: string;
+  outcome?: WorkflowCallOutcome;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResult<{ records: WorkflowCallRecordRow[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } }>> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.outcome) query.set("outcome", params.outcome);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/call-records${suffix}`);
+}
+
+export function fetchDailyReports(): Promise<ApiResult<{ reports: DailyReportSummaryRow[] }>> {
+  return apiGet("/api/daily-reports");
+}
+
+export function fetchAdminDailyReports(params?: {
+  agentId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<ApiResult<{ reports: DailyReportSummaryRow[] }>> {
+  const query = new URLSearchParams();
+  if (params?.agentId) query.set("agentId", params.agentId);
+  if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params?.dateTo) query.set("dateTo", params.dateTo);
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return apiGet(`/api/admin/daily-reports${suffix}`);
 }
 
 export function fetchProperties(params: {
@@ -622,7 +1047,7 @@ export function fetchProperties(params: {
   if (params.propertyRef) query.set("propertyRef", params.propertyRef);
   if (params.status) query.set("status", params.status);
   if (params.city) query.set("city", params.city);
-  if (params.postcode) query.set("postcode", params.postcode);
+  if (params.postcode) query.set("postcode", normalizePostcode(params.postcode));
   if (params.createdAt) query.set("createdAt", params.createdAt);
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));
@@ -669,17 +1094,34 @@ export function uploadMediaAssets(payload: {
   return apiPost("/api/media-library", payload);
 }
 
-export function createTenant(payload: {
-  fullName: string;
-  phone: string;
-  email?: string | null;
-  currentAddress?: string | null;
-  moveInDate?: string | null;
-  rentAmount?: number | null;
-  depositAmount?: number | null;
-  notes?: string | null;
-}): Promise<ApiResult<{ tenant: TenantRow }>> {
-  return apiPost("/api/tenants", payload);
+export function createTenant(
+  payload:
+    | {
+        fullName: string;
+        phoneNo: string;
+        email?: string | null;
+        currentAddress?: string | null;
+        currentPostcode?: string | null;
+        preferredPostcode?: string | null;
+        moveInDate?: string | null;
+        rentAmount?: number | null;
+        depositAmount?: number | null;
+        interestedIn?: string | null;
+        budget?: string | null;
+        notes?: string | null;
+      }
+    | {
+        fullName: string;
+        phone: string;
+        email?: string | null;
+        currentAddress?: string | null;
+        moveInDate?: string | null;
+        rentAmount?: number | null;
+        depositAmount?: number | null;
+        notes?: string | null;
+      },
+): Promise<ApiResult<{ tenant: TenantRow }>> {
+  return apiPost("/api/tenants", normalizeTenantCreatePayload(payload));
 }
 
 // Phone is not editable — use createTenant phone for unique ID
@@ -828,7 +1270,7 @@ export function listSales(params: {
   if (params.agent) query.set("agent", params.agent);
   if (params.status) query.set("status", params.status);
   if (params.city) query.set("city", params.city);
-  if (params.postcode) query.set("postcode", params.postcode);
+  if (params.postcode) query.set("postcode", normalizePostcode(params.postcode));
   if (params.format) query.set("format", params.format);
   if (params.page) query.set("page", String(params.page));
   if (params.pageSize) query.set("pageSize", String(params.pageSize));

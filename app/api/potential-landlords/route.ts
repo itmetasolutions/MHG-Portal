@@ -1,140 +1,169 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { normalizeUkPhone } from "@/server/phone";
+import { requireUser } from "@/server/auth/requireUser";
+import { createFollowUpLead, reserveFollowUpLock } from "@/server/portal/workflows";
+import { normalizePhone } from "@/server/portal/normalize";
 
-const createSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required"),
-  phone: z.string().trim().min(1, "Phone number is required"),
-}).strict();
+const prisma = db as any;
 
-const LOCK_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+function mapLead(lead: any, currentUserId: string) {
+  const lockedUntil = lead.followUpLockedUntil ?? null;
+  const isLocked =
+    Boolean(lockedUntil && new Date(lockedUntil).getTime() > Date.now() && lead.addedByAgentId !== currentUserId);
+  const canContinue = lead.addedByAgentId === currentUserId || !isLocked;
 
-function getLockExpiry(createdAt: Date): Date {
-  return new Date(createdAt.getTime() + LOCK_DURATION_MS);
+  return {
+    id: lead.id,
+    fullName: lead.fullName,
+    phone: lead.phone,
+    phoneLast10: lead.phoneLast10,
+    phoneE164: lead.phoneE164,
+    email: lead.email,
+    notes: lead.notes,
+    addedByAgentId: lead.addedByAgentId,
+    followUpScheduledAt: lead.followUpScheduledAt,
+    followUpLockedUntil: lockedUntil,
+    followUpContinuedAt: lead.followUpContinuedAt,
+    followUpContinuedByUserId: lead.followUpContinuedByUserId,
+    isFollowUpLocked: lead.isFollowUpLocked || isLocked,
+    canContinue,
+    addedByAgent: lead.addedByAgent,
+    followUpContinuedBy: lead.followUpContinuedBy,
+  };
 }
-
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id")?.trim() ?? url.searchParams.get("leadId")?.trim() ?? "";
+  const phone = url.searchParams.get("phone")?.trim() ?? "";
+  const onlyMine = auth.user.role !== "ADMIN";
 
-  const potentialLandlords = await db.potentialLandlord.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      phoneLast10: true,
-      createdAt: true,
+  if (id) {
+    const lead = await prisma.potentialLandlord.findUnique({
+      where: { id },
+      include: {
+        addedByAgent: {
+          select: { id: true, agentDisplayName: true, email: true },
+        },
+        followUpContinuedBy: {
+          select: { id: true, agentDisplayName: true, email: true },
+        },
+      },
+    });
+
+    if (!lead) {
+      return NextResponse.json({ lead: null }, { status: 404 });
+    }
+
+    return NextResponse.json({ lead: mapLead(lead, auth.user.id) });
+  }
+
+  const normalizedPhone = phone ? normalizePhone(phone) : null;
+  const leads = await prisma.potentialLandlord.findMany({
+    where: {
+      ...(onlyMine ? { addedByAgentId: auth.user.id } : {}),
+      ...(phone
+        ? {
+            phoneLast10:
+              normalizedPhone && normalizedPhone.ok
+                ? normalizedPhone.phoneLast10
+                : phone.replace(/\D/g, "").slice(-10),
+          }
+        : {}),
+    },
+    include: {
       addedByAgent: {
-        select: { id: true, agentDisplayName: true },
+        select: { id: true, agentDisplayName: true, email: true },
+      },
+      followUpContinuedBy: {
+        select: { id: true, agentDisplayName: true, email: true },
       },
     },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 200,
   });
 
-  return NextResponse.json({ potentialLandlords });
+  return NextResponse.json({
+    leads: leads.map((lead: any) => mapLead(lead, auth.user.id)),
+  });
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  let payload: z.infer<typeof createSchema>;
-  try {
-    payload = createSchema.parse(await request.json());
-  } catch (error) {
-    return NextResponse.json(
-      { error: "INVALID_REQUEST", message: "Invalid payload.", details: error instanceof z.ZodError ? error.flatten() : undefined },
-      { status: 400 },
-    );
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  const normalizedPhone = normalizeUkPhone(payload.phone);
-  if (!normalizedPhone.ok) {
-    return NextResponse.json(
-      { error: "INVALID_PHONE", message: normalizedPhone.message },
-      { status: 400 },
-    );
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: "INVALID_PAYLOAD" }, { status: 400 });
   }
 
-  // Check if this phone already exists as a real landlord
-  const existingLandlord = await db.landlord.findUnique({
-    where: { phoneLast10: normalizedPhone.phoneLast10 },
-    select: { id: true, landlordName: true },
-  });
-  if (existingLandlord) {
-    return NextResponse.json(
-      { error: "ALREADY_LANDLORD", message: `This number is already registered as landlord "${existingLandlord.landlordName}".` },
-      { status: 409 },
-    );
-  }
+  const leadId = body.leadId ?? body.continueLeadId ?? null;
 
-  // Check for active lock by another agent
-  const lockCutoff = new Date(Date.now() - LOCK_DURATION_MS);
-  const existingPotential = await db.potentialLandlord.findFirst({
-    where: {
-      phoneLast10: normalizedPhone.phoneLast10,
-      createdAt: { gte: lockCutoff },
-    },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, addedByAgentId: true, createdAt: true, addedByAgent: { select: { agentDisplayName: true } } },
-  });
+  if (leadId) {
+    const existing = await prisma.potentialLandlord.findUnique({
+      where: { id: leadId },
+    });
 
-  if (existingPotential && existingPotential.addedByAgentId !== auth.user.id) {
-    const lockExpiry = getLockExpiry(existingPotential.createdAt);
-    return NextResponse.json(
-      {
-        error: "POTENTIAL_LANDLORD_LOCKED",
-        message: `This landlord is currently locked by ${existingPotential.addedByAgent.agentDisplayName} until ${lockExpiry.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.`,
-        lockedBy: existingPotential.addedByAgent.agentDisplayName,
-        lockExpiry: lockExpiry.toISOString(),
+    if (!existing) {
+      return NextResponse.json({ error: "LEAD_NOT_FOUND" }, { status: 404 });
+    }
+
+    const { lockedUntil } = reserveFollowUpLock(existing.followUpScheduledAt ?? new Date());
+    const lead = await prisma.potentialLandlord.update({
+      where: { id: leadId },
+      data: {
+        followUpContinuedAt: new Date(),
+        followUpContinuedByUserId: auth.user.id,
+        isFollowUpLocked: true,
+        followUpLockedUntil: existing.followUpLockedUntil ?? lockedUntil,
       },
-      { status: 409 },
+    });
+
+    return NextResponse.json({
+      lead,
+      continued: true,
+    });
+  }
+
+  const firstName = String(body?.firstName ?? "").trim();
+  const lastName = String(body?.lastName ?? "").trim();
+  const phoneNo = String(body?.phoneNo ?? body?.phone ?? "").trim();
+  const scheduledAt = body?.scheduledAt ?? body?.followUpAt;
+
+  if (!firstName || !lastName || !phoneNo || !scheduledAt) {
+    return NextResponse.json(
+      { error: "FIRST_NAME_LAST_NAME_PHONE_SCHEDULED_AT_REQUIRED" },
+      { status: 400 },
     );
   }
 
-  const potentialLandlord = await db.potentialLandlord.create({
-    data: {
-      fullName: payload.fullName,
-      phone: payload.phone.trim(),
-      phoneLast10: normalizedPhone.phoneLast10,
-      addedByAgentId: auth.user.id,
-    },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      phoneLast10: true,
-      createdAt: true,
-      addedByAgent: { select: { id: true, agentDisplayName: true } },
-    },
-  });
+  try {
+    const result = await createFollowUpLead({
+      agentId: auth.user.id,
+      firstName,
+      lastName,
+      phoneNo,
+      email: body?.email ? String(body.email).trim() : null,
+      notes: body?.notes ? String(body.notes).trim() : null,
+      scheduledAt: scheduledAt instanceof Date ? scheduledAt : new Date(scheduledAt),
+    });
 
-  return NextResponse.json({ potentialLandlord }, { status: 201 });
-}
-
-export async function DELETE(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  const { searchParams } = request.nextUrl;
-  const id = searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "ID_REQUIRED", message: "Provide ?id=" }, { status: 400 });
+    return NextResponse.json({
+      lead: result.lead,
+      lock: result.lock,
+      continued: false,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "FOLLOW_UP_CREATE_FAILED";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  await db.potentialLandlord.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
 }

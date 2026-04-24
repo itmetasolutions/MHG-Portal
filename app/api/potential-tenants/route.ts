@@ -1,101 +1,110 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { requireUser } from "@/server/auth/requireUser";
+import { normalizeNamePart, normalizePhone, normalizePostcode } from "@/server/portal/normalize";
 
-const createSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required"),
-  email: z.string().trim().email("Must be a valid email").optional().or(z.literal("")),
-  phone: z.string().trim().optional(),
-  interestedIn: z.string().trim().optional(),
-  budget: z.string().trim().optional(),
-  notes: z.string().trim().max(5000).optional(),
-}).strict();
+const prisma = db as any;
+
+function mapPotentialTenant(row: any) {
+  return {
+    id: row.id,
+    fullName: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    phoneLast10: row.phoneLast10,
+    phoneE164: row.phoneE164,
+    postcode: row.postcode,
+    postcodeCanonical: row.postcodeCanonical,
+    preferredArea: row.preferredArea,
+    interestedIn: row.interestedIn,
+    budget: row.budget,
+    budgetMin: row.budgetMin,
+    budgetMax: row.budgetMax,
+    moveInDate: row.moveInDate,
+    moveInFlexible: row.moveInFlexible,
+    notes: row.notes,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const onlyMine = auth.user.role !== "ADMIN";
 
-  const potentialTenants = await db.potentialTenant.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      interestedIn: true,
-      budget: true,
-      notes: true,
-      createdAt: true,
-      addedByAgent: {
-        select: { id: true, agentDisplayName: true },
-      },
+  const rows = await prisma.potentialTenant.findMany({
+    where: {
+      ...(onlyMine ? { addedByAgentId: auth.user.id } : {}),
+      ...(q
+        ? {
+            OR: [
+              { fullName: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q, mode: "insensitive" } },
+              { email: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
+    orderBy: { createdAt: "desc" },
+    take: 200,
   });
 
-  return NextResponse.json({ potentialTenants });
+  return NextResponse.json({
+    potentialTenants: rows.map(mapPotentialTenant),
+  });
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  let payload: z.infer<typeof createSchema>;
-  try {
-    payload = createSchema.parse(await request.json());
-  } catch (error) {
-    return NextResponse.json(
-      { error: "INVALID_REQUEST", message: "Invalid payload.", details: error instanceof z.ZodError ? error.flatten() : undefined },
-      { status: 400 },
-    );
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  const potentialTenant = await db.potentialTenant.create({
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: "INVALID_PAYLOAD" }, { status: 400 });
+  }
+
+  const fullName = String(body.fullName ?? body.name ?? "").trim();
+  if (!fullName) {
+    return NextResponse.json({ error: "FULL_NAME_REQUIRED" }, { status: 400 });
+  }
+
+  const phoneInput = String(body.phoneNo ?? body.phone ?? "").trim();
+  const normalizedPhone = phoneInput ? normalizePhone(phoneInput) : null;
+  if (phoneInput && normalizedPhone && !normalizedPhone.ok) {
+    return NextResponse.json({ error: normalizedPhone.message }, { status: 400 });
+  }
+
+  const postcodeInput = body.postcode ? String(body.postcode).trim() : "";
+  const potentialTenant = await prisma.potentialTenant.create({
     data: {
-      fullName: payload.fullName,
-      email: payload.email?.trim() || null,
-      phone: payload.phone?.trim() || null,
-      interestedIn: payload.interestedIn?.trim() || null,
-      budget: payload.budget?.trim() || null,
-      notes: payload.notes?.trim() || null,
       addedByAgentId: auth.user.id,
-    },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      interestedIn: true,
-      budget: true,
-      notes: true,
-      createdAt: true,
-      addedByAgent: { select: { id: true, agentDisplayName: true } },
+      fullName: normalizeNamePart(fullName),
+      email: body.email ? String(body.email).trim() : null,
+      phone: phoneInput || null,
+      phoneLast10: normalizedPhone && normalizedPhone.ok ? normalizedPhone.phoneLast10 : null,
+      phoneE164: normalizedPhone && normalizedPhone.ok ? normalizedPhone.phoneE164 : null,
+      postcode: postcodeInput || null,
+      postcodeCanonical: postcodeInput ? normalizePostcode(postcodeInput) : null,
+      preferredArea: body.preferredArea ? String(body.preferredArea).trim() : null,
+      interestedIn: body.interestedIn ? String(body.interestedIn).trim() : null,
+      budget: body.budget ? String(body.budget).trim() : null,
+      budgetMin: body.budgetMin ? String(body.budgetMin).trim() : null,
+      budgetMax: body.budgetMax ? String(body.budgetMax).trim() : null,
+      moveInDate: body.moveInDate ? new Date(body.moveInDate) : null,
+      moveInFlexible: body.moveInFlexible == null ? null : Boolean(body.moveInFlexible),
+      notes: body.notes ? String(body.notes).trim() : null,
     },
   });
 
-  return NextResponse.json({ potentialTenant }, { status: 201 });
-}
-
-export async function DELETE(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  const { searchParams } = request.nextUrl;
-  const id = searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "ID_REQUIRED", message: "Provide ?id=" }, { status: 400 });
-  }
-
-  await db.potentialTenant.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    potentialTenant: mapPotentialTenant(potentialTenant),
+  });
 }

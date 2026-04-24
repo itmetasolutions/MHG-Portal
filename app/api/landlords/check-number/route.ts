@@ -1,25 +1,10 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { normalizeUkPhone } from "@/server/phone";
-import { sendNumberSearchedEmail } from "@/server/email/service";
+import { requireUser } from "@/server/auth/requireUser";
+import { createLandlordLookupEvent } from "@/server/portal/workflows";
+import { normalizePhone } from "@/server/portal/normalize";
 
-const querySchema = z
-  .object({
-    phone: z.string().trim().min(1).optional(),
-    landlordNumber: z.string().trim().min(1).optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.phone && !value.landlordNumber) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["phone"],
-        message: "phone is required.",
-      });
-    }
-  });
+const prisma = db as any;
 
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
@@ -27,128 +12,114 @@ export async function GET(request: NextRequest) {
     return auth.response;
   }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) {
-    return roleCheck.response;
+  const url = new URL(request.url);
+  const phoneInput = url.searchParams.get("phone")?.trim() ?? "";
+  if (!phoneInput) {
+    return NextResponse.json({ error: "PHONE_REQUIRED" }, { status: 400 });
   }
 
-  const parse = querySchema.safeParse({
-    phone: request.nextUrl.searchParams.get("phone") ?? undefined,
-    landlordNumber: request.nextUrl.searchParams.get("landlordNumber") ?? undefined,
-  });
-
-  if (!parse.success) {
-    return NextResponse.json(
-      {
-        error: "INVALID_QUERY",
-        message: "phone is required.",
-        details: parse.error.flatten(),
-      },
-      { status: 400 },
-    );
+  const normalizedPhone = normalizePhone(phoneInput);
+  if (!normalizedPhone.ok) {
+    return NextResponse.json({ error: normalizedPhone.message }, { status: 400 });
   }
 
-  const phoneInput = parse.data.phone ?? parse.data.landlordNumber ?? "";
-  const normalized = normalizeUkPhone(phoneInput);
-  if (!normalized.ok) {
-    return NextResponse.json(
-      {
-        error: "INVALID_PHONE",
-        message: normalized.message,
-      },
-      { status: 400 },
-    );
-  }
-
-  const landlord = await db.landlord.findUnique({
-    where: {
-      phoneLast10: normalized.phoneLast10,
-    },
-    select: {
-      id: true,
-      landlordName: true,
-      phoneE164: true,
-      phoneLast10: true,
-      email: true,
-      notes: true,
-      isPassive: true,
-      ownerAgentId: true,
-      createdAt: true,
-      ownerAgent: {
-        select: {
-          id: true,
-          agentDisplayName: true,
-        },
-      },
-      _count: {
-        select: {
-          properties: true,
-        },
-      },
-    },
-  });
-
-  // Passive landlords can be claimed by any agent
-  const canAccessExisting =
-    landlord === null ||
-    auth.user.role === "ADMIN" ||
-    landlord.ownerAgentId === auth.user.id ||
-    landlord.isPassive;
-
-  const ownershipConflict = Boolean(landlord && !canAccessExisting);
-
-  // Notify the owner agent when another agent searches their landlord's number
-  if (ownershipConflict && landlord && landlord.ownerAgentId) {
-    try {
-      const ownerAgent = await db.user.findUnique({
-        where: { id: landlord.ownerAgentId },
-        select: { id: true, email: true, agentDisplayName: true },
-      });
-
-      if (ownerAgent) {
-        const searchingAgentName = auth.user.agentDisplayName;
-        const notificationBody = `Agent "${searchingAgentName}" searched for the number belonging to your landlord ${landlord.landlordName} (${landlord.phoneLast10}).`;
-
-        await db.notification.create({
-          data: {
-            userId: ownerAgent.id,
-            type: "NUMBER_SEARCHED",
-            title: "Your landlord number was searched",
-            body: notificationBody,
-            metadata: {
-              landlordId: landlord.id,
-              landlordName: landlord.landlordName,
-              landlordPhone: landlord.phoneLast10,
-              searchingAgentId: auth.user.id,
-              searchingAgentName,
-            },
+  const [landlord, activeLead] = await Promise.all([
+    prisma.landlord.findUnique({
+      where: { phoneLast10: normalizedPhone.phoneLast10 },
+      include: {
+        ownerAgent: {
+          select: {
+            id: true,
+            agentDisplayName: true,
+            email: true,
           },
-        });
+        },
+      },
+    }),
+    prisma.potentialLandlord.findFirst({
+      where: {
+        phoneLast10: normalizedPhone.phoneLast10,
+        isFollowUpLocked: true,
+        followUpLockedUntil: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        addedByAgent: {
+          select: {
+            id: true,
+            agentDisplayName: true,
+            email: true,
+          },
+        },
+        followUpContinuedBy: {
+          select: {
+            id: true,
+            agentDisplayName: true,
+            email: true,
+          },
+        },
+      },
+    }),
+  ]);
 
-        // Fire email in background — do not block the response
-        void sendNumberSearchedEmail({
-          to: ownerAgent.email,
-          ownerAgentName: ownerAgent.agentDisplayName,
-          searchingAgentName,
-          landlordName: landlord.landlordName,
-          landlordPhone: landlord.phoneLast10,
-        }).catch(() => {
-          // Silently swallow email errors — notification is already saved in DB
-        });
-      }
-    } catch {
-      // Notification failure should never break the check-number response
-    }
-  }
+  const ownershipState = landlord
+    ? landlord.ownerAgentId === auth.user.id
+      ? "OWNED_BY_CURRENT_AGENT"
+      : "OWNED_BY_OTHER_AGENT"
+    : "UNCLAIMED";
+
+  const isLocked = Boolean(activeLead && activeLead.addedByAgentId !== auth.user.id);
+  const lockedUntil = activeLead?.followUpLockedUntil ?? null;
+  const canContinue = Boolean(activeLead && activeLead.addedByAgentId === auth.user.id);
+
+  await createLandlordLookupEvent({
+    agentId: auth.user.id,
+    phoneNo: phoneInput,
+    phoneLast10: normalizedPhone.phoneLast10,
+    phoneE164: normalizedPhone.phoneE164,
+    ownershipState,
+    landlordId: landlord?.id ?? null,
+    potentialLandlordId: activeLead?.id ?? null,
+    isLocked,
+    lockedUntil,
+  });
 
   return NextResponse.json({
-    phoneInput,
-    phoneLast10: normalized.phoneLast10,
-    phoneE164: normalized.phoneE164,
-    landlordExists: Boolean(landlord),
-    landlord,
-    canCreateLandlord: !landlord,
-    canCreateProperty: canAccessExisting,
-    ownershipConflict,
+    ownershipState,
+    isLocked,
+    lockedUntil,
+    canContinue,
+    landlord: landlord
+      ? {
+          id: landlord.id,
+          landlordName: landlord.landlordName,
+          landlordNumber: landlord.landlordNumber,
+          phoneE164: landlord.phoneE164,
+          phoneLast10: landlord.phoneLast10,
+          email: landlord.email,
+          ownerAgentId: landlord.ownerAgentId,
+          ownerAgent: landlord.ownerAgent,
+        }
+      : null,
+    followUpLead: activeLead
+      ? {
+          id: activeLead.id,
+          fullName: activeLead.fullName,
+          phone: activeLead.phone,
+          phoneLast10: activeLead.phoneLast10,
+          phoneE164: activeLead.phoneE164,
+          addedByAgentId: activeLead.addedByAgentId,
+          addedByAgent: activeLead.addedByAgent,
+          followUpScheduledAt: activeLead.followUpScheduledAt,
+          followUpLockedUntil: activeLead.followUpLockedUntil,
+          followUpContinuedAt: activeLead.followUpContinuedAt,
+          followUpContinuedBy: activeLead.followUpContinuedBy,
+          isFollowUpLocked: activeLead.isFollowUpLocked,
+        }
+      : null,
   });
 }
