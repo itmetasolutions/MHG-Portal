@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { UserRole } from '@prisma/client';
 import { db } from '@/server/db';
+import { getAuthSession } from '@/server/auth';
 
 type TenantsPageProps = {
   searchParams?: {
@@ -41,12 +43,17 @@ function isOwnedByOther(record: any) {
 
 export default async function TenantsPage({ searchParams }: TenantsPageProps) {
   const client = db as any;
+  const session = await getAuthSession();
+  const agentTenantWhere = session?.role === UserRole.AGENT ? { addedByAgentId: session.userId } : {};
+  const agentPropertyWhere = session?.role === UserRole.AGENT ? { ownerAgentId: session.userId } : {};
   const [tenantsRaw, propertiesRaw] = await Promise.all([
     client.tenant?.findMany?.({
+      where: agentTenantWhere,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 100,
     }) ?? [],
     client.property?.findMany?.({
+      where: agentPropertyWhere,
       orderBy: { updatedAt: 'desc' },
       take: 100,
     }) ?? [],
@@ -59,7 +66,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
 
   const tenants = (tenantsRaw as any[]).filter((tenant) => {
     const haystack = [
-      tenant?.name,
+      tenant?.fullName,
       tenant?.email,
       tenant?.phone,
       tenant?.status,
@@ -131,7 +138,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
                     <tr key={String(tenant?.id ?? tenant?.email ?? tenant?.name)}>
                       <td>
                         <div className="detail-stack">
-                          <strong>{cleanText(tenant?.name, 'Tenant')}</strong>
+                          <strong>{cleanText(tenant?.fullName, 'Tenant')}</strong>
                           <span>{cleanText(tenant?.property?.address ?? tenant?.propertyAddress, 'No property linked')}</span>
                         </div>
                       </td>
@@ -191,8 +198,8 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
             </div>
             <div className="detail-stack">
               {tenants.slice(0, 5).map((tenant: any) => (
-                <Link key={String(tenant?.id ?? tenant?.name)} href={`/tenants/${tenant?.id}`} className="detail-stack__item">
-                  <strong>{cleanText(tenant?.name, 'Tenant')}</strong>
+                <Link key={String(tenant?.id ?? tenant?.fullName)} href={`/tenants/${tenant?.id}`} className="detail-stack__item">
+                  <strong>{cleanText(tenant?.fullName, 'Tenant')}</strong>
                   <span>{cleanText(tenant?.email ?? tenant?.phone, 'No contact')}</span>
                   <span>{shortDate(tenant?.updatedAt ?? tenant?.createdAt)}</span>
                 </Link>

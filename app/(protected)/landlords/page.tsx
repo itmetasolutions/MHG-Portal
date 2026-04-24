@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { UserRole } from '@prisma/client';
 import { db } from '@/server/db';
+import { getAuthSession } from '@/server/auth';
 
 type LandlordsPageProps = {
   searchParams?: {
@@ -41,12 +43,16 @@ function isOwnedByOther(record: any) {
 
 export default async function LandlordsPage({ searchParams }: LandlordsPageProps) {
   const client = db as any;
+  const session = await getAuthSession();
+  const agentWhere = session?.role === UserRole.AGENT ? { ownerAgentId: session.userId } : {};
   const [landlordsRaw, propertiesRaw] = await Promise.all([
     client.landlord?.findMany?.({
+      where: agentWhere,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 100,
     }) ?? [],
     client.property?.findMany?.({
+      where: agentWhere,
       orderBy: { updatedAt: 'desc' },
       take: 100,
     }) ?? [],
@@ -59,11 +65,12 @@ export default async function LandlordsPage({ searchParams }: LandlordsPageProps
 
   const landlords = (landlordsRaw as any[]).filter((landlord) => {
     const haystack = [
-      landlord?.name,
-      landlord?.companyName,
+      landlord?.landlordName,
+      landlord?.firstName,
+      landlord?.lastName,
       landlord?.email,
-      landlord?.phone,
-      landlord?.postcode,
+      landlord?.phoneE164,
+      landlord?.phoneLast10,
       landlord?.status,
       landlord?.ownershipStatus,
     ]
@@ -131,8 +138,8 @@ export default async function LandlordsPage({ searchParams }: LandlordsPageProps
                     <tr key={String(landlord?.id ?? landlord?.email ?? landlord?.name)}>
                       <td>
                         <div className="detail-stack">
-                          <strong>{cleanText(landlord?.name ?? landlord?.companyName, 'Landlord')}</strong>
-                          <span>{cleanText(landlord?.address ?? landlord?.postcode, 'No address')}</span>
+                          <strong>{cleanText(landlord?.landlordName, 'Landlord')}</strong>
+                          <span>{cleanText(landlord?.phoneLast10, 'No phone')}</span>
                         </div>
                       </td>
                       <td>
@@ -143,7 +150,7 @@ export default async function LandlordsPage({ searchParams }: LandlordsPageProps
                       <td>
                         <div className="detail-stack">
                           <span>{cleanText(landlord?.email, 'No email')}</span>
-                          <span>{cleanText(landlord?.phone, 'No phone')}</span>
+                          <span>{cleanText(landlord?.phoneE164 ?? landlord?.landlordNumber ?? landlord?.phoneLast10, 'No phone')}</span>
                         </div>
                       </td>
                       <td>{shortDate(landlord?.updatedAt ?? landlord?.createdAt)}</td>
@@ -192,8 +199,8 @@ export default async function LandlordsPage({ searchParams }: LandlordsPageProps
             <div className="detail-stack">
               {landlords.slice(0, 5).map((landlord: any) => (
                 <Link key={String(landlord?.id ?? landlord?.name)} href={`/landlords/${landlord?.id}`} className="detail-stack__item">
-                  <strong>{cleanText(landlord?.name ?? landlord?.companyName, 'Landlord')}</strong>
-                  <span>{cleanText(landlord?.email ?? landlord?.phone, 'No contact')}</span>
+                  <strong>{cleanText(landlord?.landlordName, 'Landlord')}</strong>
+                  <span>{cleanText(landlord?.email ?? landlord?.phoneE164 ?? landlord?.phoneLast10, 'No contact')}</span>
                   <span>{shortDate(landlord?.updatedAt ?? landlord?.createdAt)}</span>
                 </Link>
               ))}

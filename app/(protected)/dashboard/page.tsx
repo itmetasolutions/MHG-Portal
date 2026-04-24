@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import { UserRole } from '@prisma/client';
 import type { ComponentType } from 'react';
 import { Suspense } from 'react';
 import { db } from '@/server/db';
+import { getAuthSession } from '@/server/auth';
+import { NumberCheckCard } from '@/components/number-check-card';
 import { PropertyPreviewCard } from '@/components/property-preview-card';
 import { SalesFilterBar } from '@/components/sales-filter-bar';
 
@@ -117,18 +120,23 @@ function Sparkline({ data, color = '#ca9b36' }: { data: number[]; color?: string
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const client = db as any;
+  const session = await getAuthSession();
+  const isAgent = session?.role === UserRole.AGENT;
+  const ownerWhere = isAgent ? { ownerAgentId: session.userId } : {};
+  const agentWhere = isAgent ? { agentId: session.userId } : {};
+  const userWhere = isAgent ? { userId: session.userId } : {};
   const rawPeriod = Array.isArray(searchParams?.period) ? searchParams?.period[0] : searchParams?.period;
   const rawPostcode = Array.isArray(searchParams?.postcode) ? searchParams?.postcode[0] : searchParams?.postcode;
   const period = rawPeriod ?? '30d';
   const postcodeQuery = (rawPostcode ?? '').trim().toLowerCase();
 
   const [propertiesRaw, salesRaw, landlordsRaw, tenantsRaw, notesRaw, activitiesRaw] = await Promise.all([
-    client.property?.findMany?.({ orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }], take: 24 }) ?? [],
-    client.sale?.findMany?.({ orderBy: { closedAt: 'desc' }, take: 48 }) ?? [],
-    client.landlord?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
-    client.tenant?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
-    client.note?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 18 }) ?? [],
-    client.activity?.findMany?.({ orderBy: { createdAt: 'desc' }, take: 18 }) ?? [],
+    client.property?.findMany?.({ where: ownerWhere, orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }], take: 24 }) ?? [],
+    client.sale?.findMany?.({ where: isAgent ? { closedByUserId: session.userId } : {}, orderBy: { closedAt: 'desc' }, take: 48 }) ?? [],
+    client.landlord?.findMany?.({ where: ownerWhere, orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
+    client.tenant?.findMany?.({ where: isAgent ? { addedByAgentId: session.userId } : {}, orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
+    client.agentNote?.findMany?.({ where: agentWhere, orderBy: { updatedAt: 'desc' }, take: 18 }) ?? [],
+    client.notification?.findMany?.({ where: userWhere, orderBy: { createdAt: 'desc' }, take: 18 }) ?? [],
   ]);
 
   const properties = (propertiesRaw as any[]).filter((p) => {
@@ -327,6 +335,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </p>
             </div>
           </section>
+
+          <NumberCheckCard />
 
           {/* Property status chart */}
           <section className="workspace-panel chart-panel">

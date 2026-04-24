@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import { UserRole } from '@prisma/client';
 import { db } from '@/server/db';
+import { getAuthSession } from '@/server/auth';
+import { PublishPropertyButton } from '@/components/publish-property-button';
 
 type PropertiesSearchParams = {
   q?: string;
@@ -59,8 +62,11 @@ function isNewLead(property: any) {
 
 export default async function PropertiesPage({ searchParams }: PropertiesPageProps) {
   const client = db as any;
+  const session = await getAuthSession();
+  const agentWhere = session?.role === UserRole.AGENT ? { ownerAgentId: session.userId } : {};
   const [propertiesRaw, notesRaw] = await Promise.all([
     client.property?.findMany?.({
+      where: agentWhere,
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 200,
     }) ?? [],
@@ -174,7 +180,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
         </div>
       </section>
 
-      <section className="properties-layout">
+      <section className="properties-layout properties-layout--grid-only">
         <div className="properties-layout__main">
           <div className="properties-grid">
             {properties.map((property: any) => {
@@ -234,9 +240,10 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
                       <Link href={`/properties/${property?.id}/edit`} className="btn btn-primary btn-sm">
                         Edit
                       </Link>
-                      <Link href={`/start?propertyId=${encodeURIComponent(String(property?.id ?? ''))}`} className="btn btn-ghost btn-sm">
-                        Start
+                      <Link href={`/landlords/${property?.landlordId}/properties`} className="btn btn-ghost btn-sm">
+                        Close sale
                       </Link>
+                      <PublishPropertyButton propertyId={String(property?.id ?? '')} published={Boolean(property?.publishedToWebsite)} />
                     </div>
                   </div>
 
@@ -250,44 +257,6 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
           </div>
         </div>
 
-        <aside className="properties-layout__aside">
-          <section className="workspace-panel map-panel">
-            <div className="workspace-panel__header">
-              <div>
-                <p className="workspace-kicker">Map preview</p>
-                <h2 className="workspace-panel__title">Spatial awareness</h2>
-              </div>
-            </div>
-            <div className="map-preview">
-              <div className="map-preview__pin map-preview__pin--primary">N</div>
-              <div className="map-preview__pin map-preview__pin--secondary">S</div>
-              <div className="map-preview__pin map-preview__pin--accent">E</div>
-              <div className="map-preview__legend">
-                <span className="map-preview__legend-item">Owned by you</span>
-                <span className="map-preview__legend-item">Owned by another</span>
-                <span className="map-preview__legend-item">New lead</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="workspace-panel detail-panel">
-            <div className="workspace-panel__header">
-              <div>
-                <p className="workspace-kicker">Quick shortlist</p>
-                <h2 className="workspace-panel__title">Properties needing attention</h2>
-              </div>
-            </div>
-            <div className="detail-stack">
-              {properties.slice(0, 5).map((property: any) => (
-                <Link key={String(property?.id ?? property?.address)} href={`/properties/${property?.id}`} className="detail-stack__item">
-                  <strong>{cleanText(property?.title ?? property?.address, 'Property')}</strong>
-                  <span>{cleanText(property?.ownerName ?? property?.status, 'Review required')}</span>
-                  <span>{shortDate(property?.updatedAt ?? property?.createdAt)}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </aside>
       </section>
     </div>
   );

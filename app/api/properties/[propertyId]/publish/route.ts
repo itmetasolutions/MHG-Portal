@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { UserRole } from "@prisma/client";
+import { canEditProperty } from "@/server/policies";
 
 const publishSchema = z.object({
   publishedToWebsite: z.boolean(),
@@ -19,8 +20,22 @@ export async function PATCH(request: NextRequest, { params }: { params: { proper
     const body = await request.json();
     const { publishedToWebsite } = publishSchema.parse(body);
 
-    // We allow AGENT or ADMIN to publish. Realistically we might check if they own it.
-    // Assuming check logic is same as updating. For now, unrestricted if logged in.
+    const existing = await db.property.findUnique({
+      where: { id: params.propertyId },
+      select: {
+        ownerAgentId: true,
+        landlord: { select: { ownerAgentId: true } },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ ok: false, error: "Property not found" }, { status: 404 });
+    }
+
+    if (!canEditProperty(auth.user, { ownerAgentId: existing.ownerAgentId, landlordOwnerAgentId: existing.landlord.ownerAgentId })) {
+      return NextResponse.json({ ok: false, error: "Only the owner agent or admin can publish this property." }, { status: 403 });
+    }
+
     const property = await db.property.update({
       where: { id: params.propertyId },
       data: { publishedToWebsite },

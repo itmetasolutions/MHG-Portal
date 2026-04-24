@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FloatingChat } from '@/components/floating-chat';
 import { NavLogoutButton } from '@/components/nav-logout-button';
 import { NotificationsBell } from '@/components/notifications-bell';
@@ -118,15 +118,6 @@ function IconTemplates() {
     </svg>
   );
 }
-function IconSettings() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M8 1.5V3M8 13V14.5M14.5 8H13M3 8H1.5M12.45 3.55L11.39 4.61M4.61 11.39L3.55 12.45M12.45 12.45L11.39 11.39M4.61 4.61L3.55 3.55" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'Dashboard',     hint: 'Portfolio command center',    group: 'Command',       icon: <IconDashboard /> },
   { href: '/properties',   label: 'Properties',    hint: 'Listings and detail views',   group: 'Command',       icon: <IconProperties /> },
@@ -139,7 +130,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/daily-reports',label: 'Reports',       hint: 'Daily performance snapshots', group: 'Communication', icon: <IconReports /> },
   { href: '/notes',        label: 'Notes',         hint: 'Owner and tenant notes',      group: 'Communication', icon: <IconNotes /> },
   { href: '/templates',    label: 'Templates',     hint: 'Saved replies and scripts',   group: 'Communication', icon: <IconTemplates /> },
-  { href: '/profile',      label: 'Settings',      hint: 'Profile and preferences',     group: 'Admin',         icon: <IconSettings /> },
 ];
 
 const QUICK_ACTIONS = [
@@ -160,6 +150,8 @@ export function AgentShell({ user, userId, chatContacts, children }: AgentShellP
   const pathname = usePathname();
   const [search, setSearch] = useState('');
   const [presence, setPresence] = useState<Presence>('available');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const filteredItems = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -184,6 +176,17 @@ export function AgentShell({ user, userId, chatContacts, children }: AgentShellP
   const presenceLabel = { available: 'Available', away: 'Away', busy: 'Busy' }[presence];
   const initials = String(user?.name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
 
+  useEffect(() => {
+    if (!profileOpen) return;
+    function handleClick(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [profileOpen]);
+
   return (
     <div className="workspace-shell">
       {/* ── Sidebar ─────────────────────────────── */}
@@ -191,13 +194,15 @@ export function AgentShell({ user, userId, chatContacts, children }: AgentShellP
         {/* Brand */}
         <div className="workspace-sidebar__brand">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div className="workspace-sidebar__logo">MHG</div>
+            <Link href="/dashboard" className="workspace-sidebar__logo" aria-label="More Homes Group dashboard">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/morehomesgroup-logo.png" alt="More Homes Group" />
+            </Link>
             <div className="workspace-sidebar__brand-copy">
               <p className="workspace-kicker">Agent workspace</p>
-              <h1 className="workspace-title">Command center</h1>
+              <h1 className="workspace-title">More Homes Group</h1>
             </div>
           </div>
-          <p className="workspace-caption">Smart portfolio, calls, chat, and ownership workflow.</p>
         </div>
 
         {/* Search */}
@@ -289,7 +294,46 @@ export function AgentShell({ user, userId, chatContacts, children }: AgentShellP
               {presenceLabel}
             </button>
             <NotificationsBellAny userId={userId} />
-            <NavLogoutButtonAny />
+            <div className="workspace-profile-menu" ref={profileRef}>
+              <button
+                type="button"
+                className="workspace-profile-trigger"
+                onClick={() => setProfileOpen((value) => !value)}
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
+                title="Profile menu"
+              >
+                {user?.profilePicture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profilePicture} alt="" />
+                ) : (
+                  <span>{initials}</span>
+                )}
+              </button>
+              {profileOpen ? (
+                <div className="workspace-profile-dropdown" role="menu">
+                  <div className="workspace-profile-summary">
+                    <div className="workspace-avatar">{initials}</div>
+                    <div className="workspace-account__copy">
+                      <p className="workspace-account__name">{user?.name ?? 'Agent'}</p>
+                      <p className="workspace-account__meta">{user?.email ?? 'Signed in'}</p>
+                    </div>
+                  </div>
+                  <Link href="/profile" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    Profile settings
+                  </Link>
+                  <Link href="/templates" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    Templates
+                  </Link>
+                  <Link href="/daily-reports" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    Daily reports
+                  </Link>
+                  <div className="workspace-profile-signout" role="menuitem">
+                    <NavLogoutButtonAny />
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 

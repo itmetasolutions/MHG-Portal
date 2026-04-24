@@ -18,6 +18,7 @@ export default async function PotentialTenantsPage() {
   if (user.role === UserRole.ADMIN) redirect("/admin/potential-tenants");
 
   const tenants = await db.potentialTenant.findMany({
+    where: { addedByAgentId: session.userId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
