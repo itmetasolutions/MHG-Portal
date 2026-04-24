@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import type { ComponentType } from 'react';
+import { Suspense } from 'react';
 import { db } from '@/server/db';
 import { PropertyPreviewCard } from '@/components/property-preview-card';
 import { SalesFilterBar } from '@/components/sales-filter-bar';
+
+export const dynamic = 'force-dynamic';
 
 type DashboardSearchParams = { period?: string; postcode?: string };
 type DashboardPageProps = { searchParams?: DashboardSearchParams };
@@ -231,7 +234,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {/* Filters */}
       <section className="dashboard-filters">
-        <SalesFilterBarAny period={period} postcode={searchParams?.postcode ?? ''} />
+        <Suspense fallback={null}>
+          <SalesFilterBarAny period={period} postcode={searchParams?.postcode ?? ''} rangeLabel={`Last ${periodDays(period)} days`} />
+        </Suspense>
       </section>
 
       {/* KPI Cards */}
