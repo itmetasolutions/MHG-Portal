@@ -192,8 +192,7 @@ export default function VerifyOtpClient({ initialEmail, reason }: VerifyOtpClien
         },
         body: JSON.stringify({
           email: email.trim(),
-          code,
-          otp: code,
+          otpCode: code,
           reason,
         }),
       });
