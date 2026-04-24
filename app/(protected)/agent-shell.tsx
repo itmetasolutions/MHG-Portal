@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import FloatingChat from '@/components/floating-chat';
-import NavLogoutButton from '@/components/nav-logout-button';
-import NotificationsBell from '@/components/notifications-bell';
+import { FloatingChat } from '@/components/floating-chat';
+import { NavLogoutButton } from '@/components/nav-logout-button';
+import { NotificationsBell } from '@/components/notifications-bell';
 
 type AgentShellProps = {
   user: any;
@@ -26,6 +26,7 @@ type NavItem = {
 const FloatingChatAny = FloatingChat as ComponentType<any>;
 const NotificationsBellAny = NotificationsBell as ComponentType<any>;
 const NavLogoutButtonAny = NavLogoutButton as ComponentType<any>;
+
 
 function IconDashboard() {
   return (

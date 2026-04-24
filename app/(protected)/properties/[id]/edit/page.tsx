@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { prisma } from '@/server/db';
+import { db } from '@/server/db';
 
 type PropertyEditPageProps = {
   params: {
@@ -23,7 +23,7 @@ function ownershipLabel(property: any) {
 }
 
 export default async function PropertyEditPage({ params }: PropertyEditPageProps) {
-  const client = prisma as any;
+  const client = db as any;
   const property =
     (await client.property?.findUnique?.({
       where: { id: params.id },

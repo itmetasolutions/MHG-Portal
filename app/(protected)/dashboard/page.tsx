@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import type { ComponentType } from 'react';
-import { prisma } from '@/server/db';
-import PropertyPreviewCard from '@/components/property-preview-card';
-import SalesFilterBar from '@/components/sales-filter-bar';
+import { db } from '@/server/db';
+import { PropertyPreviewCard } from '@/components/property-preview-card';
+import { SalesFilterBar } from '@/components/sales-filter-bar';
 
 type DashboardSearchParams = { period?: string; postcode?: string };
 type DashboardPageProps = { searchParams?: DashboardSearchParams };
 
 const PropertyPreviewCardAny = PropertyPreviewCard as ComponentType<any>;
 const SalesFilterBarAny = SalesFilterBar as ComponentType<any>;
+
 
 function money(value: unknown) {
   const amount = Number(value ?? 0);
@@ -112,7 +113,7 @@ function Sparkline({ data, color = '#ca9b36' }: { data: number[]; color?: string
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const client = prisma as any;
+  const client = db as any;
   const rawPeriod = Array.isArray(searchParams?.period) ? searchParams?.period[0] : searchParams?.period;
   const rawPostcode = Array.isArray(searchParams?.postcode) ? searchParams?.postcode[0] : searchParams?.postcode;
   const period = rawPeriod ?? '30d';

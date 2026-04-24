@@ -12,6 +12,7 @@ type AdminShellUser = {
   email?: string | null;
   role?: string | null;
   avatarUrl?: string | null;
+  profilePicture?: string | null;
 };
 
 type ShellContact = {
@@ -108,7 +109,7 @@ function ShellLink({
   );
 }
 
-export default function AdminShell({ user, userId, chatContacts, children }: AdminShellProps) {
+export function AdminShell({ user, userId, chatContacts, children }: AdminShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState('');

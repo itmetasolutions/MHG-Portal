@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { prisma } from '@/server/db';
+import { db } from '@/server/db';
 
 type LandlordsPageProps = {
   searchParams?: {
@@ -40,7 +40,7 @@ function isOwnedByOther(record: any) {
 }
 
 export default async function LandlordsPage({ searchParams }: LandlordsPageProps) {
-  const client = prisma as any;
+  const client = db as any;
   const [landlordsRaw, propertiesRaw] = await Promise.all([
     client.landlord?.findMany?.({
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],

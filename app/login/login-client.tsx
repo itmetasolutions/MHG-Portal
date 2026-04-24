@@ -47,7 +47,7 @@ function normalizeRole(value?: string) {
   return String(value || "").trim().toUpperCase();
 }
 
-export default function LoginClient({ initialEmail, reason }: LoginClientProps) {
+export function LoginClient({ initialEmail, reason }: LoginClientProps) {
   const router = useRouter();
   const [email, setEmail] = useState(initialEmail ?? "");
   const [password, setPassword] = useState("");

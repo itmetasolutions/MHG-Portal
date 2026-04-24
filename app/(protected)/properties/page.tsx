@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { prisma } from '@/server/db';
+import { db } from '@/server/db';
 
 type PropertiesSearchParams = {
   q?: string;
@@ -58,7 +58,7 @@ function isNewLead(property: any) {
 }
 
 export default async function PropertiesPage({ searchParams }: PropertiesPageProps) {
-  const client = prisma as any;
+  const client = db as any;
   const [propertiesRaw, notesRaw] = await Promise.all([
     client.property?.findMany?.({
       orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],

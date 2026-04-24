@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { prisma } from '@/server/db';
+import { db } from '@/server/db';
 
 type TenantDetailPageProps = {
   params: {
@@ -44,7 +44,7 @@ function badgeClass(value: unknown) {
 }
 
 export default async function TenantDetailPage({ params }: TenantDetailPageProps) {
-  const client = prisma as any;
+  const client = db as any;
   const tenant =
     (await client.tenant?.findUnique?.({
       where: { id: params.id },
