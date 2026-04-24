@@ -61,14 +61,40 @@ export default async function DialerContactsPage() {
     }),
   ]);
 
+  const favoriteCount = contacts.filter((contact) => contact.isFavorite).length;
+  const contactWithNotes = contacts.filter((contact) => Boolean(contact.notes?.trim())).length;
+
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Contacts</h1>
-          <p className="page-subtitle">
-            Add and organize contacts with notes and labels for faster calling.
-          </p>
+      <header className="dialer-card dialer-hero-card">
+        <div className="page-header" style={{ alignItems: "flex-start" }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
+              Contact intelligence
+            </p>
+            <h1 className="page-title">Contacts</h1>
+            <p className="page-subtitle">
+              Organize favourites, notes, and labels so dial-outs stay fast and context stays visible.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid-cards" style={{ marginTop: "1rem" }}>
+          <article className="stat-card">
+            <p className="stat-label">Saved contacts</p>
+            <p className="stat-value">{contacts.length}</p>
+            <p className="stat-sub">{favoriteCount} marked as favourites</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Labels</p>
+            <p className="stat-value">{labels.length}</p>
+            <p className="stat-sub">Reusable segments for quicker filtering</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Notes attached</p>
+            <p className="stat-value">{contactWithNotes}</p>
+            <p className="stat-sub">Contacts with call context recorded</p>
+          </article>
         </div>
       </header>
 

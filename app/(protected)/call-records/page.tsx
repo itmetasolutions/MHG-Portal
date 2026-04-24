@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type CallLog = {
   id: string;
@@ -24,14 +24,18 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  CONFIRMED: "#4ade80",
-  NOT_INTERESTED: "#f87171",
-  FOLLOW_UP: "#60a5fa",
+  CONFIRMED: "#59d2a5",
+  NOT_INTERESTED: "#ff7f7f",
+  FOLLOW_UP: "#f3b664",
 };
 
 function fmt(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -54,40 +58,104 @@ export default function CallRecordsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { void load(page, statusFilter); }, [page, statusFilter]);
+  useEffect(() => {
+    void load(page, statusFilter);
+  }, [page, statusFilter]);
+
+  const totals = useMemo(() => {
+    return {
+      total: logs.length,
+      confirmed: logs.filter((log) => log.status === "CONFIRMED").length,
+      followUp: logs.filter((log) => log.status === "FOLLOW_UP").length,
+      notInterested: logs.filter((log) => log.status === "NOT_INTERESTED").length,
+      scheduled: logs.filter((log) => Boolean(log.followUpScheduledAt)).length,
+    };
+  }, [logs]);
 
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Call History</h1>
-          <p className="page-subtitle">Auto-generated from Interested, Follow Up, and Not Interested flows</p>
+      <header className="dialer-card dialer-hero-card">
+        <div className="page-header" style={{ alignItems: "flex-start" }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
+              Lead workflow
+            </p>
+            <h1 className="page-title">Call Records</h1>
+            <p className="page-subtitle">
+              Auto-generated from the Start Call flow. Review outcomes, follow-up dates, and ownership context in one place.
+            </p>
+          </div>
+          <Link href="/start" className="btn btn-primary">
+            Start Call
+          </Link>
         </div>
-        <Link href="/start" className="btn btn-primary">Start Call</Link>
+
+        <div className="grid-cards" style={{ marginTop: "1rem" }}>
+          <article className="stat-card">
+            <p className="stat-label">Records</p>
+            <p className="stat-value">{totals.total}</p>
+            <p className="stat-sub">Showing the current page of results</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Interested</p>
+            <p className="stat-value">{totals.confirmed}</p>
+            <p className="stat-sub">Leads converted from the call flow</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Follow up</p>
+            <p className="stat-value">{totals.followUp}</p>
+            <p className="stat-sub">Need another touchpoint scheduled</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Scheduled</p>
+            <p className="stat-value">{totals.scheduled}</p>
+            <p className="stat-sub">Calls with a future follow-up time</p>
+          </article>
+        </div>
       </header>
 
-      <div className="panel" style={{ padding: "1rem 1.25rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label className="field" style={{ marginBottom: 0, minWidth: 180 }}>
-          <span className="label">Filter by Outcome</span>
-          <select className="input" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-            <option value="">All outcomes</option>
-            <option value="CONFIRMED">Interested</option>
-            <option value="FOLLOW_UP">Follow Up</option>
-            <option value="NOT_INTERESTED">Not Interested</option>
-          </select>
-        </label>
-      </div>
+      <section className="dialer-card">
+        <div className="dialer-card-head">
+          <h2 className="dialer-card-title">Filters</h2>
+          <span className="badge badge-active">Live query</span>
+        </div>
 
-      <div className="panel">
-        <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>Call Log</h2>
+        <div className="inline-row" style={{ alignItems: "flex-end" }}>
+          <label className="field" style={{ marginBottom: 0, minWidth: 220 }}>
+            <span className="label">Filter by Outcome</span>
+            <select
+              className="input"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All outcomes</option>
+              <option value="CONFIRMED">Interested</option>
+              <option value="FOLLOW_UP">Follow Up</option>
+              <option value="NOT_INTERESTED">Not Interested</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="dialer-card">
+        <div className="dialer-card-head">
+          <h2 className="dialer-card-title">Call Log</h2>
+          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            {logs.length} items loaded
+          </span>
         </div>
 
         {loading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>Loading...</div>
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+            Loading...
+          </div>
         ) : logs.length === 0 ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            No call records yet.<br />
+            No call records yet.
+            <br />
             <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
               Records are created automatically when you use the Start Call flow.
             </span>
@@ -107,15 +175,18 @@ export default function CallRecordsPage() {
               </thead>
               <tbody>
                 {logs.map((log) => {
-                  const name = (log.landlord?.landlordName
-                    ?? log.potentialLandlord?.fullName
-                    ?? [log.landlordFirstName, log.landlordLastName].filter(Boolean).join(" "))
-                    || "—";
+                  const name =
+                    log.landlord?.landlordName ??
+                    log.potentialLandlord?.fullName ??
+                    ([log.landlordFirstName, log.landlordLastName].filter(Boolean).join(" ") || "—");
+                  const color = STATUS_COLORS[log.status] ?? "var(--text-muted)";
                   return (
                     <tr key={log.id}>
                       <td style={{ fontWeight: 600 }}>
                         {log.landlord ? (
-                          <Link href={`/landlords/${log.landlord.id}`} style={{ color: "var(--brand-gold)" }}>{name}</Link>
+                          <Link href={`/landlords/${log.landlord.id}`} style={{ color: "var(--brand-gold)" }}>
+                            {name}
+                          </Link>
                         ) : log.potentialLandlord ? (
                           <span style={{ color: "var(--text)" }}>{name}</span>
                         ) : (
@@ -126,12 +197,16 @@ export default function CallRecordsPage() {
                         {log.phoneLast10 ? `+44${log.phoneLast10}` : log.phone}
                       </td>
                       <td>
-                        <span style={{
-                          fontSize: "0.78rem", fontWeight: 600,
-                          color: STATUS_COLORS[log.status] ?? "var(--text-muted)",
-                          background: `${STATUS_COLORS[log.status] ?? "var(--text-muted)"}20`,
-                          padding: "0.2rem 0.55rem", borderRadius: "0.3rem",
-                        }}>
+                        <span
+                          style={{
+                            fontSize: "0.78rem",
+                            fontWeight: 600,
+                            color,
+                            background: `${color}20`,
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "999px",
+                          }}
+                        >
                           {STATUS_LABELS[log.status] ?? log.status}
                         </span>
                       </td>
@@ -153,17 +228,28 @@ export default function CallRecordsPage() {
         )}
 
         {totalPages > 1 && (
-          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)", display: "flex", gap: "0.5rem", justifyContent: "flex-end", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "1rem 1.25rem",
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              gap: "0.5rem",
+              justifyContent: "flex-end",
+              alignItems: "center",
+            }}
+          >
             <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
               Prev
             </button>
-            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>Page {page} of {totalPages}</span>
+            <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+              Page {page} of {totalPages}
+            </span>
             <button className="btn btn-secondary btn-sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
               Next
             </button>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

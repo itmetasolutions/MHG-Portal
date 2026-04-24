@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { Suspense, useState } from "react";
 
 function FollowUpForm() {
   const router = useRouter();
@@ -58,66 +58,95 @@ function FollowUpForm() {
   }
 
   return (
-    <form className="stack" onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 0.25rem" }}>Follow Up</h1>
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
-          Schedule a follow-up call. The lead will be locked to your profile until the scheduled time + 1 day.
-        </p>
-      </div>
+    <div className="start-shell">
+      <section className="start-hero panel">
+        <div className="start-hero-copy">
+          <p className="section-label" style={{ marginBottom: "0.5rem" }}>
+            Follow-up branch
+          </p>
+          <h1 className="page-title">Schedule the next touchpoint</h1>
+          <p className="page-subtitle">
+            Lock the lead to a future reminder and keep the handoff clear for the next call.
+          </p>
+        </div>
+
+        <div className="start-steps">
+          <div className="start-step-card">
+            <span className="start-step-index">01</span>
+            <p className="start-step-copy">Capture the landlord details and preferred contact number.</p>
+          </div>
+          <div className="start-step-card">
+            <span className="start-step-index">02</span>
+            <p className="start-step-copy">Choose the exact follow-up date and time.</p>
+          </div>
+          <div className="start-step-card">
+            <span className="start-step-index">03</span>
+            <p className="start-step-copy">The lead stays reserved until the reminder window opens.</p>
+          </div>
+        </div>
+      </section>
 
       {error && <div className="form-error-banner">{error}</div>}
 
-      <div className="panel" style={{ padding: "1.25rem" }}>
-        <p className="section-label" style={{ marginBottom: "0.75rem" }}>Landlord Details</p>
-        <div className="form-grid-2">
+      <form className="stack" onSubmit={handleSubmit}>
+        <section className="dialer-card">
+          <div className="dialer-card-head">
+            <h2 className="dialer-card-title">Landlord details</h2>
+            <span className="badge badge-warning">Follow-up record</span>
+          </div>
+          <div className="form-grid-2">
+            <label className="field">
+              <span className="label">First Name</span>
+              <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              {fieldErrors.firstName && <span className="field-error">{fieldErrors.firstName}</span>}
+            </label>
+            <label className="field">
+              <span className="label">Last Name</span>
+              <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+            </label>
+            <label className="field">
+              <span className="label">Phone</span>
+              <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
+            </label>
+            <label className="field">
+              <span className="label">Email</span>
+              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+          </div>
+        </section>
+
+        <section className="dialer-card">
+          <div className="dialer-card-head">
+            <h2 className="dialer-card-title">Follow-up schedule</h2>
+            <span className="badge badge-active">Reminder enabled</span>
+          </div>
           <label className="field">
-            <span className="label">First Name <span className="required">*</span></span>
-            <input className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-            {fieldErrors.firstName && <span className="field-error">{fieldErrors.firstName}</span>}
+            <span className="label">Follow-up Date & Time</span>
+            <input
+              className="input"
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              required
+            />
+            {fieldErrors.scheduledAt && <span className="field-error">{fieldErrors.scheduledAt}</span>}
+            <span className="hint-text" style={{ marginTop: "0.25rem" }}>
+              Reminder emails will be sent 1 hour and 5 minutes before this time.
+            </span>
           </label>
-          <label className="field">
-            <span className="label">Last Name <span className="required">*</span></span>
-            <input className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span className="label">Phone <span className="required">*</span></span>
-            <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            {fieldErrors.phone && <span className="field-error">{fieldErrors.phone}</span>}
-          </label>
-          <label className="field">
-            <span className="label">Email</span>
-            <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
+        </section>
+
+        <div className="inline-row">
+          <button type="submit" className="btn btn-primary" disabled={submitting}>
+            {submitting ? "Scheduling..." : "Schedule Follow-up"}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
+            Cancel
+          </button>
         </div>
-      </div>
-
-      <div className="panel" style={{ padding: "1.25rem" }}>
-        <label className="field">
-          <span className="label">Follow-up Date &amp; Time <span className="required">*</span></span>
-          <input
-            className="input"
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            required
-          />
-          {fieldErrors.scheduledAt && <span className="field-error">{fieldErrors.scheduledAt}</span>}
-          <span style={{ fontSize: "0.78rem", color: "var(--text-subtle)", marginTop: "0.25rem" }}>
-            Reminder emails will be sent 1 hour and 5 minutes before this time.
-          </span>
-        </label>
-      </div>
-
-      <div style={{ display: "flex", gap: "0.75rem" }}>
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? "Scheduling..." : "Schedule Follow-up"}
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
-          Cancel
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
 

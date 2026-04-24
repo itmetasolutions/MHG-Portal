@@ -26,6 +26,7 @@ type HistoryLite = {
   startedAt: string;
   endedAt: string | null;
   durationSec: number;
+  notes?: string | null;
 };
 
 type Props = {
@@ -50,6 +51,9 @@ type RuntimeCall = {
   answeredAtMs: number | null;
   finalStatus?: CallStatus;
   finalized: boolean;
+  notesDraft: string;
+  tags: string[];
+  outcomeLabel: string | null;
 };
 
 type CallView = {
@@ -173,7 +177,18 @@ function linkusLaunchUrl(linkusWebClientUrl: string | null, domain: string | nul
   }
 }
 
-export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
+const CALL_TAG_OPTIONS = ["HOT", "FOLLOW_UP", "VIEWING", "PRICING", "ESCALATED"];
+
+function composeCallNotes(notesDraft: string, tags: string[], outcomeLabel: string | null) {
+  const parts: string[] = [];
+  const cleaned = notesDraft.trim();
+  if (cleaned) parts.push(cleaned);
+  if (tags.length) parts.push(`Tags: ${tags.join(", ")}`);
+  if (outcomeLabel) parts.push(`Outcome: ${outcomeLabel}`);
+  return parts.join("\n\n");
+}
+
+function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
   const [liveCall, setLiveCall] = useState<CallView | null>(null);
@@ -185,6 +200,9 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
   const [nowMs, setNowMs] = useState(Date.now());
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceInfo[]>([]);
   const [speakerId, setSpeakerId] = useState("default");
+  const [callNotes, setCallNotes] = useState("");
+  const [callTags, setCallTags] = useState<string[]>([]);
+  const [callOutcome, setCallOutcome] = useState<CallStatus | "PENDING">("PENDING");
 
   const userAgentRef = useRef<UserAgent | null>(null);
   const registererRef = useRef<Registerer | null>(null);
@@ -285,6 +303,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
         startedAt: call.startedAt,
         endedAt: call.endedAt,
         durationSec: call.durationSec,
+        notes: call.notes ?? null,
       },
       ...prev,
     ].slice(0, 10));
@@ -337,6 +356,7 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
     const endedAtMs = Date.now();
     const status = forced ?? runtime.finalStatus ?? (runtime.answeredAtMs ? "COMPLETED" : runtime.direction === "INCOMING" ? "MISSED" : "FAILED");
     const durationSec = runtime.answeredAtMs ? Math.max(0, Math.floor((endedAtMs - runtime.answeredAtMs) / 1000)) : 0;
+    const notes = composeCallNotes(runtime.notesDraft, runtime.tags, runtime.outcomeLabel ?? status);
     await logCall({
       direction: runtime.direction,
       status,
@@ -349,7 +369,11 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       answeredAt: runtime.answeredAtMs ? new Date(runtime.answeredAtMs).toISOString() : null,
       endedAt: new Date(endedAtMs).toISOString(),
       durationSec,
+      notes: notes || undefined,
     });
+    setCallNotes("");
+    setCallTags([]);
+    setCallOutcome("PENDING");
   }
 
   function hookSession(runtime: RuntimeCall) {
@@ -374,6 +398,10 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       setMessage({ type: "error", text: "Finish current call first." });
       return;
     }
+
+    setCallNotes("");
+    setCallTags([]);
+    setCallOutcome("PENDING");
 
     if (isLinkusMode) {
       const launch = linkusLaunchUrl(bootstrap.dialerDomain.linkusWebClientUrl, bootstrap.dialerDomain.domain, target);
@@ -413,7 +441,16 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
 
     const inviter = new Inviter(ua, targetUri, { sessionDescriptionHandlerOptions: { constraints: { audio: true, video: false } } });
     const startedAtMs = Date.now();
-    const runtime: RuntimeCall = { ...metadata, session: inviter, startedAtMs, answeredAtMs: null, finalized: false };
+    const runtime: RuntimeCall = {
+      ...metadata,
+      session: inviter,
+      startedAtMs,
+      answeredAtMs: null,
+      finalized: false,
+      notesDraft: "",
+      tags: [],
+      outcomeLabel: null,
+    };
     runtimeRef.current = runtime;
     setLiveCall({
       direction: runtime.direction,
@@ -538,6 +575,9 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
                     startedAtMs,
                     answeredAtMs: null,
                     finalized: false,
+                    notesDraft: "",
+                    tags: [],
+                    outcomeLabel: null,
                   };
                   runtimeRef.current = runtime;
                   incomingRef.current = invitation;
@@ -622,6 +662,13 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speakerId]);
 
+  useEffect(() => {
+    if (!runtimeRef.current) return;
+    runtimeRef.current.notesDraft = callNotes;
+    runtimeRef.current.tags = callTags;
+    runtimeRef.current.outcomeLabel = callOutcome === "PENDING" ? null : callOutcome;
+  }, [callNotes, callOutcome, callTags]);
+
   const duration = liveCall ? fmtDuration(Math.max(0, Math.floor((nowMs - (liveCall.answeredAtMs ?? liveCall.startedAtMs)) / 1000))) : "00:00";
   const callDisabled = !readyForCalling || Boolean(runtimeRef.current || incomingRef.current);
 
@@ -646,6 +693,22 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
       contactId: matchingContact?.id,
     });
   };
+
+  function toggleCallTag(tag: string) {
+    setCallTags((prev) => (prev.includes(tag) ? prev.filter((value) => value !== tag) : [...prev, tag]));
+  }
+
+  function markCallOutcome(status: CallStatus) {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    runtime.finalStatus = status;
+    runtime.outcomeLabel = status;
+    setCallOutcome(status);
+    setMessage({
+      type: "success",
+      text: `Outcome marked as ${status.toLowerCase()}. It will be saved when the call ends.`,
+    });
+  }
 
   useEffect(() => {
     if (!autoCall || didAutoCallRef.current || !initialDialTarget || !readyForCalling || isLinkusMode) return;
@@ -693,6 +756,11 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
                       <p className="dialer-agent-meta">
                         {call.direction} | {fmtDuration(call.durationSec)} | {formatDateTime(call.startedAt)}
                       </p>
+                      {call.notes ? (
+                        <p className="dialer-agent-meta" style={{ marginTop: "0.25rem", maxWidth: "28rem" }}>
+                          {call.notes.length > 110 ? `${call.notes.slice(0, 110)}…` : call.notes}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="inline-row">
                       <span
@@ -829,6 +897,56 @@ export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDial
               });
             }} disabled={liveCall.state !== "ACTIVE"}>{liveCall.isOnHold ? "Resume" : "Hold"}</button>
             <button type="button" className="dialer-live-end" onClick={() => void hangup()}>End Call</button>
+          </div>
+
+          <div className="dialer-card dialer-call-workbench" style={{ padding: "1rem" }}>
+            <div className="dialer-card-head">
+              <h3 className="dialer-card-title" style={{ fontSize: "0.92rem" }}>Call workbench</h3>
+              <span className={`badge ${callOutcome === "PENDING" ? "badge-warning" : "badge-active"}`}>
+                {callOutcome === "PENDING" ? "Pending outcome" : callOutcome}
+              </span>
+            </div>
+
+            <label className="field">
+              <span className="label">Notes</span>
+              <textarea
+                className="input"
+                rows={3}
+                value={callNotes}
+                onChange={(event) => setCallNotes(event.target.value)}
+                placeholder="Capture objections, next steps, or follow-up context..."
+                style={{ resize: "vertical", minHeight: 90, lineHeight: 1.6 }}
+              />
+            </label>
+
+            <div className="field">
+              <span className="label">Tags</span>
+              <div className="inline-row">
+                {CALL_TAG_OPTIONS.map((tag) => {
+                  const active = callTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`btn ${active ? "btn-primary" : "btn-secondary"} btn-sm`}
+                      onClick={() => toggleCallTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="field">
+              <span className="label">Mark outcome</span>
+              <div className="inline-row">
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => markCallOutcome("COMPLETED")}>Completed</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => markCallOutcome("MISSED")}>Missed</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => markCallOutcome("REJECTED")}>Rejected</button>
+                <button type="button" className="btn btn-danger btn-sm" onClick={() => markCallOutcome("FAILED")}>Failed</button>
+              </div>
+            </div>
           </div>
         </section>
       )}

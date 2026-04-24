@@ -44,80 +44,99 @@ export default function DailyReportsPage() {
     if (to) params.set("to", to);
     try {
       const res = await fetch(`/api/daily-reports/auto?${params}`);
-      const data = await res.json() as { reports?: AutoReport[]; message?: string };
-      if (!res.ok) { setError(data.message ?? "Failed to load reports."); setReports([]); }
-      else setReports(data.reports ?? []);
+      const data = (await res.json()) as { reports?: AutoReport[]; message?: string };
+      if (!res.ok) {
+        setError(data.message ?? "Failed to load reports.");
+        setReports([]);
+      } else {
+        setReports(data.reports ?? []);
+      }
     } catch {
       setError("Network error. Please try again.");
     }
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, [from, to]);
+  useEffect(() => {
+    void load();
+  }, [from, to]);
 
-  const totals = useMemo(() => reports.reduce(
-    (acc, r) => ({
-      totalSearched: acc.totalSearched + r.totalSearched,
-      propertiesConfirmed: acc.propertiesConfirmed + r.propertiesConfirmed,
-      notInterested: acc.notInterested + r.notInterested,
-      followUp: acc.followUp + r.followUp,
-      potentialTenants: acc.potentialTenants + r.potentialTenants,
-      salesClosed: acc.salesClosed + r.salesClosed,
-    }),
-    { totalSearched: 0, propertiesConfirmed: 0, notInterested: 0, followUp: 0, potentialTenants: 0, salesClosed: 0 },
-  ), [reports]);
+  const totals = useMemo(
+    () =>
+      reports.reduce(
+        (acc, r) => ({
+          totalSearched: acc.totalSearched + r.totalSearched,
+          propertiesConfirmed: acc.propertiesConfirmed + r.propertiesConfirmed,
+          notInterested: acc.notInterested + r.notInterested,
+          followUp: acc.followUp + r.followUp,
+          potentialTenants: acc.potentialTenants + r.potentialTenants,
+          salesClosed: acc.salesClosed + r.salesClosed,
+        }),
+        { totalSearched: 0, propertiesConfirmed: 0, notInterested: 0, followUp: 0, potentialTenants: 0, salesClosed: 0 },
+      ),
+    [reports],
+  );
 
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Daily Reports</h1>
-          <p className="page-subtitle">Auto-generated from call activity. Updates in real time.</p>
+      <header className="dialer-card dialer-hero-card">
+        <div className="page-header" style={{ alignItems: "flex-start" }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
+              Performance reports
+            </p>
+            <h1 className="page-title">Daily Reports</h1>
+            <p className="page-subtitle">
+              Auto-generated from call activity. Track daily search volume, confirmations, and conversion outcomes in one view.
+            </p>
+          </div>
+        </div>
+
+        {error && <UIAlert type="error">{error}</UIAlert>}
+
+        <div className="inline-row" style={{ alignItems: "flex-end", marginTop: "1rem" }}>
+          <label className="field" style={{ marginBottom: 0, minWidth: 160 }}>
+            <span className="label">From</span>
+            <UIInput type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label className="field" style={{ marginBottom: 0, minWidth: 160 }}>
+            <span className="label">To</span>
+            <UIInput type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </label>
         </div>
       </header>
 
-      {error && <UIAlert type="error">{error}</UIAlert>}
-
-      {/* Date filter */}
-      <div className="panel" style={{ padding: "1rem 1.25rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label className="field" style={{ marginBottom: 0, minWidth: 160 }}>
-          <span className="label">From</span>
-          <UIInput type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label className="field" style={{ marginBottom: 0, minWidth: 160 }}>
-          <span className="label">To</span>
-          <UIInput type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-      </div>
-
-      {/* Summary cards */}
       {!loading && reports.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem" }}>
+        <div className="grid-cards">
           {([
             ["Searches", totals.totalSearched, "var(--text-muted)"],
-            ["Confirmed", totals.propertiesConfirmed, "#4ade80"],
-            ["Not Interested", totals.notInterested, "#f87171"],
+            ["Confirmed", totals.propertiesConfirmed, "#59d2a5"],
+            ["Not Interested", totals.notInterested, "#ff7f7f"],
             ["Follow Ups", totals.followUp, "#60a5fa"],
             ["Potential Tenants", totals.potentialTenants, "var(--brand-gold)"],
-            ["Sales Closed", totals.salesClosed, "#4ade80"],
+            ["Sales Closed", totals.salesClosed, "#59d2a5"],
           ] as [string, number, string][]).map(([label, val, color]) => (
-            <div key={label} className="panel" style={{ padding: "1rem 1.25rem", textAlign: "center" }}>
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color }}>{val}</div>
-              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>{label}</div>
-            </div>
+            <article key={label} className="stat-card">
+              <p className="stat-label">{label}</p>
+              <p className="stat-value" style={{ color }}>
+                {val}
+              </p>
+              <p className="stat-sub">Selected date range total</p>
+            </article>
           ))}
         </div>
       )}
 
-      <div className="panel">
-        <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
-            Activity by Day
-          </h2>
+      <section className="dialer-card">
+        <div className="dialer-card-head">
+          <h2 className="dialer-card-title">Activity by Day</h2>
+          <span className="badge badge-active">{reports.length} day{reports.length === 1 ? "" : "s"}</span>
         </div>
 
         {loading ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>Loading...</div>
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+            Loading...
+          </div>
         ) : reports.length === 0 ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
             No activity found for the selected date range.
@@ -141,18 +160,18 @@ export default function DailyReportsPage() {
                   <tr key={`${r.agentId}-${r.date}`}>
                     <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{fmt(r.date)}</td>
                     <td style={{ textAlign: "center", color: "var(--text-muted)" }}>{r.totalSearched}</td>
-                    <td style={{ textAlign: "center", color: "#4ade80", fontWeight: 600 }}>{r.propertiesConfirmed}</td>
-                    <td style={{ textAlign: "center", color: "#f87171", fontWeight: 600 }}>{r.notInterested}</td>
+                    <td style={{ textAlign: "center", color: "#59d2a5", fontWeight: 600 }}>{r.propertiesConfirmed}</td>
+                    <td style={{ textAlign: "center", color: "#ff7f7f", fontWeight: 600 }}>{r.notInterested}</td>
                     <td style={{ textAlign: "center", color: "#60a5fa" }}>{r.followUp}</td>
                     <td style={{ textAlign: "center", color: "var(--brand-gold)", fontWeight: 600 }}>{r.potentialTenants}</td>
-                    <td style={{ textAlign: "center", color: "#4ade80", fontWeight: 600 }}>{r.salesClosed}</td>
+                    <td style={{ textAlign: "center", color: "#59d2a5", fontWeight: 600 }}>{r.salesClosed}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

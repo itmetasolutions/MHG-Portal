@@ -63,14 +63,41 @@ export default async function DialerHistoryPage() {
     }),
   ]);
 
+  const completedCount = calls.filter((call) => call.status === "COMPLETED" || call.status === "ANSWERED").length;
+  const missedCount = calls.filter((call) => call.status === "MISSED" || call.status === "FAILED" || call.status === "REJECTED").length;
+  const internalCount = calls.filter((call) => call.direction === "INTERNAL").length;
+
   return (
     <div className="stack">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Call History</h1>
-          <p className="page-subtitle">
-            Review incoming, outgoing, and internal call logs with filters and notes.
-          </p>
+      <header className="dialer-card dialer-hero-card">
+        <div className="page-header" style={{ alignItems: "flex-start" }}>
+          <div>
+            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
+              Call audit
+            </p>
+            <h1 className="page-title">Call History</h1>
+            <p className="page-subtitle">
+              Review incoming, outgoing, and internal calls with filters, notes, and redial-ready context.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid-cards" style={{ marginTop: "1rem" }}>
+          <article className="stat-card">
+            <p className="stat-label">Logged calls</p>
+            <p className="stat-value">{calls.length}</p>
+            <p className="stat-sub">{completedCount} answered or completed</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Missed / failed</p>
+            <p className="stat-value">{missedCount}</p>
+            <p className="stat-sub">Needs follow-up or verification</p>
+          </article>
+          <article className="stat-card">
+            <p className="stat-label">Internal calls</p>
+            <p className="stat-value">{internalCount}</p>
+            <p className="stat-sub">Agent-to-agent collaboration</p>
+          </article>
         </div>
       </header>
 
