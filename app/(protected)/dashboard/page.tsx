@@ -124,7 +124,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const [propertiesRaw, salesRaw, landlordsRaw, tenantsRaw, notesRaw, activitiesRaw] = await Promise.all([
     client.property?.findMany?.({ orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }], take: 24 }) ?? [],
-    client.sale?.findMany?.({ orderBy: { createdAt: 'desc' }, take: 48 }) ?? [],
+    client.sale?.findMany?.({ orderBy: { closedAt: 'desc' }, take: 48 }) ?? [],
     client.landlord?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
     client.tenant?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 12 }) ?? [],
     client.note?.findMany?.({ orderBy: { updatedAt: 'desc' }, take: 18 }) ?? [],
@@ -139,8 +139,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const days = periodDays(period);
   const prevMs = days * 24 * 60 * 60 * 1000 * 2;
 
-  const sales         = (salesRaw as any[]).filter((s) => withinPeriod(s?.createdAt ?? s?.updatedAt, period));
-  const prevSales     = (salesRaw as any[]).filter((s) => withinPeriodMs(s?.createdAt ?? s?.updatedAt, prevMs) && !withinPeriod(s?.createdAt ?? s?.updatedAt, period));
+  const sales         = (salesRaw as any[]).filter((s) => withinPeriod(s?.closedAt ?? s?.createdAt ?? s?.updatedAt, period));
+  const prevSales     = (salesRaw as any[]).filter((s) => withinPeriodMs(s?.closedAt ?? s?.createdAt ?? s?.updatedAt, prevMs) && !withinPeriod(s?.closedAt ?? s?.createdAt ?? s?.updatedAt, period));
   const landlords     = (landlordsRaw as any[]).filter((l) => withinPeriod(l?.updatedAt ?? l?.createdAt, period));
   const prevLandlords = (landlordsRaw as any[]).filter((l) => withinPeriodMs(l?.updatedAt ?? l?.createdAt, prevMs) && !withinPeriod(l?.updatedAt ?? l?.createdAt, period));
   const tenants       = (tenantsRaw as any[]).filter((t) => withinPeriod(t?.updatedAt ?? t?.createdAt, period));
@@ -172,7 +172,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     date.setMonth(date.getMonth() - (5 - i));
     const label = date.toLocaleDateString('en-GB', { month: 'short' });
     const count = sales.filter((s) => {
-      const d = new Date(String(s?.createdAt ?? s?.updatedAt ?? ''));
+      const d = new Date(String(s?.closedAt ?? s?.createdAt ?? s?.updatedAt ?? ''));
       return !Number.isNaN(d.getTime()) && d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
     }).length;
     return { label, count };
@@ -189,7 +189,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ...sales.slice(0, 4).map((s: any) => ({
       title: `Sale ${cleanText(s?.status, 'recorded')}`,
       description: `${cleanText(s?.propertyAddress ?? s?.property?.address ?? s?.property?.title, 'Property')} · ${money(extractAmount(s))}`,
-      timestamp: s?.createdAt ?? s?.updatedAt,
+      timestamp: s?.closedAt ?? s?.createdAt ?? s?.updatedAt,
     })),
     ...notes.slice(0, 4).map((n: any) => ({
       title: cleanText(n?.title ?? n?.subject, 'Note added'),
@@ -394,7 +394,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="dashboard-preview-grid">
               {(properties.slice(0, 6) as any[]).map((property) => (
                 <div key={String(property?.id ?? property?.slug ?? property?.address)}>
-                  <PropertyPreviewCardAny property={property} />
+                  <PropertyPreviewCardAny href={`/properties/${property.id}`} property={property} />
                 </div>
               ))}
             </div>

@@ -34,10 +34,10 @@ if (process.platform !== "win32") {
   }
 }
 
-const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+const prismaCli = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
 
 function runPrisma(args, { allowFailure = false } = {}) {
-  const result = spawnSync(npxCmd, ["prisma", ...args], {
+  const result = spawnSync(process.execPath, [prismaCli, ...args], {
     encoding: "utf8",
     stdio: "pipe",
   });

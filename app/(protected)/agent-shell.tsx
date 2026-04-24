@@ -296,7 +296,7 @@ export function AgentShell({ user, userId, chatContacts, children }: AgentShellP
         <main className="workspace-content">{children}</main>
       </div>
 
-      <FloatingChatAny chatContacts={chatContacts} currentUserId={userId} userId={userId} />
+      <FloatingChatAny contacts={chatContacts} userId={userId} />
     </div>
   );
 }

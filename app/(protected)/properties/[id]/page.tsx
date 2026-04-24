@@ -72,7 +72,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
   }
 
   const relatedSales = ((await client.sale?.findMany?.({
-    orderBy: { createdAt: 'desc' },
+    orderBy: { closedAt: 'desc' },
     take: 20,
   })) ?? []).filter((sale: any) => {
     return String(sale?.propertyId ?? sale?.property?.id ?? sale?.property?.slug ?? sale?.propertySlug ?? '') === params.id;
@@ -89,7 +89,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     ...(relatedSales as any[]).map((sale) => ({
       label: 'Sale update',
       detail: `${cleanText(sale?.status, 'Recorded')} · ${money(sale?.amount ?? sale?.salePrice ?? sale?.value)}`,
-      time: sale?.createdAt ?? sale?.updatedAt,
+      time: sale?.closedAt ?? sale?.createdAt ?? sale?.updatedAt,
     })),
     ...(relatedNotes as any[]).map((note) => ({
       label: cleanText(note?.title ?? note?.subject, 'Note'),
@@ -248,10 +248,10 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
             </div>
             <div className="detail-stack">
               {(relatedSales as any[]).slice(0, 3).map((sale) => (
-                <div key={String(sale?.id ?? sale?.createdAt)} className="detail-stack__item">
+                <div key={String(sale?.id ?? sale?.closedAt ?? sale?.createdAt)} className="detail-stack__item">
                   <strong>{cleanText(sale?.status, 'Sale')}</strong>
                   <span>{money(sale?.amount ?? sale?.salePrice ?? sale?.value)}</span>
-                  <span>{shortDate(sale?.createdAt ?? sale?.updatedAt)}</span>
+                  <span>{shortDate(sale?.closedAt ?? sale?.createdAt ?? sale?.updatedAt)}</span>
                 </div>
               ))}
               {(relatedNotes as any[]).slice(0, 3).map((note) => (
