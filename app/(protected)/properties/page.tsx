@@ -84,7 +84,7 @@ export default function PropertiesPage() {
   const [saleForm, setSaleForm] = useState(emptySaleForm);
   const [tenantForm, setTenantForm] = useState(emptyTenant);
   const [closeBusy, setCloseBusy] = useState(false);
-  const expanded = new Set<string>();
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   async function load() {
     setLoading(true);
@@ -113,7 +113,17 @@ export default function PropertiesPage() {
     setMessage(null);
   }
 
-  function toggleExpand(_id?: string) {}
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   async function handleCloseSale() {
     if (!closeSale) return;

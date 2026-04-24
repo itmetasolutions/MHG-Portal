@@ -42,9 +42,8 @@ jobs:
       - name: Run Prisma migrations (production)
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-        run: |
-          npx prisma migrate resolve --applied "20260227000000_rooms_passive_multi_vacancy" || true
-          npx prisma migrate deploy
+          DIRECT_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
+        run: npm run prisma:migrate:deploy
 
       - name: Install PostgreSQL client
         run: |

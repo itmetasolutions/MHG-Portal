@@ -27,7 +27,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { proper
     });
 
     return NextResponse.json({ ok: true, property });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || "Invalid payload or internal error" }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid payload or internal error";
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

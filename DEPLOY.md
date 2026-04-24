@@ -128,6 +128,7 @@ Before clicking **Deploy**, scroll down to **Environment Variables** and add all
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `DATABASE_URL` | Your Neon connection string | Copied in Stage 2.2 |
+| `DIRECT_URL` | Your Neon non-pooled connection string | Optional but recommended for migrations |
 | `AUTH_SESSION_SECRET` | A random 32+ character string | See below for how to generate |
 | `EMAIL_PROVIDER` | `resend` | Exact value, lowercase |
 | `OTP_EMAIL_FROM` | `noreply@yourdomain.com` | Your verified sender address |
@@ -178,6 +179,7 @@ Open `.env` and fill in at minimum:
 
 ```
 DATABASE_URL=postgresql://neondb_owner:XXXX@ep-cool-name-XXXX.eu-central-1.aws.neon.tech/neondb?sslmode=require
+DIRECT_URL=postgresql://neondb_owner:XXXX@ep-cool-name-XXXX.eu-central-1.aws.neon.tech/neondb?sslmode=require
 AUTH_SESSION_SECRET=your-32-char-secret-here
 EMAIL_PROVIDER=resend
 OTP_EMAIL_FROM=noreply@yourdomain.com
@@ -199,7 +201,7 @@ npm install
 This creates all the tables in your Neon database:
 
 ```bash
-npx prisma migrate deploy
+npm run prisma:migrate:deploy
 ```
 
 You should see output like:
@@ -253,11 +255,12 @@ The project includes a workflow file at `.github/workflows/prod-migrate-and-depl
 
 Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
-Add these two secrets:
+Add these secrets:
 
 | Secret name | Value |
 |-------------|-------|
 | `PRODUCTION_DATABASE_URL` | Your Neon connection string |
+| `PRODUCTION_DIRECT_URL` | Your Neon non-pooled connection string (optional, recommended) |
 | `VERCEL_DEPLOY_HOOK_URL` | See below |
 
 **How to get the Vercel deploy hook URL:**
@@ -305,6 +308,9 @@ DATABASE_URL=postgresql://...neon.tech/neondb?sslmode=require
 APP_URL=https://your-vercel-url.vercel.app
 AUTH_SESSION_SECRET=<32+ random characters>
 
+# Recommended for Neon migrations
+DIRECT_URL=postgresql://...neon.tech/neondb?sslmode=require
+
 # Email
 EMAIL_PROVIDER=resend
 OTP_EMAIL_FROM=noreply@yourdomain.com
@@ -338,7 +344,7 @@ npm install
 npm run dev
 
 # Run database migrations
-npx prisma migrate deploy
+npm run prisma:migrate:deploy
 
 # Apply custom SQL constraints
 npx prisma db execute --file prisma/sql/landlord_constraints.sql

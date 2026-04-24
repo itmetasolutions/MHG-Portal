@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
-    "build": "node scripts/prisma-migrate-build.mjs && next build",
+    "build": "next build",
+    "build:with-migrate": "npm run prisma:migrate:deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "node --import tsx --test tests/index.test.ts",
@@ -14,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "node scripts/prisma-migrate-build.mjs",
     "prisma:seed": "prisma db seed"
   },
   "dependencies": {

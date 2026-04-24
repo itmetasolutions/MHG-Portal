@@ -24,6 +24,9 @@ Required:
 - `ADMIN_PASSWORD` (used by seed for the pre-built admin)
 - `OTP_EMAIL_FROM` (verified sender address)
 
+Optional deployment/migration:
+- `DIRECT_URL` (non-pooled migration URL; recommended for Neon)
+
 Email provider:
 - `EMAIL_PROVIDER` supports `console`, `resend`, `smtp`
 - For Resend:
@@ -88,9 +91,10 @@ Use `.env.example` as the template.
 4. Run DB migrations and SQL constraints (one-time per environment)
 - From your machine or CI with production env loaded:
 ```bash
-npx prisma migrate deploy
+npm run prisma:migrate:deploy
 psql "$DATABASE_URL" -f prisma/sql/landlord_constraints.sql
 ```
+- If using Neon, set `DIRECT_URL` to the non-pooled connection string before running migrations.
 
 5. Seed pre-built admin (one-time)
 - With production env vars set:
@@ -115,13 +119,16 @@ Workflow file:
 
 What it does on push to `main` (or manual run):
 1. Installs dependencies
-2. Runs `prisma migrate deploy` against production DB
+2. Runs `npm run prisma:migrate:deploy` against production DB
 3. Applies `prisma/sql/landlord_constraints.sql`
 4. Triggers Vercel production deployment via Deploy Hook
 
 Required GitHub repository secrets:
 - `PRODUCTION_DATABASE_URL` (production PostgreSQL URL)
 - `VERCEL_DEPLOY_HOOK_URL` (from Vercel Project -> Settings -> Git -> Deploy Hooks)
+
+Optional GitHub repository secrets:
+- `PRODUCTION_DIRECT_URL` (Neon non-pooled URL for migrations)
 
 Recommended for strict ordering:
 - Disable automatic production deploys from direct Git pushes in Vercel (or avoid relying on them), and use this workflow + deploy hook path as the production release path.
@@ -162,7 +169,7 @@ npm run prisma:generate
 
 4. Run migrations:
 ```bash
-npx prisma migrate deploy
+npm run prisma:migrate:deploy
 ```
 
 5. Apply DB constraints SQL (partial unique ACTIVE index + passive lock trigger):
@@ -180,6 +187,9 @@ npm run prisma:seed
 npm run build
 npm run start
 ```
+
+`npm run build` intentionally does not run database migrations. Run `npm run prisma:migrate:deploy`
+from CI or a shell with production environment variables before deploying.
 
 ## Docker (App + Postgres)
 

@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
+import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
 
 const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+const prismaEnginePattern = /^(schema-engine|migration-engine|query-engine|prisma-fmt)(?:-|$)/;
 
 function runPrisma(args, { allowFailure = false } = {}) {
   const result = spawnSync(npxCmd, ["prisma", ...args], {
@@ -28,12 +30,37 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function ensurePrismaEnginesExecutable() {
+  if (process.platform === "win32") return;
+
+  const enginesDir = new URL("../node_modules/@prisma/engines/", import.meta.url);
+  if (!existsSync(enginesDir)) return;
+
+  let updated = 0;
+  for (const entry of readdirSync(enginesDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !prismaEnginePattern.test(entry.name)) continue;
+
+    const engineFile = new URL(entry.name, enginesDir);
+    const mode = statSync(engineFile).mode & 0o777;
+    if ((mode & 0o111) === 0o111) continue;
+
+    chmodSync(engineFile, mode | 0o755);
+    updated += 1;
+  }
+
+  if (updated > 0) {
+    process.stdout.write(`[migrate] Fixed executable permissions on ${updated} Prisma engine file(s).\n`);
+  }
+}
+
 // Neon pooled connections don't support advisory locks required by Prisma Migrate.
 // Override DATABASE_URL with the direct (non-pooled) URL for migrations.
 if (process.env.DIRECT_URL) {
   process.env.DATABASE_URL = process.env.DIRECT_URL;
   process.stdout.write("[migrate] Using DIRECT_URL for migrations (non-pooled connection).\n");
 }
+
+ensurePrismaEnginesExecutable();
 
 const retriesRaw = Number.parseInt(process.env.PRISMA_MIGRATE_DEPLOY_RETRIES ?? "5", 10);
 const delayRaw = Number.parseInt(process.env.PRISMA_MIGRATE_DEPLOY_DELAY_MS ?? "15000", 10);
