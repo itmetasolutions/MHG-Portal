@@ -188,7 +188,7 @@ function composeCallNotes(notesDraft: string, tags: string[], outcomeLabel: stri
   return parts.join("\n\n");
 }
 
-function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
+export function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget = null, autoCall = false }: Props) {
   const [dialInput, setDialInput] = useState("");
   const [incomingCall, setIncomingCall] = useState<CallView | null>(null);
   const [liveCall, setLiveCall] = useState<CallView | null>(null);
