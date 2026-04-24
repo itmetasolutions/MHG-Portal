@@ -691,6 +691,9 @@ function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget 
       peerNumber: matchingContact ? matchingContact.phoneNumber : target,
       peerExtension: matchingContact?.extensionNumber ?? null,
       contactId: matchingContact?.id,
+      notesDraft: "",
+      tags: [],
+      outcomeLabel: null,
     });
   };
 
@@ -723,6 +726,9 @@ function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget 
       peerNumber: matchingContact ? matchingContact.phoneNumber : target,
       peerExtension: matchingContact?.extensionNumber ?? null,
       contactId: matchingContact?.id,
+      notesDraft: "",
+      tags: [],
+      outcomeLabel: null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCall, initialDialTarget, readyForCalling, contacts, isLinkusMode]);
@@ -784,6 +790,9 @@ function DialerMainClient({ bootstrap, contacts, recentCalls, initialDialTarget 
                             peerName: call.peerName,
                             peerNumber: call.peerNumber ?? (redialDirection === "OUTGOING" ? target : null),
                             peerExtension: call.peerExtension ?? (redialDirection === "INTERNAL" ? target : null),
+                            notesDraft: "",
+                            tags: [],
+                            outcomeLabel: null,
                           });
                         }}
                         disabled={callDisabled || !target}

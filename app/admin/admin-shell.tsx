@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
-import * as FloatingChatModule from '../../components/floating-chat';
-import * as NavLogoutButtonModule from '../../components/nav-logout-button';
-import * as NotificationsBellModule from '../../components/notifications-bell';
+import { FloatingChat } from '../../components/floating-chat';
+import { NavLogoutButton } from '../../components/nav-logout-button';
+import { NotificationsBell } from '../../components/notifications-bell';
 
 type AdminShellUser = {
   name?: string | null;
@@ -147,9 +147,9 @@ export function AdminShell({ user, userId, chatContacts, children }: AdminShellP
   const userRole = user?.role || 'Platform admin';
   const userAvatar = initials(userLabel);
 
-  const FloatingChatSurface = (((FloatingChatModule as any).default ?? (FloatingChatModule as any).FloatingChat) as React.ComponentType<any>);
-  const NotificationsBellSurface = (((NotificationsBellModule as any).default ?? (NotificationsBellModule as any).NotificationsBell) as React.ComponentType<any>);
-  const LogoutButtonSurface = (((NavLogoutButtonModule as any).default ?? (NavLogoutButtonModule as any).NavLogoutButton) as React.ComponentType<any>);
+  const FloatingChatSurface = FloatingChat as React.ComponentType<any>;
+  const NotificationsBellSurface = NotificationsBell as React.ComponentType<any>;
+  const LogoutButtonSurface = NavLogoutButton as React.ComponentType<any>;
 
   return (
     <div className="workspace-shell admin-shell">
