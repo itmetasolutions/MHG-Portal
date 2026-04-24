@@ -1,10 +1,10 @@
-import { Prisma, PropertyCategory, PropertyStatus, RoomType, UserRole, VacancyType } from "@prisma/client";
+import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
 import { canListProperties } from "@/server/policies";
-import { assertMediaAssetsExist, buildPropertyMediaRows, normalizeMediaAssetIds, serializePropertyImageList } from "@/server/property-media";
+import { serializePropertyImageList } from "@/server/property-media";
 
 const listQuerySchema = z
   .object({
@@ -253,184 +253,13 @@ export async function GET(request: NextRequest) {
   });
 }
 
-const postBool = z.enum(["true", "false"]).transform((v) => v === "true");
-const postDecimal = z.coerce.number().positive();
-const postOptDecimal = z.coerce.number().min(0).nullable().optional();
-
-const postRoomSchema = z.object({
-  roomType: z.nativeEnum(RoomType),
-  rentPerMonth: postDecimal,
-  depositAmount: postDecimal,
-  expectedCommissionAmt: postDecimal,
-}).strict();
-
-const postPropertySchema = z.object({
-  vacancyType: z.nativeEnum(VacancyType).default("SINGLE"),
-  propertyCategory: z.nativeEnum(PropertyCategory).optional(),
-  description: z.string().trim().min(1, "Description is required"),
-  addressLine1: z.string().trim().min(1, "Address is required"),
-  addressLine2: z.string().trim().optional(),
-  postcode: z.string().trim().min(1, "Postcode is required"),
-  city: z.string().trim().min(1, "City is required"),
-  rentPerMonth: postOptDecimal,
-  depositAmount: postOptDecimal,
-  expectedCommissionAmt: postOptDecimal,
-  totalRooms: z.coerce.number().int().min(0).nullable().optional(),
-  availableRooms: z.coerce.number().int().min(0).nullable().optional(),
-  isFurnished: postBool,
-  livingLandlord: postBool,
-  garden: postBool,
-  parking: postBool,
-  billsIncluded: postBool,
-  balcony: postBool,
-  disabledAccess: postBool,
-  livingRoom: z.enum(["PRIVATE", "SHARED", "NONE"]),
-  broadbandIncluded: postBool,
-  couplesAllowed: postBool,
-  petsAllowed: postBool,
-  dssAllowed: postBool,
-  childrenAllowed: postBool,
-  availabilityDate: z.string().datetime({ offset: true }),
-  status: z.enum(["DRAFT", "AVAILABLE"]).default("DRAFT"),
-  mediaAssetIds: z.array(z.string().uuid()).max(50).optional(),
-  rooms: z.array(postRoomSchema).max(200).optional(),
-}).strict();
-
-const postSchema = z.object({
-  landlordId: z.string().uuid(),
-  property: postPropertySchema,
-}).strict().superRefine((val, ctx) => {
-  if (val.property.vacancyType === "MULTIPLE" && (!val.property.rooms || val.property.rooms.length === 0)) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least one room is required for Shared properties.", path: ["property", "rooms"] });
-  }
-  if (val.property.vacancyType === "SINGLE") {
-    if (!val.property.rentPerMonth) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Rent per month is required.", path: ["property", "rentPerMonth"] });
-    if (!val.property.depositAmount) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Deposit is required.", path: ["property", "depositAmount"] });
-    if (!val.property.expectedCommissionAmt) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Commission amount is required.", path: ["property", "expectedCommissionAmt"] });
-  }
-});
-
-function calcWeeklyRent(rpm: number): number {
-  return Math.round((rpm * 12 / 52) * 100) / 100;
-}
-
-function newPropertyRef(): string {
-  const year = new Date().getFullYear();
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const rand = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  return `PROP-${year}-${rand}`;
-}
-
-export async function POST(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT, UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  let payload: z.infer<typeof postSchema>;
-  try {
-    payload = postSchema.parse(await request.json());
-  } catch (error) {
-    return NextResponse.json(
-      { error: "INVALID_REQUEST", message: "Invalid payload.", details: error instanceof z.ZodError ? error.flatten() : undefined },
-      { status: 400 },
-    );
-  }
-
-  const landlord = await db.landlord.findUnique({
-    where: { id: payload.landlordId },
-    select: { id: true, ownerAgentId: true },
-  });
-
-  if (!landlord) {
-    return NextResponse.json({ error: "LANDLORD_NOT_FOUND", message: "Landlord not found." }, { status: 404 });
-  }
-
-  if (auth.user.role === UserRole.AGENT && landlord.ownerAgentId !== auth.user.id) {
-    return NextResponse.json({ error: "FORBIDDEN", message: "You do not own this landlord." }, { status: 403 });
-  }
-
-  const mediaAssetIds = normalizeMediaAssetIds(payload.property.mediaAssetIds);
-  try {
-    await assertMediaAssetsExist(db, mediaAssetIds);
-  } catch {
-    return NextResponse.json({ error: "MEDIA_ASSET_NOT_FOUND", message: "One or more images not found." }, { status: 400 });
-  }
-
-  const pData = payload.property;
-  const postcode = pData.postcode.toUpperCase().trim();
-  const propertyRef = newPropertyRef();
-  const isStudio = pData.vacancyType === "SINGLE" && pData.propertyCategory === "STUDIO_FLAT";
-
-  const property = await db.$transaction(async (tx) => {
-    const prop = await tx.property.create({
-      data: {
-        landlordId: landlord.id,
-        ownerAgentId: landlord.ownerAgentId,
-        propertyRef,
-        description: pData.description,
-        addressLine1: pData.addressLine1,
-        addressLine2: pData.addressLine2 ?? null,
-        postcode,
-        city: pData.city,
-        vacancyType: pData.vacancyType,
-        propertyCategory: pData.vacancyType === "SINGLE" ? (pData.propertyCategory ?? null) : null,
-        status: pData.status === "AVAILABLE" ? "AVAILABLE" : "DRAFT",
-        rentPerMonth: pData.vacancyType === "SINGLE" && pData.rentPerMonth ? pData.rentPerMonth : null,
-        rentPerWeek: pData.vacancyType === "SINGLE" && pData.rentPerMonth ? calcWeeklyRent(pData.rentPerMonth) : null,
-        depositAmount: pData.vacancyType === "SINGLE" ? (pData.depositAmount ?? null) : null,
-        expectedCommissionAmt: pData.vacancyType === "SINGLE" ? (pData.expectedCommissionAmt ?? null) : null,
-        totalRooms: !isStudio ? (pData.totalRooms ?? null) : null,
-        availableRooms: !isStudio ? (pData.availableRooms ?? null) : null,
-        isFurnished: pData.isFurnished,
-        livingLandlord: pData.livingLandlord,
-        garden: pData.garden,
-        parking: pData.parking,
-        billsIncluded: pData.billsIncluded,
-        balcony: pData.balcony,
-        disabledAccess: pData.disabledAccess,
-        livingRoom: pData.livingRoom as "PRIVATE" | "SHARED" | "NONE",
-        broadbandIncluded: pData.broadbandIncluded,
-        couplesAllowed: pData.couplesAllowed,
-        petsAllowed: pData.petsAllowed,
-        dssAllowed: pData.dssAllowed,
-        childrenAllowed: pData.childrenAllowed,
-        availabilityDate: new Date(pData.availabilityDate),
-        rooms: pData.vacancyType === "MULTIPLE" && pData.rooms?.length
-          ? {
-              create: pData.rooms.map((r) => ({
-                roomName: r.roomType,
-                roomType: r.roomType,
-                rentPerMonth: r.rentPerMonth,
-                rentPerWeek: calcWeeklyRent(r.rentPerMonth),
-                depositAmount: r.depositAmount,
-                expectedCommissionAmt: r.expectedCommissionAmt,
-              })),
-            }
-          : undefined,
-      },
-      select: { id: true, propertyRef: true, status: true, landlordId: true },
-    });
-
-    if (mediaAssetIds.length > 0) {
-      await tx.propertyMedia.createMany({ data: buildPropertyMediaRows(prop.id, mediaAssetIds) });
-    }
-
-    await tx.auditLog.create({
-      data: {
-        userId: auth.user.id,
-        entityType: "PROPERTY",
-        entityId: prop.id,
-        action: "CREATE_PROPERTY",
-        metadata: { landlordId: landlord.id, propertyRef },
-        beforeJson: Prisma.JsonNull,
-        afterJson: { propertyId: prop.id },
-      },
-    });
-
-    return prop;
-  });
-
-  return NextResponse.json({ property }, { status: 201 });
+export async function POST() {
+  return NextResponse.json(
+    {
+      error: "METHOD_NOT_ALLOWED",
+      message:
+        "Use POST /api/properties/intake (phone-first) or POST /api/landlords/:id/properties.",
+    },
+    { status: 405 },
+  );
 }

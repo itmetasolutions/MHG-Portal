@@ -1,346 +1,376 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ComponentType, ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FloatingChat } from '@/components/floating-chat';
-import { NavLogoutButton } from '@/components/nav-logout-button';
-import { NotificationsBell } from '@/components/notifications-bell';
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { usePathname } from "next/navigation";
+import { NavLogoutButton } from "@/components/nav-logout-button";
+import { checkLandlordNumber, type LandlordLookupResponse } from "@/lib/portal-api";
+import { FloatingChat } from "@/components/floating-chat";
+import { NotificationsBell } from "@/components/notifications-bell";
 
-type AgentShellProps = {
-  user: any;
+type AgentUser = {
+  name: string;
+  email: string;
+  profilePicture?: string | null;
+};
+
+type ChatContact = { id: string; name: string; email: string; role?: string; profilePicture?: string | null };
+
+type Props = {
+  user: AgentUser;
   userId: string;
-  chatContacts: any[];
-  children: ReactNode;
+  chatContacts: ChatContact[];
+  children: React.ReactNode;
 };
 
-type NavItem = {
-  href: string;
-  label: string;
-  hint: string;
-  group: 'Command' | 'Operations' | 'Communication' | 'Admin';
-  icon: ReactNode;
-};
+function DashboardIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm7-4a1 1 0 0 0-2 0v3a1 1 0 0 0 .293.707l2.5 2.5a1 1 0 1 0 1.414-1.414L9 8.586V6Z" />
+    </svg>
+  );
+}
 
-const FloatingChatAny = FloatingChat as ComponentType<any>;
-const NotificationsBellAny = NotificationsBell as ComponentType<any>;
-const NavLogoutButtonAny = NavLogoutButton as ComponentType<any>;
+function LandlordsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function PropertiesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function SalesIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function TenantsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z" />
+    </svg>
+  );
+}
 
 
-function IconDashboard() {
+function DialerIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-      <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-      <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-      <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2 4.75A2.75 2.75 0 0 1 4.75 2h2.5A2.75 2.75 0 0 1 10 4.75v10.5A2.75 2.75 0 0 1 7.25 18h-2.5A2.75 2.75 0 0 1 2 15.25V4.75Zm10 0A2.75 2.75 0 0 1 14.75 2h.5A2.75 2.75 0 0 1 18 4.75v3.5a.75.75 0 0 1-1.5 0v-3.5c0-.69-.56-1.25-1.25-1.25h-.5c-.69 0-1.25.56-1.25 1.25v10.5c0 .69.56 1.25 1.25 1.25h.5c.69 0 1.25-.56 1.25-1.25v-3.5a.75.75 0 0 1 1.5 0v3.5A2.75 2.75 0 0 1 15.25 18h-.5A2.75 2.75 0 0 1 12 15.25V4.75Z" />
     </svg>
   );
 }
-function IconProperties() {
+
+function CallHistoryIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2 7L8 2L14 7V14H10V10H6V14H2V7Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M10 2.5a7.5 7.5 0 1 0 7.387 8.804.75.75 0 1 0-1.476-.26A6 6 0 1 1 10 4a6 6 0 0 1 5.192 2.995H13a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 .75-.75v-3.5a.75.75 0 1 0-1.5 0v1.568A7.489 7.489 0 0 0 10 2.5Zm-.75 3.5a.75.75 0 0 1 1.5 0v3.19l2.03 1.218a.75.75 0 0 1-.772 1.286l-2.392-1.435a.75.75 0 0 1-.366-.643V6Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
-function IconLandlords() {
+
+function IntercallingIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M2 14C2 11.2386 4.68629 9 8 9C11.3137 9 14 11.2386 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2.5 5A2.5 2.5 0 0 1 5 2.5h2A2.5 2.5 0 0 1 9.5 5v1A2.5 2.5 0 0 1 7 8.5H5A2.5 2.5 0 0 1 2.5 6V5Zm8 9A2.5 2.5 0 0 1 13 11.5h2a2.5 2.5 0 0 1 2.5 2.5v1A2.5 2.5 0 0 1 15 17.5h-2a2.5 2.5 0 0 1-2.5-2.5v-1ZM6.75 11a.75.75 0 0 1 0-1.5h6.94l-1.22-1.22a.75.75 0 0 1 1.06-1.06l2.5 2.5a.75.75 0 0 1 0 1.06l-2.5 2.5a.75.75 0 0 1-1.06-1.06l1.22-1.22H6.75Z" />
     </svg>
   );
 }
-function IconTenants() {
+
+function PotentialTenantsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="5.5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-      <circle cx="10.5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-      <path d="M1 14C1 11.7909 3.01472 10 5.5 10C6.41 10 7.26 10.26 7.99 10.71" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-      <path d="M7 14C7 11.7909 9.01472 10 11.5 10C13.9853 10 16 11.7909 16 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M10 1a.75.75 0 0 1 .683.438l1.842 3.73 4.116.598a.75.75 0 0 1 .416 1.279l-2.98 2.903.703 4.1a.75.75 0 0 1-1.088.791L10 12.775l-3.692 1.94a.75.75 0 0 1-1.088-.79l.704-4.101L2.943 7.02a.75.75 0 0 1 .416-1.28l4.116-.597L9.317 1.44A.75.75 0 0 1 10 1Z" clipRule="evenodd" />
     </svg>
   );
 }
-function IconStart() {
+
+function PotentialLandlordsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M6.5 5.5L10.5 8L6.5 10.5V5.5Z" fill="currentColor"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M9.293 2.293a1 1 0 0 1 1.414 0l7 7A1 1 0 0 1 17 11h-1v6a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6H3a1 1 0 0 1-.707-1.707l7-7Z" clipRule="evenodd" />
     </svg>
   );
 }
-function IconDialer() {
+
+function DailyReportIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M3 2.5C3 2.5 4.5 2 5.5 4.5C6 6 5 6.5 5 7.5C5 9 7 11 8.5 11C9.5 11 10 10 11.5 10.5C14 11.5 13.5 13 13.5 13C13.5 13 12 15 9 13.5C6 12 2.5 8.5 1.5 5.5C0.5 2.5 3 2.5 3 2.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M5 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1V4Zm3 0h4v1H8V4Zm-4 4h12v8H4V8Zm2 2a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h4a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Z" clipRule="evenodd" />
     </svg>
   );
 }
-function IconMessages() {
+
+function CallRecordsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M13 2H3C2.44772 2 2 2.44772 2 3V11C2 11.5523 2.44772 12 3 12H6L8 14L10 12H13C13.5523 12 14 11.5523 14 11V3C14 2.44772 13.5523 2 13 2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M2 3a1 1 0 0 1 1-1h2.153a1 1 0 0 1 .986.836l.74 4.435a1 1 0 0 1-.54 1.06l-1.548.773a11.037 11.037 0 0 0 6.105 6.105l.774-1.548a1 1 0 0 1 1.059-.54l4.435.74a1 1 0 0 1 .836.986V17a1 1 0 0 1-1 1h-2C7.82 18 2 12.18 2 5V3Z" />
     </svg>
   );
 }
-function IconCallRecords() {
+
+function NotesIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M2 4H14M2 8H10M2 12H7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M15.621 4.379a3 3 0 0 0-4.242 0l-7 7a3 3 0 0 0 0 4.243 3 3 0 0 0 4.243 0l.741-.741a.75.75 0 1 1 1.06 1.06l-.741.741a4.5 4.5 0 0 1-6.364-6.364l7-7a4.5 4.5 0 0 1 6.364 6.364l-4 4a2.25 2.25 0 0 1-3.182-3.182l5.5-5.5a.75.75 0 0 1 1.061 1.06l-5.5 5.5a.75.75 0 0 0 1.06 1.061l4-4a3 3 0 0 0 0-4.243Z" clipRule="evenodd" />
     </svg>
   );
 }
-function IconReports() {
+
+function ContactsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M5 6H11M5 9H9M5 12H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0H3Zm12.25-8a.75.75 0 0 1 .75.75V12h1.25a.75.75 0 0 1 0 1.5H16v1.25a.75.75 0 0 1-1.5 0V13.5h-1.25a.75.75 0 0 1 0-1.5h1.25v-1.25a.75.75 0 0 1 .75-.75Z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
-function IconNotes() {
+
+function TemplatesIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M3 2H10L13 5V14H3V2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-      <path d="M10 2V5H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5.5 8H10.5M5.5 11H9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H7Z" clipRule="evenodd" />
     </svg>
   );
 }
-function IconTemplates() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="1.5" y="1.5" width="13" height="4" rx="1" stroke="currentColor" strokeWidth="1.4"/>
-      <rect x="1.5" y="7.5" width="6" height="7" rx="1" stroke="currentColor" strokeWidth="1.4"/>
-      <rect x="9.5" y="7.5" width="5" height="3" rx="1" stroke="currentColor" strokeWidth="1.4"/>
-    </svg>
-  );
-}
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',    label: 'Dashboard',     hint: 'Portfolio command center',    group: 'Command',       icon: <IconDashboard /> },
-  { href: '/properties',   label: 'Properties',    hint: 'Listings and detail views',   group: 'Command',       icon: <IconProperties /> },
-  { href: '/landlords',    label: 'Landlords',     hint: 'Owners and relationships',    group: 'Command',       icon: <IconLandlords /> },
-  { href: '/tenants',      label: 'Tenants',       hint: 'Rents and occupancy',         group: 'Command',       icon: <IconTenants /> },
-  { href: '/start',        label: 'Start',         hint: 'Lead ownership workflow',     group: 'Operations',    icon: <IconStart /> },
-  { href: '/dialer',       label: 'Dialer',        hint: 'Call console and outcomes',   group: 'Operations',    icon: <IconDialer /> },
-  { href: '/messages',     label: 'Messages',      hint: 'Chat threads and notes',      group: 'Communication', icon: <IconMessages /> },
-  { href: '/call-records', label: 'Call records',  hint: 'Logs and follow-ups',         group: 'Communication', icon: <IconCallRecords /> },
-  { href: '/daily-reports',label: 'Reports',       hint: 'Daily performance snapshots', group: 'Communication', icon: <IconReports /> },
-  { href: '/notes',        label: 'Notes',         hint: 'Owner and tenant notes',      group: 'Communication', icon: <IconNotes /> },
-  { href: '/templates',    label: 'Templates',     hint: 'Saved replies and scripts',   group: 'Communication', icon: <IconTemplates /> },
+
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
+  { href: "/dialer", label: "Dialpad", icon: DialerIcon, exact: true },
+  { href: "/dialer/history", label: "Call History", icon: CallHistoryIcon, exact: false },
+  { href: "/dialer/intercalling", label: "Intercalling", icon: IntercallingIcon, exact: false },
+  { href: "/dialer/contacts", label: "Contacts", icon: ContactsIcon, exact: false },
+  { href: "/landlords", label: "Landlords", icon: LandlordsIcon, exact: false },
+  { href: "/properties", label: "Properties", icon: PropertiesIcon, exact: false },
+  { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
+  { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
+  { href: "/potential-tenants", label: "Potential Tenants", icon: PotentialTenantsIcon, exact: false },
+  { href: "/potential-landlords", label: "Potential Landlords", icon: PotentialLandlordsIcon, exact: false },
+  { href: "/daily-reports", label: "Daily Reports", icon: DailyReportIcon, exact: false },
+  { href: "/call-records", label: "Call Records", icon: CallRecordsIcon, exact: false },
+  { href: "/notes", label: "My Notes", icon: NotesIcon, exact: false },
+  { href: "/templates", label: "Templates", icon: TemplatesIcon, exact: false },
 ];
 
-const QUICK_ACTIONS = [
-  { href: '/properties?status=active', label: 'Active listings' },
-  { href: '/start',                    label: 'New lead' },
-  { href: '/dialer',                   label: 'Open dialer' },
-  { href: '/messages',                 label: 'Chat' },
-];
-
-function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-const PRESENCE_CYCLE = ['available', 'away', 'busy'] as const;
-type Presence = typeof PRESENCE_CYCLE[number];
-
-export function AgentShell({ user, userId, chatContacts, children }: AgentShellProps) {
+export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const pathname = usePathname();
-  const [search, setSearch] = useState('');
-  const [presence, setPresence] = useState<Presence>('available');
-  const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
+  const [lookupInput, setLookupInput] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupResult, setLookupResult] = useState<LandlordLookupResponse | null>(null);
 
-  const filteredItems = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    if (!needle) return NAV_ITEMS;
-    return NAV_ITEMS.filter((item) => {
-      const haystack = `${item.label} ${item.hint} ${item.group}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [search]);
+  const initials = user.name
+    ? user.name
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email[0].toUpperCase();
 
-  const groupedItems = useMemo(() => {
-    const groups: Record<NavItem['group'], NavItem[]> = {
-      Command: [], Operations: [], Communication: [], Admin: [],
-    };
-    filteredItems.forEach((item) => groups[item.group].push(item));
-    return groups;
-  }, [filteredItems]);
+  function isActive(href: string, exact: boolean) {
+    if (exact) return pathname === href;
+    return pathname?.startsWith(href) ?? false;
+  }
 
-  const cyclePresence = () =>
-    setPresence((cur) => PRESENCE_CYCLE[(PRESENCE_CYCLE.indexOf(cur) + 1) % PRESENCE_CYCLE.length]);
+  const activeItem = navItems.find((item) =>
+    item.exact ? pathname === item.href : pathname?.startsWith(item.href),
+  );
 
-  const presenceLabel = { available: 'Available', away: 'Away', busy: 'Busy' }[presence];
-  const initials = String(user?.name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
+  async function onLookupSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-  useEffect(() => {
-    if (!profileOpen) return;
-    function handleClick(event: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setProfileOpen(false);
-      }
+    const query = lookupInput.trim();
+    if (!query) {
+      setLookupResult(null);
+      setLookupError("Enter landlord phone number first.");
+      return;
     }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [profileOpen]);
+
+    setLookupBusy(true);
+    setLookupError(null);
+
+    const result = await checkLandlordNumber(query);
+    setLookupBusy(false);
+
+    if (!result.ok) {
+      setLookupResult(null);
+      setLookupError(result.message ?? "Unable to check landlord details right now.");
+      return;
+    }
+
+    setLookupResult(result.data);
+  }
 
   return (
-    <div className="workspace-shell">
-      {/* ── Sidebar ─────────────────────────────── */}
-      <aside className="workspace-sidebar">
-        {/* Brand */}
-        <div className="workspace-sidebar__brand">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Link href="/dashboard" className="workspace-sidebar__logo" aria-label="More Homes Group dashboard">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/morehomesgroup-logo.png" alt="More Homes Group" />
+    <div className="agent-shell">
+      <aside className="agent-sidebar">
+        <div className="agent-sidebar-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/morehomesgroup-logo.png" alt="More Homes Group" />
+          <span className="agent-sidebar-badge">Agent</span>
+        </div>
+
+        <nav className="agent-sidebar-nav">
+          <span className="agent-nav-section">Navigation</span>
+          {navItems.map(({ href, label, icon: Icon, exact }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`agent-nav-link${isActive(href, exact) ? " agent-nav-link-active" : ""}`}
+            >
+              <Icon />
+              {label}
             </Link>
-            <div className="workspace-sidebar__brand-copy">
-              <p className="workspace-kicker">Agent workspace</p>
-              <h1 className="workspace-title">More Homes Group</h1>
-            </div>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="workspace-sidebar__search">
-          <label className="workspace-label" htmlFor="workspace-nav-search">Navigate</label>
-          <input
-            id="workspace-nav-search"
-            className="input workspace-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search routes or tools…"
-          />
-        </div>
-
-        {/* Navigation */}
-        <nav className="workspace-nav" aria-label="Primary">
-          {(Object.entries(groupedItems) as Array<[NavItem['group'], NavItem[]]>).map(([group, items]) =>
-            items.length ? (
-              <section key={group} className="workspace-nav__group">
-                <p className="workspace-nav__group-label">{group}</p>
-                <div className="workspace-nav__items">
-                  {items.map((item) => {
-                    const active = isActive(pathname, item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`workspace-nav__item${active ? ' is-active' : ''}`}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                          <span style={{ opacity: active ? 1 : 0.65, flexShrink: 0, display: 'flex' }}>
-                            {item.icon}
-                          </span>
-                          <span className="workspace-nav__item-label">{item.label}</span>
-                        </span>
-                        <span className="workspace-nav__item-hint">{item.hint}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null
-          )}
+          ))}
         </nav>
 
-        {/* Quick actions */}
-        <div className="workspace-sidebar__actions">
-          <p className="workspace-nav__group-label">Quick actions</p>
-          <div className="workspace-action-stack">
-            {QUICK_ACTIONS.map((action) => (
-              <Link key={action.href} href={action.href} className="workspace-action">
-                {action.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Account */}
-        <div className="workspace-sidebar__account">
-          <div className="workspace-avatar">{initials}</div>
-          <div className="workspace-account__copy">
-            <p className="workspace-account__name">{user?.name ?? 'Agent'}</p>
-            <p className="workspace-account__meta">{user?.email ?? 'Signed in'}</p>
-          </div>
+        <div className="agent-sidebar-footer">
+          <Link href="/profile" className="agent-user-card" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer" }}>
+            {user.profilePicture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.profilePicture} alt="Profile" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "1.5px solid var(--brand-gold)" }} />
+            ) : (
+              <div className="agent-user-avatar">{initials}</div>
+            )}
+            <div className="agent-user-info">
+              <div className="agent-user-name">{user.name || "Agent"}</div>
+              <div className="agent-user-email">{user.email}</div>
+            </div>
+          </Link>
+          <NavLogoutButton />
         </div>
       </aside>
 
-      {/* ── Main area ───────────────────────────── */}
-      <div className="workspace-main">
-        <header className="workspace-topbar">
-          <div className="workspace-topbar__headline">
-            <p className="workspace-kicker">Portfolio operations</p>
-            <h2 className="workspace-topbar__title">
-              Ready to work&nbsp;<span className="workspace-topbar__accent">#{String(userId).slice(0, 6)}</span>
-            </h2>
-            <p className="workspace-topbar__subtitle">
-              Track leads, listings, calls, and messages from one premium command center.
-            </p>
-          </div>
-
-          <div className="workspace-topbar__tools">
-            <button
-              type="button"
-              className={`workspace-presence workspace-presence--${presence}`}
-              onClick={cyclePresence}
-              title="Toggle availability"
-            >
-              <span className="workspace-presence__dot" />
-              {presenceLabel}
-            </button>
-            <NotificationsBellAny userId={userId} />
-            <div className="workspace-profile-menu" ref={profileRef}>
-              <button
-                type="button"
-                className="workspace-profile-trigger"
-                onClick={() => setProfileOpen((value) => !value)}
-                aria-haspopup="menu"
-                aria-expanded={profileOpen}
-                title="Profile menu"
-              >
-                {user?.profilePicture ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.profilePicture} alt="" />
-                ) : (
-                  <span>{initials}</span>
-                )}
-              </button>
-              {profileOpen ? (
-                <div className="workspace-profile-dropdown" role="menu">
-                  <div className="workspace-profile-summary">
-                    <div className="workspace-avatar">{initials}</div>
-                    <div className="workspace-account__copy">
-                      <p className="workspace-account__name">{user?.name ?? 'Agent'}</p>
-                      <p className="workspace-account__meta">{user?.email ?? 'Signed in'}</p>
-                    </div>
-                  </div>
-                  <Link href="/profile" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
-                    Profile settings
-                  </Link>
-                  <Link href="/templates" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
-                    Templates
-                  </Link>
-                  <Link href="/daily-reports" className="workspace-profile-option" role="menuitem" onClick={() => setProfileOpen(false)}>
-                    Daily reports
-                  </Link>
-                  <div className="workspace-profile-signout" role="menuitem">
-                    <NavLogoutButtonAny />
-                  </div>
-                </div>
-              ) : null}
+      <div className="agent-content">
+        <div className="agent-topbar">
+          <div className="agent-topbar-left">
+            <div className="agent-topbar-breadcrumb">
+              <span>Agent</span>
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style={{ opacity: 0.4 }}>
+                <path
+                  fillRule="evenodd"
+                  d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+                <span className="current">{activeItem?.label ?? "Dashboard"}</span>
             </div>
           </div>
-        </header>
 
-        <main className="workspace-content">{children}</main>
+          <div className="agent-topbar-right">
+            <NotificationsBell />
+            <span className="agent-topbar-meta">{user.name || user.email}</span>
+          </div>
+        </div>
+
+        <div className="agent-lookup-strip">
+          <form className="agent-lookup-form" onSubmit={onLookupSubmit}>
+            <span className="agent-lookup-label">Check landlord before calling</span>
+            <input
+              className="input agent-lookup-input"
+              value={lookupInput}
+              onChange={(event) => setLookupInput(event.target.value)}
+              placeholder="Enter phone number"
+              aria-label="Landlord phone lookup"
+            />
+            <button className="btn btn-secondary btn-sm agent-lookup-submit" type="submit" disabled={lookupBusy}>
+              {lookupBusy ? "Checking..." : "Check"}
+            </button>
+          </form>
+
+          {lookupError ? <p className="agent-lookup-error">{lookupError}</p> : null}
+
+          {lookupResult ? (
+            lookupResult.landlordExists && lookupResult.landlord ? (
+              <div
+                className={`agent-lookup-result ${
+                  lookupResult.canCreateProperty ? "agent-lookup-result-owned" : "agent-lookup-result-blocked"
+                }`}
+              >
+                <div className="agent-lookup-copy">
+                  <p className="agent-lookup-title">
+                    {lookupResult.landlord.landlordName} ({lookupResult.landlord.phoneLast10})
+                  </p>
+                  <p className="agent-lookup-meta">
+                    Owner Agent: {lookupResult.landlord.ownerAgent.agentDisplayName} | Properties:{" "}
+                    {lookupResult.landlord._count.properties}
+                  </p>
+                  <p className="agent-lookup-status">
+                    {lookupResult.canCreateProperty
+                      ? "This is your landlord. You can add more properties."
+                      : "This landlord is assigned to another agent. You cannot add properties."}
+                  </p>
+                </div>
+
+                {lookupResult.canCreateProperty ? (
+                  <Link className="btn btn-primary btn-sm" href={`/landlords/${lookupResult.landlord.id}/properties`}>
+                    Add Property
+                  </Link>
+                ) : null}
+              </div>
+            ) : (
+              <div className="agent-lookup-result agent-lookup-result-new">
+                <div className="agent-lookup-copy">
+                  <p className="agent-lookup-title">No landlord found for this number</p>
+                  <p className="agent-lookup-meta">
+                    You can create a new landlord and property entry from the intake form.
+                  </p>
+                </div>
+                <Link className="btn btn-primary btn-sm" href="/landlords/new">
+                  Add New Landlord
+                </Link>
+              </div>
+            )
+          ) : null}
+        </div>
+
+        <div className="agent-page">{children}</div>
+
+        <div className="shell-credit-wrap">
+          <a
+            className="shell-credit-pill"
+            href="https://itmetasolutions.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Design &amp; Development by IT Meta Solutions
+          </a>
+        </div>
       </div>
 
-      <FloatingChatAny contacts={chatContacts} userId={userId} />
+      <FloatingChat userId={userId} contacts={chatContacts} />
     </div>
   );
 }

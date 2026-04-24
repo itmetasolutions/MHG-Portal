@@ -1,43 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync, chmodSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-// Deployment environments (e.g. cPanel, zip-extracted builds) often strip execute
-// permissions from binaries. Restore +x on all Prisma engine binaries before use.
-if (process.platform !== "win32") {
-  try {
-    const enginesDir = join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      "..",
-      "node_modules",
-      "@prisma",
-      "engines",
-    );
-    for (const entry of readdirSync(enginesDir)) {
-      if (
-        entry.startsWith("schema-engine-") ||
-        entry.startsWith("query-engine-") ||
-        entry.startsWith("migration-engine-") ||
-        entry.startsWith("libquery_engine-")
-      ) {
-        try {
-          chmodSync(join(enginesDir, entry), 0o755);
-        } catch {
-          // best-effort; ignore per-file failures
-        }
-      }
-    }
-    process.stdout.write("[migrate] Prisma engine binaries chmod +x applied.\n");
-  } catch {
-    // engines dir may not exist; continue
-  }
-}
-
-const prismaCli = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
+const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function runPrisma(args, { allowFailure = false } = {}) {
-  const result = spawnSync(process.execPath, [prismaCli, ...args], {
+  const result = spawnSync(npxCmd, ["prisma", ...args], {
     encoding: "utf8",
     stdio: "pipe",
   });

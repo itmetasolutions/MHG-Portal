@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { UIInput } from "@/components/ui/input";
 
 type Template = {
@@ -103,7 +103,7 @@ Please provide the following information via email at info@morehomesgroup.co.uk 
 • Last Three Months' Payslips
 • Job Offer Letter / University Offer Letter
 
-These documents are essential for us to complete the verification process and ensure a smooth tenancy agreement. Please let us know if you need assistance or have any questions about the requested documents.
+These documents are essential for us to complete the verification process and ensure a smooth tenancy agreement. Please let us know if you need assistance or have any questions about the requested information.
 
 Thank you for your cooperation.
 
@@ -147,53 +147,20 @@ export function TemplatesClient({ agentName }: Props) {
     }));
   }
 
-  const filledTemplates = useMemo(() => {
-    return TEMPLATES.filter((template) => template.body(getVars(template)).trim().length > 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientName, extraVars, agentName]);
-
   return (
     <div className="stack">
-      <header className="dialer-card dialer-hero-card">
-        <div className="page-header" style={{ alignItems: "flex-start" }}>
-          <div>
-            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
-              Message studio
-            </p>
-            <h1 className="page-title">Message Templates</h1>
-            <p className="page-subtitle">
-              Fill in a client name once, preview the message, and copy a polished template instantly.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid-cards" style={{ marginTop: "1rem" }}>
-          <article className="stat-card">
-            <p className="stat-label">Templates</p>
-            <p className="stat-value">{TEMPLATES.length}</p>
-            <p className="stat-sub">Pre-built responses ready to copy</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Ready to send</p>
-            <p className="stat-value">{filledTemplates.length}</p>
-            <p className="stat-sub">Currently populated previews</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Personalisation</p>
-            <p className="stat-value">{clientName.trim() ? 1 : 0}</p>
-            <p className="stat-sub">Client name applied across templates</p>
-          </article>
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Message Templates</h1>
+          <p className="page-subtitle">Fill in the client name, then copy any template to send.</p>
         </div>
       </header>
 
-      <section className="dialer-card">
-        <div className="dialer-card-head">
-          <h2 className="dialer-card-title">Global context</h2>
-          <span className="badge badge-active">Shared variables</span>
-        </div>
-        <label className="field" style={{ maxWidth: "420px", marginBottom: 0 }}>
+      {/* Global client name field */}
+      <div className="panel" style={{ padding: "1.25rem" }}>
+        <label className="field" style={{ maxWidth: "360px" }}>
           <span className="label" style={{ fontWeight: 700 }}>
-            Client Name
+            Client Name <span style={{ color: "var(--danger)" }}>*</span>
           </span>
           <UIInput
             value={clientName}
@@ -201,72 +168,103 @@ export function TemplatesClient({ agentName }: Props) {
             placeholder="e.g. Iris, Christina, John..."
             autoFocus
           />
-          <span className="hint-text">Applied to every template preview automatically.</span>
+          <span className="hint-text">Applied to all templates automatically.</span>
         </label>
-      </section>
-
-      <div className="stack">
-        {TEMPLATES.map((template) => {
-          const vars = getVars(template);
-          const preview = template.body(vars);
-          const isCopied = copied === template.id;
-
-          return (
-            <article key={template.id} className="dialer-card">
-              <div className="dialer-card-head">
-                <div>
-                  <h2 className="dialer-card-title">{template.title}</h2>
-                  <p className="dialer-agent-meta" style={{ marginTop: "0.35rem" }}>
-                    Ready to copy with the current client context
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => void handleCopy(template)}
-                  className={`btn ${isCopied ? "btn-secondary" : "btn-primary"} btn-sm`}
-                >
-                  {isCopied ? "Copied" : "Copy"}
-                </button>
-              </div>
-
-              <div className="dialer-dialer-wrap">
-                {template.extraVars && template.extraVars.length > 0 && (
-                  <div className="field-grid-2">
-                    {template.extraVars.map((v) => (
-                      <label key={v.key} className="field">
-                        <span className="label">{v.label}</span>
-                        <UIInput
-                          value={extraVars[template.id]?.[v.key] ?? ""}
-                          onChange={(e) => setExtraVar(template.id, v.key, e.target.value)}
-                          placeholder={v.placeholder}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                <pre
-                  style={{
-                    margin: 0,
-                    fontFamily: "inherit",
-                    fontSize: "0.84rem",
-                    lineHeight: 1.75,
-                    color: "var(--text-muted)",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    background: "rgba(255,255,255,0.03)",
-                    borderRadius: "0.85rem",
-                    padding: "1rem 1.1rem",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  {preview}
-                </pre>
-              </div>
-            </article>
-          );
-        })}
       </div>
+
+      {/* Template cards */}
+      {TEMPLATES.map((template) => {
+        const vars = getVars(template);
+        const preview = template.body(vars);
+        const isCopied = copied === template.id;
+
+        return (
+          <div key={template.id} className="panel">
+            <div style={{
+              padding: "0.9rem 1.25rem",
+              borderBottom: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}>
+              <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--text)" }}>
+                {template.title}
+              </h2>
+              <button
+                onClick={() => void handleCopy(template)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  padding: "0.4rem 1rem",
+                  borderRadius: "0.4rem",
+                  border: `1px solid ${isCopied ? "var(--success, #4ade80)" : "var(--brand-gold)"}`,
+                  background: isCopied ? "rgba(74,222,128,0.08)" : "transparent",
+                  color: isCopied ? "var(--success, #4ade80)" : "var(--brand-gold)",
+                  fontWeight: 600,
+                  fontSize: "0.82rem",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.15s",
+                }}
+              >
+                {isCopied ? (
+                  <>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: "1em", height: "1em" }}>
+                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: "1em", height: "1em" }}>
+                      <path d="M7 3.5A1.5 1.5 0 0 1 8.5 2h3.879a1.5 1.5 0 0 1 1.06.44l3.122 3.12A1.5 1.5 0 0 1 17 6.622V12.5a1.5 1.5 0 0 1-1.5 1.5h-1v-3.379a3 3 0 0 0-.879-2.121L10.5 5.379A3 3 0 0 0 8.379 4.5H7v-1Z" />
+                      <path d="M4.5 6A1.5 1.5 0 0 0 3 7.5v9A1.5 1.5 0 0 0 4.5 18h7a1.5 1.5 0 0 0 1.5-1.5v-5.879a1.5 1.5 0 0 0-.44-1.06L9.44 6.439A1.5 1.5 0 0 0 8.378 6H4.5Z" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div style={{ padding: "1.25rem" }}>
+              {/* Extra vars (e.g. viewing date/address) */}
+              {template.extraVars && template.extraVars.length > 0 && (
+                <div className="field-grid-2" style={{ marginBottom: "1rem" }}>
+                  {template.extraVars.map((v) => (
+                    <label key={v.key} className="field">
+                      <span className="label">{v.label}</span>
+                      <UIInput
+                        value={extraVars[template.id]?.[v.key] ?? ""}
+                        onChange={(e) => setExtraVar(template.id, v.key, e.target.value)}
+                        placeholder={v.placeholder}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Message preview */}
+              <pre style={{
+                margin: 0,
+                fontFamily: "inherit",
+                fontSize: "0.82rem",
+                lineHeight: 1.7,
+                color: "var(--text-muted)",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                background: "var(--surface-alt, #1a1a24)",
+                borderRadius: "0.5rem",
+                padding: "1rem 1.25rem",
+                border: "1px solid var(--border)",
+              }}>
+                {preview}
+              </pre>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,37 +1,39 @@
-import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
-import VerifyOtpClient from "./verify-otp-client";
+import { db } from "@/server/db";
+import { VerifyOtpClient } from "./verify-otp-client";
 
-type SearchParams = {
-  email?: string | string[];
-  initialEmail?: string | string[];
-  reason?: string | string[];
+type PageProps = {
+  searchParams?: {
+    email?: string | string[];
+  };
 };
 
-function toSingle(value?: string | string[]) {
+function readParam(value: string | string[] | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function VerifyOtpPage({
-  searchParams,
-}: {
-  searchParams?: SearchParams;
-}) {
+export default async function VerifyOtpPage({ searchParams }: PageProps) {
   const session = await getAuthSession();
-
   if (session) {
-    redirect(session.role === UserRole.ADMIN ? "/admin" : "/dashboard");
+    const user = await db.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (user?.isActive) {
+      redirect(user.role === "ADMIN" ? "/admin" : "/dashboard");
+    }
   }
 
-  const initialEmail = toSingle(searchParams?.email) ?? toSingle(searchParams?.initialEmail);
-  const reason = toSingle(searchParams?.reason);
+  const initialEmail = readParam(searchParams?.email) ?? "";
 
-  return (
-    <main className="auth-page auth-page--otp">
-      <div className="auth-page__glow auth-page__glow--gold" aria-hidden="true" />
-      <div className="auth-page__glow auth-page__glow--soft" aria-hidden="true" />
-      <VerifyOtpClient initialEmail={initialEmail} reason={reason} />
-    </main>
-  );
+  return <VerifyOtpClient initialEmail={initialEmail} />;
 }

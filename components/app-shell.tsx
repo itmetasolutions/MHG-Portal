@@ -18,10 +18,6 @@ type Props = {
 export function AppShell({ session, children }: Props) {
   const pathname = usePathname();
 
-  if (pathname === "/" || pathname === "/login" || pathname?.startsWith("/verify-otp")) {
-    return <>{children}</>;
-  }
-
   // Admin pages have their own full layout via AdminShell
   if (pathname?.startsWith("/admin")) {
     return <>{children}</>;
@@ -42,8 +38,7 @@ export function AppShell({ session, children }: Props) {
     pathname?.startsWith("/daily-reports") ||
     pathname?.startsWith("/call-records") ||
     pathname?.startsWith("/notes") ||
-    pathname?.startsWith("/templates") ||
-    pathname?.startsWith("/start");
+    pathname?.startsWith("/templates");
 
   if (session && isProtectedPath) {
     return <>{children}</>;

@@ -15,7 +15,7 @@ const nextConfig = {
             ? existingIgnored
             : existingIgnored
               ? [existingIgnored]
-              : []).filter((pattern) => typeof pattern === "string" && pattern.length > 0),
+              : []),
           "**/mhg-website/**",
           "**/Website/**",
         ],

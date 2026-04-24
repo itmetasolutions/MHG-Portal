@@ -1,23 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
-import "./portal-redesign.css";
 import { getAuthSession } from "@/server/auth";
 import { AppShell } from "@/components/app-shell";
-import { ThemeSync } from "@/components/theme-sync";
 
 export const dynamic = "force-dynamic";
-
-const sansFont = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const displayFont = Poppins({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "More Homes Group - Letting Agency Portal",
@@ -40,8 +26,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${sansFont.variable} ${displayFont.variable}`}>
-        <ThemeSync />
+      <body>
         <AppShell session={sessionData}>{children}</AppShell>
       </body>
     </html>

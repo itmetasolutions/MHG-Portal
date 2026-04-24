@@ -40,44 +40,21 @@ export default async function DialerIntercallingPage() {
 
   return (
     <div className="stack">
-      <header className="dialer-card dialer-hero-card">
-        <div className="page-header" style={{ alignItems: "flex-start" }}>
-          <div>
-            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
-              Internal routing
-            </p>
-            <h1 className="page-title">Intercalling</h1>
-            <p className="page-subtitle">
-              Call teammates directly by extension, with quick jump links into the live dialer.
-            </p>
-          </div>
-
-          <div className="inline-row">
-            <span className="badge badge-active">{agentsWithExtension.length} ready</span>
-            <span className="badge badge-warning">{agents.length} active agents</span>
-          </div>
-        </div>
-
-        <div className="grid-cards" style={{ marginTop: "1rem" }}>
-          <article className="stat-card">
-            <p className="stat-label">Ready extensions</p>
-            <p className="stat-value">{agentsWithExtension.length}</p>
-            <p className="stat-sub">Agents available for internal calls</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Unavailable</p>
-            <p className="stat-value">{agents.length - agentsWithExtension.length}</p>
-            <p className="stat-sub">Agents without an extension configured</p>
-          </article>
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Intercalling</h1>
+          <p className="page-subtitle">
+            Call internal agents directly using extension-based intercom.
+          </p>
         </div>
       </header>
 
       <section className="dialer-card">
         <div className="dialer-card-head">
           <h2 className="dialer-card-title">Agent Extensions</h2>
-          <Link href="/dialer" className="btn btn-secondary btn-sm">
-            Open dialer
-          </Link>
+          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            {agentsWithExtension.length}/{agents.length} ready
+          </span>
         </div>
         {agents.length === 0 ? (
           <p className="muted" style={{ margin: 0 }}>

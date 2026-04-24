@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
@@ -109,51 +108,17 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
   }
 
   return (
-    <div className="auth-page auth-page-admin">
+    <div className="auth-page">
       <div className="auth-brand">
-        <p className="auth-kicker">Admin control access</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/morehomesgroup-logo.png" alt="More Homes Group" className="auth-logo" />
-        <div className="auth-progress">
-          <span className="auth-progress-step is-active">01 Credentials</span>
-          <span className="auth-progress-step">02 OTP Verification</span>
-          <span className="auth-progress-step">03 Control Center</span>
-        </div>
-        <h1 className="auth-title">Enter the admin control center</h1>
-        <p className="auth-subtitle">
-          Use your admin credentials to access approvals, reporting, operational intelligence,
-          platform controls, and agent oversight in one secure workspace.
-        </p>
-        <div className="auth-feature-list">
-          <span className="auth-feature-chip">Secure login</span>
-          <span className="auth-feature-chip">Admin-only flow</span>
-          <span className="auth-feature-chip">OTP protected</span>
-          <span className="auth-feature-chip">Audit ready</span>
-        </div>
-        <div className="auth-side-stack">
-          <div className="auth-side-card auth-side-card-admin">
-            <span className="auth-side-label">Admin Workspace</span>
-            <h3>Revenue, approvals, agent health, and compliance</h3>
-            <p>
-              Designed as an intelligent command center for platform control, operational
-              visibility, and high-confidence decision-making.
-            </p>
-          </div>
-          <p className="auth-footnote">
-            This route is reserved for platform oversight, approvals, reporting, and operational
-            control.
-          </p>
-        </div>
+        <h1 className="auth-title">Admin Sign In</h1>
+        <p className="auth-subtitle">Use your admin credentials to sign in. OTP is only requested after 12 hours of inactivity.</p>
       </div>
 
-      <UICard className="auth-card">
-        <UICardBody className="auth-card-body">
-          <form className="field-grid auth-form" onSubmit={onSubmit}>
-            <div className="auth-form-head">
-              <p className="auth-form-kicker">Step 1 of 2</p>
-              <h2 className="auth-form-title">Enter your admin credentials</h2>
-            </div>
-
+      <UICard style={{ width: "100%", maxWidth: 420 }}>
+        <UICardBody>
+          <form className="field-grid" onSubmit={onSubmit}>
             <label className="field">
               <span className="label">Email address</span>
               <UIInput
@@ -183,18 +148,6 @@ export function AdminLoginClient({ initialEmail = "", reason }: Props) {
             <UIButton type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
               {busy ? "Signing in..." : "Continue"}
             </UIButton>
-
-            <div className="auth-security-note">
-              <strong>Secure login</strong>
-              <span>Admin access is protected by role checks, OTP verification, and audit-ready controls.</span>
-            </div>
-
-            <p className="hint-text auth-hint-text">
-              Agent account?{" "}
-              <Link href="/login" className="auth-inline-link">
-                Use the standard sign in
-              </Link>
-            </p>
           </form>
         </UICardBody>
       </UICard>

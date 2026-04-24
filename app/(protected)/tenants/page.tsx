@@ -1,213 +1,370 @@
-import Link from 'next/link';
-import { UserRole } from '@prisma/client';
-import { db } from '@/server/db';
-import { getAuthSession } from '@/server/auth';
+"use client";
 
-type TenantsPageProps = {
-  searchParams?: {
-    q?: string;
-    status?: string;
-  };
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { UIAlert } from "@/components/ui/alert";
+import { UIButton } from "@/components/ui/button";
+import { UIInput } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { createTenant, updateTenant, type TenantRow } from "@/lib/portal-api";
+import { apiGet } from "@/lib/api-client";
+
+type TenantWithProperty = TenantRow & {
+  sale?: {
+    property: {
+      id: string;
+      propertyRef: string;
+      addressLine1: string | null;
+      city: string | null;
+      postcode: string | null;
+      landlord: { id: string; landlordName: string };
+    };
+  } | null;
 };
 
-function cleanText(value: unknown, fallback = '—') {
-  if (typeof value === 'string' && value.trim()) return value;
-  if (typeof value === 'number') return String(value);
-  return fallback;
-}
+const emptyAddForm = {
+  fullName: "", phone: "", email: "", currentAddress: "",
+  moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
+};
 
-function shortDate(value: unknown) {
-  if (!value) return '—';
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-  }).format(date);
-}
+export default function TenantsPage() {
+  const [tenants, setTenants] = useState<TenantWithProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-function badgeClass(value: unknown) {
-  const raw = String(value ?? 'new').toLowerCase().replace(/\s+/g, '-');
-  return `badge badge--${raw}`;
-}
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addForm, setAddForm] = useState(emptyAddForm);
+  const [addBusy, setAddBusy] = useState(false);
 
-function isOwnedByYou(record: any) {
-  const status = String(record?.ownershipStatus ?? record?.status ?? '').toLowerCase();
-  return status.includes('owned by you') || record?.isMine === true;
-}
-
-function isOwnedByOther(record: any) {
-  const status = String(record?.ownershipStatus ?? record?.status ?? '').toLowerCase();
-  return status.includes('owned by another') || record?.isOwnedByOther === true;
-}
-
-export default async function TenantsPage({ searchParams }: TenantsPageProps) {
-  const client = db as any;
-  const session = await getAuthSession();
-  const agentTenantWhere = session?.role === UserRole.AGENT ? { addedByAgentId: session.userId } : {};
-  const agentPropertyWhere = session?.role === UserRole.AGENT ? { ownerAgentId: session.userId } : {};
-  const [tenantsRaw, propertiesRaw] = await Promise.all([
-    client.tenant?.findMany?.({
-      where: agentTenantWhere,
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-      take: 100,
-    }) ?? [],
-    client.property?.findMany?.({
-      where: agentPropertyWhere,
-      orderBy: { updatedAt: 'desc' },
-      take: 100,
-    }) ?? [],
-  ]);
-
-  const rawQuery = Array.isArray(searchParams?.q) ? searchParams?.q[0] : searchParams?.q;
-  const rawStatus = Array.isArray(searchParams?.status) ? searchParams?.status[0] : searchParams?.status;
-  const q = (rawQuery ?? '').trim().toLowerCase();
-  const statusFilter = (rawStatus ?? '').trim().toLowerCase();
-
-  const tenants = (tenantsRaw as any[]).filter((tenant) => {
-    const haystack = [
-      tenant?.fullName,
-      tenant?.email,
-      tenant?.phone,
-      tenant?.status,
-      tenant?.ownershipStatus,
-      tenant?.property?.address,
-      tenant?.propertyAddress,
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-
-    const matchesQuery = !q || haystack.includes(q);
-    const matchesStatus = !statusFilter || String(tenant?.status ?? tenant?.ownershipStatus ?? '').toLowerCase().includes(statusFilter);
-
-    return matchesQuery && matchesStatus;
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    fullName: "", email: "", currentAddress: "",
+    moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
   });
+  const [editBusy, setEditBusy] = useState(false);
 
-  const ownedByYou = tenants.filter(isOwnedByYou).length;
-  const ownedByOther = tenants.filter(isOwnedByOther).length;
-  const totalProperties = (propertiesRaw as any[]).length;
+  async function load() {
+    setLoading(true);
+    const query = new URLSearchParams();
+    if (search) query.set("search", search);
+    query.set("page", String(page));
+    query.set("pageSize", String(pageSize));
 
+    const result = await apiGet<{
+      tenants: TenantWithProperty[];
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/api/tenants?${query.toString()}`);
+    setLoading(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to load tenants." });
+      return;
+    }
+    setTenants(result.data.tenants);
+    setTotal(result.data.pagination.total);
+    setTotalPages(result.data.pagination.totalPages);
+  }
+
+  useEffect(() => { void load(); }, [page, pageSize, search]);
+
+  async function handleAdd() {
+    if (!addForm.fullName.trim() || !addForm.phone.trim()) {
+      setMessage({ type: "error", text: "Full name and phone number are required." });
+      return;
+    }
+    setAddBusy(true);
+    setMessage(null);
+    const result = await createTenant({
+      fullName: addForm.fullName.trim(),
+      phone: addForm.phone.trim(),
+      email: addForm.email.trim() || null,
+      currentAddress: addForm.currentAddress.trim() || null,
+      moveInDate: addForm.moveInDate ? new Date(addForm.moveInDate).toISOString() : null,
+      rentAmount: addForm.rentAmount ? Number(addForm.rentAmount) : null,
+      depositAmount: addForm.depositAmount ? Number(addForm.depositAmount) : null,
+      notes: addForm.notes.trim() || null,
+    });
+    setAddBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to create tenant." });
+      return;
+    }
+    setMessage({ type: "success", text: "Tenant created." });
+    setShowAddForm(false);
+    setAddForm(emptyAddForm);
+    setPage(1);
+    await load();
+  }
+
+  function startEdit(tenant: TenantWithProperty) {
+    setEditId(tenant.id);
+    setEditForm({
+      fullName: tenant.fullName,
+      email: tenant.email ?? "",
+      currentAddress: tenant.currentAddress ?? "",
+      moveInDate: tenant.moveInDate ? new Date(tenant.moveInDate).toISOString().slice(0, 10) : "",
+      rentAmount: tenant.rentAmount ?? "",
+      depositAmount: tenant.depositAmount ?? "",
+      notes: tenant.notes ?? "",
+    });
+    setMessage(null);
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    setEditBusy(true);
+    const result = await updateTenant(editId, {
+      fullName: editForm.fullName.trim() || undefined,
+      email: editForm.email.trim() || null,
+      currentAddress: editForm.currentAddress.trim() || null,
+      moveInDate: editForm.moveInDate ? new Date(editForm.moveInDate).toISOString() : null,
+      rentAmount: editForm.rentAmount.trim() ? Number(editForm.rentAmount) : null,
+      depositAmount: editForm.depositAmount.trim() ? Number(editForm.depositAmount) : null,
+      notes: editForm.notes.trim() || null,
+    });
+    setEditBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to update tenant." });
+      return;
+    }
+
+    if (result.data.approvalRequired) {
+      setMessage({
+        type: "success",
+        text: result.data.message ?? "Changes submitted for admin approval.",
+      });
+      setEditId(null);
+      return;
+    }
+
+    setMessage({ type: "success", text: "Tenant updated." });
+    setEditId(null);
+    await load();
+  }
+
+  const totalRecords = total;
   return (
-    <div className="detail-page relationship-page">
-      <section className="workspace-panel detail-hero">
-        <div className="detail-hero__main">
-          <p className="workspace-kicker">Tenants</p>
-          <h1 className="workspace-panel__title">Occupancy and relationship tracking</h1>
-          <p className="workspace-panel__summary">Monitor tenant records, status changes, and the conversations that keep occupancy smooth.</p>
-          <div className="detail-hero__meta">
-            <span className="dashboard-pill">{tenants.length} records</span>
-            <span className="dashboard-pill">{ownedByYou} owned by you</span>
-            <span className="dashboard-pill">{ownedByOther} owned by another</span>
-            <span className="dashboard-pill">{totalProperties} portfolio properties</span>
+    <div className="stack">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Tenants</h1>
+          <p className="page-subtitle">{totalRecords} tenant {totalRecords === 1 ? "record" : "records"}.</p>
+        </div>
+        <UIButton onClick={() => { setShowAddForm((v) => !v); setMessage(null); }}>
+          {showAddForm ? "Cancel" : "+ Add New Tenant"}
+        </UIButton>
+      </header>
+
+      {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
+
+      <div className="panel" style={{ padding: "1rem 1.25rem" }}>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span className="label">Search</span>
+          <UIInput
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Tenant, phone, email, property, landlord, agent"
+          />
+        </label>
+      </div>
+
+      {showAddForm && (
+        <div className="panel" style={{ padding: "1.25rem" }}>
+          <p className="section-label" style={{ marginBottom: "1rem" }}>New Tenant</p>
+          <div className="field-grid">
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Full Name <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UIInput value={addForm.fullName} onChange={(e) => setAddForm((p) => ({ ...p, fullName: e.target.value }))} placeholder="Jane Doe" disabled={addBusy} />
+              </label>
+              <label className="field">
+                <span className="label">Phone <span style={{ color: "var(--danger)" }}>*</span></span>
+                <UIInput value={addForm.phone} onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))} placeholder="07911 122233" disabled={addBusy} />
+                <span className="hint-text">UK number — used as unique identifier, cannot be changed later.</span>
+              </label>
+            </div>
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Email (optional)</span>
+                <UIInput type="email" value={addForm.email} onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))} placeholder="jane@example.com" disabled={addBusy} />
+              </label>
+              <label className="field">
+                <span className="label">Current Address (optional)</span>
+                <UIInput value={addForm.currentAddress} onChange={(e) => setAddForm((p) => ({ ...p, currentAddress: e.target.value }))} placeholder="123 Old Street..." disabled={addBusy} />
+              </label>
+            </div>
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Move-In Date (optional)</span>
+                <UIInput type="date" value={addForm.moveInDate} onChange={(e) => setAddForm((p) => ({ ...p, moveInDate: e.target.value }))} disabled={addBusy} />
+              </label>
+              <label className="field">
+                <span className="label">Rent/mo (optional)</span>
+                <UIInput type="number" min={0} step="0.01" value={addForm.rentAmount} onChange={(e) => setAddForm((p) => ({ ...p, rentAmount: e.target.value }))} placeholder="e.g. 900" disabled={addBusy} />
+              </label>
+            </div>
+            <div className="field-grid-2">
+              <label className="field">
+                <span className="label">Deposit (optional)</span>
+                <UIInput type="number" min={0} step="0.01" value={addForm.depositAmount} onChange={(e) => setAddForm((p) => ({ ...p, depositAmount: e.target.value }))} placeholder="e.g. 1200" disabled={addBusy} />
+              </label>
+              <label className="field">
+                <span className="label">Notes (optional)</span>
+                <UIInput value={addForm.notes} onChange={(e) => setAddForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Any notes..." disabled={addBusy} />
+              </label>
+            </div>
+            <div className="inline-row">
+              <UIButton onClick={() => void handleAdd()} disabled={addBusy}>{addBusy ? "Creating..." : "Create Tenant"}</UIButton>
+              <UIButton variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm); }}>Cancel</UIButton>
+            </div>
           </div>
         </div>
-        <div className="detail-hero__actions">
-          <Link href="/messages" className="btn btn-primary">
-            Open messages
-          </Link>
-          <Link href="/notes" className="btn btn-secondary">
-            View notes
-          </Link>
+      )}
+
+      <div className="panel">
+        <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
+          <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>All Tenants</h2>
         </div>
-      </section>
-
-      <section className="detail-layout">
-        <div className="detail-layout__main">
-          <section className="workspace-panel detail-panel">
-            <div className="workspace-panel__header">
-              <div>
-                <p className="workspace-kicker">Roster</p>
-                <h2 className="workspace-panel__title">Tenant table</h2>
-              </div>
-            </div>
-
-            <div className="workspace-table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Tenant</th>
-                    <th>Ownership</th>
-                    <th>Contact</th>
-                    <th>Updated</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {tenants.map((tenant: any) => (
-                    <tr key={String(tenant?.id ?? tenant?.email ?? tenant?.name)}>
-                      <td>
-                        <div className="detail-stack">
-                          <strong>{cleanText(tenant?.fullName, 'Tenant')}</strong>
-                          <span>{cleanText(tenant?.property?.address ?? tenant?.propertyAddress, 'No property linked')}</span>
-                        </div>
+        {loading ? (
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+            Loading tenants...
+          </div>
+        ) : tenants.length === 0 ? (
+          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+            {search ? "No tenant records match your search." : "No tenant records yet."}
+          </div>
+        ) : (
+          <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Property</th>
+                  <th>Move-In</th>
+                  <th>Rent / Deposit</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.map((tenant) => {
+                  const editing = editId === tenant.id;
+                  return (
+                    <tr key={tenant.id}>
+                      <td style={{ fontWeight: 600 }}>
+                        {editing ? (
+                          <UIInput value={editForm.fullName} onChange={(e) => setEditForm((p) => ({ ...p, fullName: e.target.value }))} disabled={editBusy} />
+                        ) : (
+                          <Link href={`/tenants/${tenant.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                            {tenant.fullName}
+                          </Link>
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                        {tenant.phone ?? "—"}
+                        <span className="hint-text" style={{ display: "block" }}>read-only</span>
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {editing ? (
+                          <UIInput placeholder="Email" value={editForm.email} onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))} disabled={editBusy} />
+                        ) : (tenant.email ?? "—")}
                       </td>
                       <td>
-                        <span className={badgeClass(tenant?.status ?? tenant?.ownershipStatus)}>
-                          {cleanText(tenant?.status ?? tenant?.ownershipStatus, 'new')}
-                        </span>
+                        {tenant.sale?.property ? (
+                          <>
+                            <Link href={`/landlords/${tenant.sale.property.landlord.id}`}
+                              style={{ color: "var(--brand-gold)", fontWeight: 600, display: "block" }}>
+                              {tenant.sale.property.addressLine1 ?? tenant.sale.property.propertyRef ?? "—"}
+                            </Link>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                              {[tenant.sale.property.city, tenant.sale.property.postcode].filter(Boolean).join(", ")}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>No property yet</span>
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {editing ? (
+                          <UIInput type="date" value={editForm.moveInDate} onChange={(e) => setEditForm((p) => ({ ...p, moveInDate: e.target.value }))} disabled={editBusy} />
+                        ) : tenant.moveInDate
+                          ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                          : "—"}
+                      </td>
+                      <td style={{ fontSize: "0.82rem" }}>
+                        {editing ? (
+                          <div className="stack" style={{ gap: "0.35rem" }}>
+                            <UIInput type="number" min={0} step="0.01" placeholder="Rent/mo" value={editForm.rentAmount} onChange={(e) => setEditForm((p) => ({ ...p, rentAmount: e.target.value }))} disabled={editBusy} />
+                            <UIInput type="number" min={0} step="0.01" placeholder="Deposit" value={editForm.depositAmount} onChange={(e) => setEditForm((p) => ({ ...p, depositAmount: e.target.value }))} disabled={editBusy} />
+                          </div>
+                        ) : (
+                          <>
+                            {tenant.rentAmount
+                              ? <span style={{ color: "#4ade80", fontWeight: 600 }}>{'\u00A3'}{Number(tenant.rentAmount).toLocaleString("en-GB")}/mo</span>
+                              : <span className="muted">—</span>}
+                            {tenant.depositAmount && (
+                              <span style={{ display: "block", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                                dep: {'\u00A3'}{Number(tenant.depositAmount).toLocaleString("en-GB")}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "12rem" }}>
+                        {editing ? (
+                          <UIInput placeholder="Notes" value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} disabled={editBusy} />
+                        ) : tenant.notes
+                          ? <span title={tenant.notes}>{tenant.notes.length > 50 ? tenant.notes.slice(0, 50) + "…" : tenant.notes}</span>
+                          : "—"}
                       </td>
                       <td>
-                        <div className="detail-stack">
-                          <span>{cleanText(tenant?.email, 'No email')}</span>
-                          <span>{cleanText(tenant?.phone, 'No phone')}</span>
-                        </div>
-                      </td>
-                      <td>{shortDate(tenant?.updatedAt ?? tenant?.createdAt)}</td>
-                      <td>
-                        <Link href={`/tenants/${tenant?.id}`} className="workspace-panel__link">
-                          View
-                        </Link>
+                        {editing ? (
+                          <div className="inline-row">
+                            <UIButton onClick={() => void saveEdit()} disabled={editBusy}>{editBusy ? "Saving..." : "Save"}</UIButton>
+                            <UIButton variant="secondary" onClick={() => setEditId(null)} disabled={editBusy}>Cancel</UIButton>
+                          </div>
+                        ) : (
+                          <UIButton variant="secondary" onClick={() => startEdit(tenant)}>Edit</UIButton>
+                        )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        <aside className="detail-layout__aside">
-          <section className="workspace-panel detail-sidebar">
-            <div className="workspace-panel__header">
-              <div>
-                <p className="workspace-kicker">Signals</p>
-                <h2 className="workspace-panel__title">Occupancy state</h2>
-              </div>
-            </div>
-            <div className="smart-insights smart-insights--stacked">
-              <article className="smart-insights__card">
-                <p className="smart-insights__label">Owned by you</p>
-                <p className="smart-insights__value">{ownedByYou}</p>
-                <p className="smart-insights__detail">Keep retention and support on track.</p>
-              </article>
-              <article className="smart-insights__card">
-                <p className="smart-insights__label">Owned by another</p>
-                <p className="smart-insights__value">{ownedByOther}</p>
-                <p className="smart-insights__detail">Potential handover and coordination cases.</p>
-              </article>
-            </div>
-          </section>
-
-          <section className="workspace-panel detail-sidebar">
-            <div className="workspace-panel__header">
-              <div>
-                <p className="workspace-kicker">Shortlist</p>
-                <h2 className="workspace-panel__title">Tenants to follow up</h2>
-              </div>
-            </div>
-            <div className="detail-stack">
-              {tenants.slice(0, 5).map((tenant: any) => (
-                <Link key={String(tenant?.id ?? tenant?.fullName)} href={`/tenants/${tenant?.id}`} className="detail-stack__item">
-                  <strong>{cleanText(tenant?.fullName, 'Tenant')}</strong>
-                  <span>{cleanText(tenant?.email ?? tenant?.phone, 'No contact')}</span>
-                  <span>{shortDate(tenant?.updatedAt ?? tenant?.createdAt)}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </aside>
-      </section>
+        {!loading && totalRecords > 0 ? (
+          <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={totalRecords}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

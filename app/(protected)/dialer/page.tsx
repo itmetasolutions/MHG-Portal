@@ -127,57 +127,16 @@ export default async function DialerPage({ searchParams }: DialerPageProps) {
   const initialDialTarget = dialQuery?.trim() || null;
   const autoCall = autoCallQuery === "1" || autoCallQuery?.toLowerCase() === "true";
 
-  const favoriteContacts = contacts.filter((contact) => contact.isFavorite).length;
-  const answeredCalls = recentCalls.filter((call) => call.status === "ANSWERED" || call.status === "COMPLETED").length;
-  const missedCalls = recentCalls.filter((call) => call.status === "MISSED" || call.status === "FAILED" || call.status === "REJECTED").length;
-
   return (
     <div className="stack">
-      <section className="dialer-card dialer-hero-card">
-        <div className="page-header" style={{ alignItems: "flex-start" }}>
-          <div>
-            <p className="section-label" style={{ marginBottom: "0.5rem" }}>
-              Command center
-            </p>
-            <h1 className="page-title">Dialpad</h1>
-            <p className="page-subtitle">
-              Place calls quickly with live registration status, instant redial, contact-aware dialing, and outcome logging.
-            </p>
-          </div>
-
-          <div className="inline-row">
-            <span className={`badge ${dialerDomain?.isEnabled ? "badge-active" : "badge-locked"}`}>
-              {dialerDomain?.isEnabled ? "Enabled" : "Disabled"}
-            </span>
-            <span className={`badge ${dialerDomain?.dialerMode === "LINKUS" ? "badge-warning" : "badge-active"}`}>
-              {dialerDomain?.dialerMode ?? "SIP"}
-            </span>
-          </div>
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Dialpad</h1>
+          <p className="page-subtitle">
+            Place calls quickly with live status, premium keypad, and instant redial.
+          </p>
         </div>
-
-        <div className="grid-cards" style={{ marginTop: "1rem" }}>
-          <article className="stat-card">
-            <p className="stat-label">Recent calls</p>
-            <p className="stat-value">{recentCalls.length}</p>
-            <p className="stat-sub">{answeredCalls} completed or answered</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Saved contacts</p>
-            <p className="stat-value">{contacts.length}</p>
-            <p className="stat-sub">{favoriteContacts} marked as favorites</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Internal agents</p>
-            <p className="stat-value">{intercomAgents.length}</p>
-            <p className="stat-sub">Ready for extension-to-extension calls</p>
-          </article>
-          <article className="stat-card">
-            <p className="stat-label">Queue health</p>
-            <p className="stat-value">{missedCalls}</p>
-            <p className="stat-sub">Missed, rejected, or failed in the last batch</p>
-          </article>
-        </div>
-      </section>
+      </header>
 
       <DialerMainClient
         bootstrap={{

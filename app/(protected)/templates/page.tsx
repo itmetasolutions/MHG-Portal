@@ -15,9 +15,5 @@ export default async function TemplatesPage() {
   });
   if (!user || !user.isActive) redirect("/login");
 
-  return (
-    <div className="stack">
-      <TemplatesClient agentName={user.agentDisplayName ?? session.email} />
-    </div>
-  );
+  return <TemplatesClient agentName={user.agentDisplayName ?? session.email} />;
 }
