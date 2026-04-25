@@ -17,7 +17,8 @@ export default async function PotentialTenantsPage() {
   if (!user || !user.isActive) redirect("/login");
   if (user.role === UserRole.ADMIN) redirect("/admin/potential-tenants");
 
-  const tenants = await db.potentialTenant.findMany({
+  const tenants = await (db as any).potentialTenant.findMany({
+    where: { addedByAgentId: session.userId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -26,6 +27,9 @@ export default async function PotentialTenantsPage() {
       phone: true,
       interestedIn: true,
       budget: true,
+      accommodationType: true,
+      maximumBudget: true,
+      moveInDate: true,
       notes: true,
       createdAt: true,
       addedByAgent: {
@@ -34,10 +38,10 @@ export default async function PotentialTenantsPage() {
     },
   });
 
-  // Serialize dates
-  const serialized = tenants.map((t) => ({
+  const serialized = tenants.map((t: any) => ({
     ...t,
     createdAt: t.createdAt.toISOString(),
+    moveInDate: t.moveInDate ? t.moveInDate.toISOString() : null,
   }));
 
   return <PotentialTenantsClient initialTenants={serialized} />;

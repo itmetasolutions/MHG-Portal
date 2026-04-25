@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
@@ -11,7 +10,11 @@ type PotentialLandlord = {
   fullName: string;
   phone: string;
   phoneLast10: string;
+  email: string | null;
   createdAt: string;
+  followUpScheduledAt: string | null;
+  followUpLockedUntil: string | null;
+  isFollowUpLocked: boolean;
   addedByAgent: { id: string; agentDisplayName: string };
 };
 
@@ -20,107 +23,39 @@ type Props = {
   currentUserId: string;
 };
 
-const LOCK_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-
-function getLockExpiry(createdAt: string): Date {
-  return new Date(new Date(createdAt).getTime() + LOCK_DURATION_MS);
+function getLockStatus(lead: PotentialLandlord): { locked: boolean; until: Date | null } {
+  if (!lead.isFollowUpLocked || !lead.followUpLockedUntil) return { locked: false, until: null };
+  const until = new Date(lead.followUpLockedUntil);
+  return { locked: until > new Date(), until };
 }
-
-function isLockActive(createdAt: string): boolean {
-  return getLockExpiry(createdAt) > new Date();
-}
-
-const EMPTY_FORM = { fullName: "", phone: "" };
 
 export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Props) {
-  const router = useRouter();
-  const [landlords, setLandlords] = useState(initialLandlords);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
-  const filteredLandlords = landlords.filter((landlord) => {
-    const haystack = [
-      landlord.fullName,
-      landlord.phone,
-      landlord.phoneLast10,
-      landlord.addedByAgent.agentDisplayName,
-    ]
-      .filter(Boolean)
+  const filtered = initialLandlords.filter((l) => {
+    const haystack = [l.fullName, l.phone, l.phoneLast10, l.email ?? ""]
       .join(" ")
       .toLowerCase();
-
     return haystack.includes(search.trim().toLowerCase());
   });
 
-  const totalPages = filteredLandlords.length === 0 ? 0 : Math.ceil(filteredLandlords.length / pageSize);
-  const visibleLandlords = filteredLandlords.slice((page - 1) * pageSize, page * pageSize);
-
-  function openModal() {
-    setForm(EMPTY_FORM);
-    setError(null);
-    setShowModal(true);
-  }
-
-  function closeModal() {
-    setShowModal(false);
-    setError(null);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!form.fullName.trim()) {
-      setError("Full name is required.");
-      return;
-    }
-    if (!form.phone.trim()) {
-      setError("Phone number is required.");
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/potential-landlords", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fullName: form.fullName, phone: form.phone }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data.message ?? "Failed to add potential landlord.");
-          return;
-        }
-
-        const data = await res.json();
-        setLandlords((prev) => [data.potentialLandlord, ...prev]);
-        setPage(1);
-        setShowModal(false);
-        router.refresh();
-      } catch {
-        setError("Network error. Please try again.");
-      }
-    });
-  }
+  const totalPages = filtered.length === 0 ? 0 : Math.ceil(filtered.length / pageSize);
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="stack">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Potential Landlords</h1>
+          <h1 className="page-title">My Follow-Up Leads</h1>
           <p className="page-subtitle">
-            {landlords.length} potential {landlords.length === 1 ? "landlord" : "landlords"} tracked across the team
+            {initialLandlords.length} potential {initialLandlords.length === 1 ? "landlord" : "landlords"} · Use the dashboard phone lookup to add new ones
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openModal}>
-          + Add New Potential Landlord
-        </button>
+        <Link href="/dashboard" className="btn btn-secondary">
+          ← Dashboard
+        </Link>
       </header>
 
       <div className="panel" style={{ padding: "1rem 1.25rem" }}>
@@ -128,11 +63,8 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
           <span className="label">Search</span>
           <UIInput
             value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            placeholder="Name, phone, agent"
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Name, phone, email"
           />
         </label>
       </div>
@@ -140,16 +72,20 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
           <h2 style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: "var(--text)" }}>
-            All Potential Landlords
+            Follow-Up Leads
           </h2>
         </div>
 
-        {filteredLandlords.length === 0 ? (
+        {filtered.length === 0 ? (
           <div style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            {landlords.length === 0 ? "No potential landlords yet." : "No potential landlords match your search."}
+            {initialLandlords.length === 0
+              ? "No follow-up leads yet."
+              : "No leads match your search."}
             <br />
             <span style={{ fontSize: "0.8rem", color: "var(--text-subtle)" }}>
-              {landlords.length === 0 ? 'Click "Add New Potential Landlord" to get started.' : "Try a different search term."}
+              {initialLandlords.length === 0
+                ? "Look up a phone number on the dashboard to start the workflow."
+                : "Try a different search term."}
             </span>
           </div>
         ) : (
@@ -159,30 +95,43 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
                 <tr>
                   <th>Name</th>
                   <th>Phone</th>
-                  <th>Added By</th>
+                  <th>Follow-Up</th>
                   <th>Lock Status</th>
-                  <th>Date Added</th>
+                  <th>Added</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {visibleLandlords.map((l) => {
-                  const locked = isLockActive(l.createdAt);
-                  const ownedByMe = l.addedByAgent.id === currentUserId;
-                  const expiry = getLockExpiry(l.createdAt);
+                {visible.map((l) => {
+                  const { locked, until } = getLockStatus(l);
                   return (
                     <tr key={l.id}>
                       <td style={{ fontWeight: 600, color: "var(--text)" }}>
-                        <Link href={`/potential-landlords/${l.id}`} style={{ color: "var(--brand-gold)", textDecoration: "none" }}>
+                        <Link
+                          href={`/potential-landlords/${l.id}`}
+                          style={{ color: "var(--brand-gold)", textDecoration: "none" }}
+                        >
                           {l.fullName}
                         </Link>
+                        {l.email && (
+                          <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>
+                            {l.email}
+                          </span>
+                        )}
                       </td>
                       <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                        +44{l.phoneLast10}
+                        {l.phone}
                       </td>
-                      <td>
-                        <span style={{ fontSize: "0.82rem", color: "var(--brand-gold)", fontWeight: 600 }}>
-                          {l.addedByAgent.agentDisplayName}
-                        </span>
+                      <td style={{ fontSize: "0.82rem" }}>
+                        {l.followUpScheduledAt ? (
+                          <span style={{ color: "var(--text)" }}>
+                            {new Date(l.followUpScheduledAt).toLocaleString("en-GB", {
+                              day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                            })}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                       <td>
                         {locked ? (
@@ -190,14 +139,15 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
                             style={{
                               fontSize: "0.78rem",
                               fontWeight: 600,
-                              color: ownedByMe ? "#4ade80" : "#f87171",
-                              background: ownedByMe ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+                              color: "#4ade80",
+                              background: "rgba(74,222,128,0.1)",
                               padding: "0.2rem 0.5rem",
                               borderRadius: "0.3rem",
+                              whiteSpace: "nowrap",
                             }}
                           >
-                            {ownedByMe ? "Locked by you" : "Locked"} · until{" "}
-                            {expiry.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            Locked · until{" "}
+                            {until!.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                           </span>
                         ) : (
                           <span
@@ -218,6 +168,15 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
                           day: "numeric", month: "short", year: "numeric",
                         })}
                       </td>
+                      <td>
+                        <Link
+                          href={`/potential-landlords/${l.id}`}
+                          className="btn btn-secondary"
+                          style={{ fontSize: "0.78rem", padding: "0.3rem 0.75rem" }}
+                        >
+                          Continue →
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
@@ -226,103 +185,19 @@ export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Pr
           </div>
         )}
 
-        {filteredLandlords.length > 0 ? (
+        {filtered.length > 0 && (
           <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
             <PaginationControls
               page={page}
               pageSize={pageSize}
-              total={filteredLandlords.length}
+              total={filtered.length}
               totalPages={totalPages}
               onPageChange={setPage}
-              onPageSizeChange={(nextPageSize) => {
-                setPageSize(nextPageSize);
-                setPage(1);
-              }}
+              onPageSizeChange={(next) => { setPageSize(next); setPage(1); }}
             />
           </div>
-        ) : null}
+        )}
       </div>
-
-      {showModal && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 1000,
-            background: "rgba(0,0,0,0.65)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "1rem",
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
-        >
-          <div
-            style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "0.75rem", padding: "1.75rem",
-              width: "100%", maxWidth: "440px",
-              display: "flex", flexDirection: "column", gap: "1.1rem",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "var(--text)" }}>
-                Add Potential Landlord
-              </h2>
-              <button
-                onClick={closeModal}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "1.25rem" }}
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
-              Adding a landlord here gives you a <strong style={{ color: "var(--brand-gold)" }}>1-week exclusive</strong> — no other agent can add their property during that time.
-            </p>
-
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              <div>
-                <label className="form-label" style={{ display: "block", marginBottom: "0.3rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  Full Name <span style={{ color: "var(--brand-gold)" }}>*</span>
-                </label>
-                <input
-                  className="input"
-                  style={{ width: "100%" }}
-                  value={form.fullName}
-                  onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                  placeholder="e.g. Ahmed Khan"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ display: "block", marginBottom: "0.3rem", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                  Phone Number <span style={{ color: "var(--brand-gold)" }}>*</span>
-                </label>
-                <input
-                  className="input"
-                  style={{ width: "100%" }}
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="+44..."
-                  required
-                />
-              </div>
-
-              {error && (
-                <p style={{ margin: 0, color: "#f87171", fontSize: "0.82rem" }}>{error}</p>
-              )}
-
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isPending}>
-                  {isPending ? "Saving..." : "Add Landlord"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -273,6 +273,37 @@ export type InterestedPropertyIntakeInput = {
   };
 };
 
+// ── Auto-add landlord to Dialer Contacts ────────────────────────────────────
+export async function autoAddDialerContact(params: {
+  ownerUserId: string;
+  fullName: string;
+  phoneNumber: string;
+  sourceType: "INTERESTED_LANDLORD" | "FOLLOWUP_LANDLORD";
+  sourceLandlordId?: string | null;
+}) {
+  const existing = await prisma.dialerContact.findFirst({
+    where: { ownerUserId: params.ownerUserId, phoneNumber: params.phoneNumber },
+    select: { id: true },
+  });
+  if (existing) {
+    await prisma.dialerContact.update({
+      where: { id: existing.id },
+      data: { autoAdded: true, sourceType: params.sourceType, sourceLandlordId: params.sourceLandlordId ?? null },
+    });
+  } else {
+    await prisma.dialerContact.create({
+      data: {
+        ownerUserId: params.ownerUserId,
+        fullName: params.fullName,
+        phoneNumber: params.phoneNumber,
+        autoAdded: true,
+        sourceType: params.sourceType,
+        sourceLandlordId: params.sourceLandlordId ?? null,
+      } as any,
+    });
+  }
+}
+
 export async function createInterestedPropertyIntake(input: InterestedPropertyIntakeInput) {
   const landlord =
     input.landlordId != null
@@ -419,6 +450,15 @@ export async function createInterestedPropertyIntake(input: InterestedPropertyIn
 
     return { landlord: landlordRecord, property, callRecord };
   });
+
+  // Auto-add landlord to dialer contacts (outside transaction, non-blocking)
+  await autoAddDialerContact({
+    ownerUserId: input.agentId,
+    fullName: result.landlord.landlordName,
+    phoneNumber: result.landlord.landlordNumber,
+    sourceType: "INTERESTED_LANDLORD",
+    sourceLandlordId: result.landlord.id,
+  }).catch(() => {/* non-fatal */});
 
   return result;
 }

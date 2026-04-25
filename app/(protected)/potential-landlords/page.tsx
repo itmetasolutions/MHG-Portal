@@ -17,23 +17,30 @@ export default async function PotentialLandlordsPage() {
   if (!user || !user.isActive) redirect("/login");
   if (user.role === UserRole.ADMIN) redirect("/admin/potential-landlords");
 
-  const landlords = await db.potentialLandlord.findMany({
+  const landlords = await (db as any).potentialLandlord.findMany({
+    where: { addedByAgentId: session.userId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       fullName: true,
       phone: true,
       phoneLast10: true,
+      email: true,
       createdAt: true,
+      followUpScheduledAt: true,
+      followUpLockedUntil: true,
+      isFollowUpLocked: true,
       addedByAgent: {
         select: { id: true, agentDisplayName: true },
       },
     },
   });
 
-  const serialized = landlords.map((l) => ({
+  const serialized = landlords.map((l: any) => ({
     ...l,
     createdAt: l.createdAt.toISOString(),
+    followUpScheduledAt: l.followUpScheduledAt ? l.followUpScheduledAt.toISOString() : null,
+    followUpLockedUntil: l.followUpLockedUntil ? l.followUpLockedUntil.toISOString() : null,
   }));
 
   return <PotentialLandlordsClient initialLandlords={serialized} currentUserId={session.userId} />;

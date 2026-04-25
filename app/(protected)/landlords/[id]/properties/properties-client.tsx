@@ -34,7 +34,8 @@ type CloseSaleForm = {
   commissionPct: string;
   commissionAmt: string;
   otherCosts: string;
-  tenantName: string;
+  tenantFirstName: string;
+  tenantLastName: string;
   tenantEmail: string;
   tenantPhone: string;
   tenantAddress: string;
@@ -42,6 +43,20 @@ type CloseSaleForm = {
   tenantRent: string;
   tenantDeposit: string;
   tenantNotes: string;
+  tenantAccommodationType: "PRIVATE" | "SHARED" | "";
+  tenantRoomType: string;
+  tenantNationality: string;
+  tenantCountryOriginal: string;
+  tenantNumOccupants: string;
+  tenantNumChildren: string;
+  tenantOnDSS: boolean;
+  tenantEmployed: boolean;
+  tenantAnnualIncome: string;
+  tenantCurrentPostcode: string;
+  tenantWorkplacePostcode: string;
+  tenantMaxBudget: string;
+  tenantProfession: string;
+  tenantImmigrationStatus: string;
 };
 
 type RoomDraft = {
@@ -323,8 +338,10 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       }
     }
 
-    if (!closingSale.tenantName.trim()) {
-      setMessage({ type: "error", text: "Tenant full name is required." });
+    const tenantFirst = closingSale.tenantFirstName.trim();
+    const tenantLast = closingSale.tenantLastName.trim();
+    if (!tenantFirst || !tenantLast) {
+      setMessage({ type: "error", text: "Tenant first and last name are required." });
       return;
     }
 
@@ -335,7 +352,9 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
       commissionPct,
       otherCosts,
       tenant: {
-        fullName: closingSale.tenantName.trim(),
+        firstName: tenantFirst,
+        lastName: tenantLast,
+        fullName: `${tenantFirst} ${tenantLast}`,
         email: closingSale.tenantEmail.trim() || undefined,
         phone: closingSale.tenantPhone.trim() || undefined,
         currentAddress: closingSale.tenantAddress.trim() || undefined,
@@ -343,6 +362,20 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
         rentAmount: closingSale.tenantRent.trim() ? Number(closingSale.tenantRent) : undefined,
         depositAmount: closingSale.tenantDeposit.trim() ? Number(closingSale.tenantDeposit) : undefined,
         notes: closingSale.tenantNotes.trim() || undefined,
+        accommodationType: closingSale.tenantAccommodationType || undefined,
+        tenantRoomType: closingSale.tenantRoomType || undefined,
+        nationality: closingSale.tenantNationality.trim() || undefined,
+        countryOriginal: closingSale.tenantCountryOriginal.trim() || undefined,
+        numberOfOccupants: closingSale.tenantNumOccupants ? Number(closingSale.tenantNumOccupants) : undefined,
+        numberOfChildren: closingSale.tenantNumChildren ? Number(closingSale.tenantNumChildren) : undefined,
+        onDSS: closingSale.tenantOnDSS,
+        currentlyEmployed: closingSale.tenantEmployed,
+        annualIncome: closingSale.tenantAnnualIncome ? Number(closingSale.tenantAnnualIncome) : undefined,
+        currentLivingPostcode: closingSale.tenantCurrentPostcode.toUpperCase() || undefined,
+        workplacePostcode: closingSale.tenantWorkplacePostcode.toUpperCase() || undefined,
+        maximumBudget: closingSale.tenantMaxBudget ? Number(closingSale.tenantMaxBudget) : undefined,
+        workingProfession: closingSale.tenantProfession.trim() || undefined,
+        immigrationStatus: closingSale.tenantImmigrationStatus || undefined,
       },
     };
 
@@ -744,7 +777,8 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                           commissionPct: room.expectedCommissionPct ?? "",
                                           commissionAmt: "",
                                           otherCosts: "",
-                                          tenantName: "",
+                                          tenantFirstName: "",
+                                          tenantLastName: "",
                                           tenantEmail: "",
                                           tenantPhone: "",
                                           tenantAddress: "",
@@ -752,6 +786,20 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                           tenantRent: "",
                                           tenantDeposit: "",
                                           tenantNotes: "",
+                                          tenantAccommodationType: "SHARED",
+                                          tenantRoomType: "",
+                                          tenantNationality: "",
+                                          tenantCountryOriginal: "",
+                                          tenantNumOccupants: "",
+                                          tenantNumChildren: "",
+                                          tenantOnDSS: false,
+                                          tenantEmployed: false,
+                                          tenantAnnualIncome: "",
+                                          tenantCurrentPostcode: "",
+                                          tenantWorkplacePostcode: "",
+                                          tenantMaxBudget: "",
+                                          tenantProfession: "",
+                                          tenantImmigrationStatus: "",
                                         })
                                       }
                                     >
@@ -829,7 +877,8 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                   commissionPct: property.expectedCommissionPct ?? "",
                                   commissionAmt: property.expectedCommissionAmt ?? "",
                                   otherCosts: "",
-                                  tenantName: "",
+                                  tenantFirstName: "",
+                                  tenantLastName: "",
                                   tenantEmail: "",
                                   tenantPhone: "",
                                   tenantAddress: "",
@@ -837,6 +886,20 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                                   tenantRent: "",
                                   tenantDeposit: "",
                                   tenantNotes: "",
+                                  tenantAccommodationType: "PRIVATE",
+                                  tenantRoomType: "",
+                                  tenantNationality: "",
+                                  tenantCountryOriginal: "",
+                                  tenantNumOccupants: "",
+                                  tenantNumChildren: "",
+                                  tenantOnDSS: false,
+                                  tenantEmployed: false,
+                                  tenantAnnualIncome: "",
+                                  tenantCurrentPostcode: "",
+                                  tenantWorkplacePostcode: "",
+                                  tenantMaxBudget: "",
+                                  tenantProfession: "",
+                                  tenantImmigrationStatus: "",
                                 })
                               }
                             >
@@ -1100,80 +1163,196 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
               </div>
               <div className="field-grid-2">
                 <label className="field">
-                  <span className="label">Tenant Full Name *</span>
+                  <span className="label">First Name *</span>
                   <UIInput
-                    value={closingSale.tenantName}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantName: event.target.value } : prev))
-                    }
-                    placeholder="Required"
+                    value={closingSale.tenantFirstName}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantFirstName: e.target.value } : p)}
+                    placeholder="Jane"
                   />
                 </label>
                 <label className="field">
-                  <span className="label">Tenant Email</span>
+                  <span className="label">Last Name *</span>
                   <UIInput
-                    type="email"
+                    value={closingSale.tenantLastName}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantLastName: e.target.value } : p)}
+                    placeholder="Smith"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Email</span>
+                  <UIInput type="email"
                     value={closingSale.tenantEmail}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantEmail: event.target.value } : prev))
-                    }
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantEmail: e.target.value } : p)}
                     placeholder="Optional"
                   />
                 </label>
                 <label className="field">
-                  <span className="label">Tenant Phone</span>
+                  <span className="label">Phone</span>
                   <UIInput
                     value={closingSale.tenantPhone}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantPhone: event.target.value } : prev))
-                    }
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantPhone: e.target.value } : p)}
                     placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Accommodation Type</span>
+                  <select className="input"
+                    value={closingSale.tenantAccommodationType}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantAccommodationType: e.target.value as any } : p)}
+                  >
+                    <option value="">— Select —</option>
+                    <option value="PRIVATE">Private</option>
+                    <option value="SHARED">Shared</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span className="label">Room Type</span>
+                  <select className="input"
+                    value={closingSale.tenantRoomType}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantRoomType: e.target.value } : p)}
+                  >
+                    <option value="">— Select —</option>
+                    <option value="STUDIO_ROOM">Studio Room</option>
+                    <option value="SINGLE_ROOM">Single Room</option>
+                    <option value="DOUBLE_ROOM">Double Room</option>
+                    <option value="ENSUITE_ROOM">En-Suite Room</option>
+                    <option value="LOFT">Loft</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span className="label">Nationality</span>
+                  <UIInput
+                    value={closingSale.tenantNationality}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantNationality: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Country of Origin</span>
+                  <UIInput
+                    value={closingSale.tenantCountryOriginal}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantCountryOriginal: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Immigration Status</span>
+                  <select className="input"
+                    value={closingSale.tenantImmigrationStatus}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantImmigrationStatus: e.target.value } : p)}
+                  >
+                    <option value="">— Select —</option>
+                    <option value="British Citizen">British Citizen</option>
+                    <option value="Settled Status (ILR)">Settled Status (ILR)</option>
+                    <option value="Pre-Settled Status">Pre-Settled Status</option>
+                    <option value="Student Visa">Student Visa</option>
+                    <option value="Skilled Worker Visa">Skilled Worker Visa</option>
+                    <option value="Family Visa">Family Visa</option>
+                    <option value="Refugee / Asylum">Refugee / Asylum</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span className="label">Profession</span>
+                  <UIInput
+                    value={closingSale.tenantProfession}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantProfession: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Annual Income (£)</span>
+                  <UIInput type="number" min={0}
+                    value={closingSale.tenantAnnualIncome}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantAnnualIncome: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">No. of Occupants</span>
+                  <UIInput type="number" min={1}
+                    value={closingSale.tenantNumOccupants}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantNumOccupants: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">No. of Children</span>
+                  <UIInput type="number" min={0}
+                    value={closingSale.tenantNumChildren}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantNumChildren: e.target.value } : p)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Current Living Postcode</span>
+                  <UIInput
+                    value={closingSale.tenantCurrentPostcode}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantCurrentPostcode: e.target.value.toUpperCase() } : p)}
+                    placeholder="M1 1AB"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Workplace Postcode</span>
+                  <UIInput
+                    value={closingSale.tenantWorkplacePostcode}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantWorkplacePostcode: e.target.value.toUpperCase() } : p)}
+                    placeholder="M2 3BC"
                   />
                 </label>
                 <label className="field">
                   <span className="label">Move-In Date</span>
-                  <UIInput
-                    type="date"
+                  <UIInput type="date"
                     value={closingSale.tenantMoveInDate}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantMoveInDate: event.target.value } : prev))
-                    }
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantMoveInDate: e.target.value } : p)}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Max Budget (£/mo)</span>
+                  <UIInput type="number" min={0}
+                    value={closingSale.tenantMaxBudget}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantMaxBudget: e.target.value } : p)}
+                    placeholder="Optional"
                   />
                 </label>
                 <label className="field">
                   <span className="label">Monthly Rent (GBP)</span>
-                  <UIInput
-                    type="number"
-                    min={0}
-                    step="0.01"
+                  <UIInput type="number" min={0} step="0.01"
                     value={closingSale.tenantRent}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantRent: event.target.value } : prev))
-                    }
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantRent: e.target.value } : p)}
                     placeholder="Optional"
                   />
                 </label>
                 <label className="field">
                   <span className="label">Deposit (GBP)</span>
-                  <UIInput
-                    type="number"
-                    min={0}
-                    step="0.01"
+                  <UIInput type="number" min={0} step="0.01"
                     value={closingSale.tenantDeposit}
-                    onChange={(event) =>
-                      setClosingSale((prev) => (prev ? { ...prev, tenantDeposit: event.target.value } : prev))
-                    }
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantDeposit: e.target.value } : p)}
                     placeholder="Optional"
                   />
+                </label>
+              </div>
+              <div className="field-grid-2">
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer", color: "var(--text)" }}>
+                  <input type="checkbox"
+                    checked={closingSale.tenantOnDSS}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantOnDSS: e.target.checked } : p)}
+                  />
+                  On DSS / Benefits
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer", color: "var(--text)" }}>
+                  <input type="checkbox"
+                    checked={closingSale.tenantEmployed}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantEmployed: e.target.checked } : p)}
+                  />
+                  Currently Employed
                 </label>
               </div>
               <label className="field">
                 <span className="label">Current Address</span>
                 <UIInput
                   value={closingSale.tenantAddress}
-                  onChange={(event) =>
-                    setClosingSale((prev) => (prev ? { ...prev, tenantAddress: event.target.value } : prev))
-                  }
+                  onChange={(e) => setClosingSale((p) => p ? { ...p, tenantAddress: e.target.value } : p)}
                   placeholder="Optional"
                 />
               </label>
@@ -1181,9 +1360,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                 <span className="label">Notes</span>
                 <UIInput
                   value={closingSale.tenantNotes}
-                  onChange={(event) =>
-                    setClosingSale((prev) => (prev ? { ...prev, tenantNotes: event.target.value } : prev))
-                  }
+                  onChange={(e) => setClosingSale((p) => p ? { ...p, tenantNotes: e.target.value } : p)}
                   placeholder="Optional"
                 />
               </label>

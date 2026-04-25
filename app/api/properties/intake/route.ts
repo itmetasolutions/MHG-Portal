@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
         city: propertySource.city ?? null,
         county: propertySource.county ?? null,
         postcode: String(propertySource.postcode).trim(),
-        propertyCategory: propertySource.propertyCategory
+        propertyCategory: (propertySource.propertyCategory
           ? String(propertySource.propertyCategory).trim().toUpperCase()
           : propertySource.branch
             ? String(propertySource.branch).trim().toUpperCase()
-            : null,
+            : null) as any,
         propertyType: propertySource.propertyType ?? null,
         beds: propertySource.beds == null ? null : Number(propertySource.beds),
         baths: propertySource.baths == null ? null : Number(propertySource.baths),

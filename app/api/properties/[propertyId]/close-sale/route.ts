@@ -7,25 +7,38 @@ import { canEditProperty } from "@/server/policies";
 
 const propertyIdSchema = z.string().uuid("property id must be a valid UUID");
 
-const closeSaleSchema = z
-  .object({
-    finalAmount: z.coerce.number().positive("finalAmount must be > 0"),
-    commissionPct: z.coerce.number().min(0, "commissionPct must be >= 0").max(9999),
-    otherCosts: z.coerce.number().min(0).optional(),
-    tenant: z
-      .object({
-        fullName: z.string().trim().min(1, "Tenant full name is required"),
-        email: z.string().trim().email().optional().or(z.literal("")),
-        phone: z.string().trim().optional(),
-        currentAddress: z.string().trim().optional(),
-        moveInDate: z.string().datetime({ offset: true }).optional().or(z.string().date().optional()),
-        rentAmount: z.coerce.number().min(0).optional(),
-        depositAmount: z.coerce.number().min(0).optional(),
-        notes: z.string().trim().optional(),
-      })
-      .strict(),
-  })
-  .strict();
+const closeSaleSchema = z.object({
+  finalAmount: z.coerce.number().positive("finalAmount must be > 0"),
+  commissionPct: z.coerce.number().min(0, "commissionPct must be >= 0").max(9999),
+  otherCosts: z.coerce.number().min(0).optional(),
+  tenant: z.object({
+    fullName: z.string().trim().min(1, "Tenant full name is required"),
+    firstName: z.string().trim().optional(),
+    lastName: z.string().trim().optional(),
+    email: z.string().trim().email().optional().or(z.literal("")),
+    phone: z.string().trim().optional(),
+    currentAddress: z.string().trim().optional(),
+    moveInDate: z.string().datetime({ offset: true }).optional().or(z.string().date().optional()),
+    rentAmount: z.coerce.number().min(0).optional(),
+    depositAmount: z.coerce.number().min(0).optional(),
+    notes: z.string().trim().optional(),
+    // V2 fields
+    accommodationType: z.enum(["PRIVATE", "SHARED"]).optional(),
+    tenantRoomType: z.enum(["STUDIO_ROOM", "SINGLE_ROOM", "DOUBLE_ROOM", "ENSUITE_ROOM", "LOFT"]).optional(),
+    countryOriginal: z.string().trim().optional(),
+    nationality: z.string().trim().optional(),
+    numberOfOccupants: z.coerce.number().int().min(0).optional(),
+    numberOfChildren: z.coerce.number().int().min(0).optional(),
+    onDSS: z.boolean().optional(),
+    currentlyEmployed: z.boolean().optional(),
+    annualIncome: z.coerce.number().min(0).optional(),
+    currentLivingPostcode: z.string().trim().optional(),
+    workplacePostcode: z.string().trim().optional(),
+    maximumBudget: z.coerce.number().min(0).optional(),
+    workingProfession: z.string().trim().optional(),
+    immigrationStatus: z.string().trim().optional(),
+  }),
+});
 
 type Params = {
   params: {
@@ -175,10 +188,13 @@ export async function POST(request: NextRequest, { params }: Params) {
       },
     });
 
-    const tenant = await tx.tenant.create({
+    const tenant = await (tx as any).tenant.create({
       data: {
         saleId: sale.id,
+        addedByAgentId: auth.user.id,
         fullName: payload.tenant.fullName,
+        firstName: payload.tenant.firstName?.trim() || null,
+        lastName: payload.tenant.lastName?.trim() || null,
         email: payload.tenant.email?.trim() || null,
         phone: payload.tenant.phone?.trim() || null,
         currentAddress: payload.tenant.currentAddress?.trim() || null,
@@ -186,6 +202,24 @@ export async function POST(request: NextRequest, { params }: Params) {
         rentAmount: payload.tenant.rentAmount ?? null,
         depositAmount: payload.tenant.depositAmount ?? null,
         notes: payload.tenant.notes?.trim() || null,
+        accommodationType: payload.tenant.accommodationType ?? null,
+        tenantRoomType: payload.tenant.tenantRoomType ?? null,
+        countryOriginal: payload.tenant.countryOriginal?.trim() || null,
+        nationality: payload.tenant.nationality?.trim() || null,
+        numberOfOccupants: payload.tenant.numberOfOccupants ?? null,
+        numberOfChildren: payload.tenant.numberOfChildren ?? null,
+        onDSS: payload.tenant.onDSS ?? null,
+        currentlyEmployed: payload.tenant.currentlyEmployed ?? null,
+        annualIncome: payload.tenant.annualIncome ?? null,
+        currentLivingPostcode: payload.tenant.currentLivingPostcode
+          ? payload.tenant.currentLivingPostcode.toUpperCase()
+          : null,
+        workplacePostcode: payload.tenant.workplacePostcode
+          ? payload.tenant.workplacePostcode.toUpperCase()
+          : null,
+        maximumBudget: payload.tenant.maximumBudget ?? null,
+        workingProfession: payload.tenant.workingProfession?.trim() || null,
+        immigrationStatus: payload.tenant.immigrationStatus?.trim() || null,
       },
       select: {
         id: true,
@@ -241,6 +275,15 @@ export async function POST(request: NextRequest, { params }: Params) {
           tenant,
         },
       },
+    });
+
+    // Increment salesClosed in daily report
+    const now2 = new Date();
+    const reportDate = new Date(Date.UTC(now2.getUTCFullYear(), now2.getUTCMonth(), now2.getUTCDate()));
+    await (tx as any).dailyReport.upsert({
+      where: { agentId_reportDate: { agentId: auth.user.id, reportDate } },
+      create: { agentId: auth.user.id, reportDate, callsMade: 0, salesClosed: 1 },
+      update: { salesClosed: { increment: 1 } },
     });
 
     return { sale, tenant };

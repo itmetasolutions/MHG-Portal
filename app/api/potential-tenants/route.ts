@@ -83,6 +83,9 @@ export async function POST(request: NextRequest) {
   }
 
   const postcodeInput = body.postcode ? String(body.postcode).trim() : "";
+  const currentLivingPostcode = body.currentLivingPostcode ? normalizePostcode(String(body.currentLivingPostcode).trim()) : null;
+  const workplacePostcode = body.workplacePostcode ? normalizePostcode(String(body.workplacePostcode).trim()) : null;
+
   const potentialTenant = await prisma.potentialTenant.create({
     data: {
       addedByAgentId: auth.user.id,
@@ -101,6 +104,23 @@ export async function POST(request: NextRequest) {
       moveInDate: body.moveInDate ? new Date(body.moveInDate) : null,
       moveInFlexible: body.moveInFlexible == null ? null : Boolean(body.moveInFlexible),
       notes: body.notes ? String(body.notes).trim() : null,
+      // V2 fields
+      firstName: body.firstName ? normalizeNamePart(String(body.firstName).trim()) : null,
+      lastName: body.lastName ? normalizeNamePart(String(body.lastName).trim()) : null,
+      accommodationType: body.accommodationType ?? null,
+      countryOriginal: body.countryOriginal ? String(body.countryOriginal).trim() : null,
+      nationality: body.nationality ? String(body.nationality).trim() : null,
+      tenantRoomType: body.tenantRoomType ?? null,
+      numberOfOccupants: body.numberOfOccupants ? Number(body.numberOfOccupants) : null,
+      numberOfChildren: body.numberOfChildren ? Number(body.numberOfChildren) : null,
+      onDSS: body.onDSS == null ? null : Boolean(body.onDSS),
+      currentlyEmployed: body.currentlyEmployed == null ? null : Boolean(body.currentlyEmployed),
+      annualIncome: body.annualIncome ? Number(body.annualIncome) : null,
+      currentLivingPostcode,
+      workplacePostcode,
+      maximumBudget: body.maximumBudget ? Number(body.maximumBudget) : null,
+      workingProfession: body.workingProfession ? String(body.workingProfession).trim() : null,
+      immigrationStatus: body.immigrationStatus ? String(body.immigrationStatus).trim() : null,
     },
   });
 

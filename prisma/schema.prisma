@@ -24,8 +24,9 @@ enum PropertyStatus {
 }
 
 enum PropertyCategory {
-  PRIVATE
-  SHARED
+  HOUSE
+  FLAT
+  STUDIO_FLAT
 }
 
 enum WorkflowCallOutcome {
@@ -88,6 +89,25 @@ enum ApprovalStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum PropertyType {
+  PRIVATE
+  SHARED
+}
+
+enum LivingRoomType {
+  PRIVATE
+  SHARED
+  NONE
+}
+
+enum RoomType {
+  STUDIO_ROOM
+  SINGLE_ROOM
+  DOUBLE_ROOM
+  ENSUITE_ROOM
+  LOFT
 }
 
 enum ApprovalEntityType {
@@ -192,7 +212,7 @@ model Property {
   baths                 Int?
   status                PropertyStatus @default(DRAFT)
   vacancyType           VacancyType    @default(SINGLE)
-  propertyCategory      PropertyCategory @default(PRIVATE)
+  propertyCategory      PropertyCategory?
   isSharedProperty      Boolean        @default(false)
   landlordDemand        Decimal?       @db.Decimal(14, 2)
   expectedCommissionPct Decimal?       @db.Decimal(5, 2)
@@ -210,6 +230,18 @@ model Property {
   availabilityDate      DateTime?
   livingLandlord        Boolean?
   publishedToWebsite    Boolean        @default(false)
+
+  // V2 revamp fields
+  propType              PropertyType?
+  garden                Boolean?
+  parking               Boolean?
+  billsIncluded         Boolean?
+  balconyRoofTerrace    Boolean?
+  disabledAccess        Boolean?
+  livingRoom            LivingRoomType?
+  broadbandIncluded     Boolean?
+  couplesAllowed        Boolean?
+
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
 
@@ -295,6 +327,12 @@ model PropertyRoom {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
+  // V2 revamp fields
+  roomType              RoomType?
+  rentPerMonth          Decimal?    @db.Decimal(14, 2)
+  depositAmount         Decimal?    @db.Decimal(14, 2)
+  expectedCommissionAmt Decimal?    @db.Decimal(14, 2)
+
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sale     Sale?
 
@@ -326,6 +364,24 @@ model Tenant {
   notes               String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  // V2 revamp fields
+  firstName             String?
+  lastName              String?
+  accommodationType     String?
+  countryOriginal       String?
+  nationality           String?
+  tenantRoomType        RoomType?
+  numberOfOccupants     Int?
+  numberOfChildren      Int?
+  onDSS                 Boolean?
+  currentlyEmployed     Boolean?
+  annualIncome          Decimal?  @db.Decimal(14, 2)
+  currentLivingPostcode String?
+  workplacePostcode     String?
+  maximumBudget         Decimal?  @db.Decimal(14, 2)
+  workingProfession     String?
+  immigrationStatus     String?
 
   sale         Sale?        @relation(fields: [saleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   addedByAgent User?        @relation("TenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -443,6 +499,9 @@ model DialerContact {
   email           String?
   notes           String?
   isFavorite      Boolean  @default(false)
+  autoAdded       Boolean  @default(false)
+  sourceType      String?
+  sourceLandlordId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -517,6 +576,24 @@ model PotentialTenant {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // V2 revamp fields
+  firstName             String?
+  lastName              String?
+  accommodationType     String?
+  countryOriginal       String?
+  nationality           String?
+  tenantRoomType        RoomType?
+  numberOfOccupants     Int?
+  numberOfChildren      Int?
+  onDSS                 Boolean?
+  currentlyEmployed     Boolean?
+  annualIncome          Decimal?  @db.Decimal(14, 2)
+  currentLivingPostcode String?
+  workplacePostcode     String?
+  maximumBudget         Decimal?  @db.Decimal(14, 2)
+  workingProfession     String?
+  immigrationStatus     String?
+
   @@index([addedByAgentId, createdAt])
   @@index([createdAt])
   @@index([fullName])
@@ -531,11 +608,24 @@ model PotentialLandlord {
   phone                    String
   phoneLast10              String
   phoneE164                String?
+  email                    String?
+  notes                    String?
   followUpScheduledAt      DateTime?
   followUpLockedUntil      DateTime?
   followUpContinuedAt      DateTime?
   followUpContinuedByUserId String?  @db.Uuid
   isFollowUpLocked         Boolean  @default(false)
+  email1hSent              Boolean  @default(false)
+  email5minSent            Boolean  @default(false)
+  notifSent                Boolean  @default(false)
+  // DB-side columns from previous push
+  firstName                String?
+  lastName                 String?
+  isLocked                 Boolean  @default(false)
+  lockedUntil              DateTime?
+  scheduledAt              DateTime?
+  reminder1hSent           Boolean  @default(false)
+  reminder5mSent           Boolean  @default(false)
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
@@ -591,6 +681,12 @@ model DailyReport {
   tenantsCreated     Int      @default(0)
   workflowSummary    Json?
   reSchedule         Int      @default(0)
+  salesClosed        Int      @default(0)
+  // DB-side columns from previous push
+  totalSearched      Int      @default(0)
+  propertiesConfirmed Int     @default(0)
+  notInterested      Int      @default(0)
+  potentialTenants   Int      @default(0)
   notes              String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -714,4 +810,29 @@ model CommissionConfig {
   updatedById    String?        @db.Uuid
 
   updatedBy User? @relation("CommissionConfigUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+}
+
+// Legacy tables preserved in DB — kept here to prevent accidental drops
+model CallLog {
+  id                  String    @id @default(uuid()) @db.Uuid
+  agentId             String    @db.Uuid
+  phone               String
+  outcome             String?
+  notes               String?
+  phoneLast10         String?
+  landlordFirstName   String?
+  landlordLastName    String?
+  potentialLandlordId String?   @db.Uuid
+  status              String?
+  followUpScheduledAt DateTime?
+  createdAt           DateTime  @default(now())
+}
+
+model LandlordLookupLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  agentId      String   @db.Uuid
+  phone        String
+  phoneLast10  String?
+  result       String
+  createdAt    DateTime @default(now())
 }

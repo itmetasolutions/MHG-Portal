@@ -14,6 +14,7 @@ import {
 import { SalesFilterBar } from "@/components/sales-filter-bar";
 import { formatPeriodRange, isPeriodKey, parsePeriodToDateRange, type PeriodKey } from "@/lib/period";
 import { serializePropertyImageList } from "@/server/property-media";
+import { DashboardLookupWidget } from "@/components/dashboard-lookup-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -274,6 +275,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      {/* ── Landlord Phone Lookup (agents only) ────────────────────────── */}
+      {!isAdmin && <DashboardLookupWidget />}
+
       {/* ── Portfolio Overview ──────────────────────────────────────────── */}
       <div className="panel" style={{ padding: "1rem 1.1rem" }}>
         <SalesFilterBar period={period} from={from} to={to} rangeLabel={salesRangeLabel} salesCount={totalSales} />
@@ -437,7 +441,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <div>
         <p className="section-label">Quick Actions</p>
         <div className="agent-actions-grid">
-          <Link href="/properties/new" className="agent-action-card">
+          <Link href="/properties/add" className="agent-action-card">
             <div className="agent-action-icon">
               <svg viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4 2a2 2 0 0 0-2 2v11a3 3 0 1 0 6 0V4a2 2 0 0 0-2-2H4Zm1 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm5-1.757 4.9-4.9a2 2 0 0 0 0-2.828L13.485 5.1a2 2 0 0 0-2.828 0L10 5.757v8.486ZM16 17H9.071l6-6H16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2Z" clipRule="evenodd" />
@@ -445,7 +449,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </div>
             <div>
               <p className="agent-action-label">Add Property</p>
-              <p className="agent-action-desc">Register property &amp; landlord together</p>
+              <p className="agent-action-desc">Register a property for a landlord</p>
             </div>
           </Link>
 
