@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
-import { checkLandlordNumber, type LandlordLookupResponse } from "@/lib/portal-api";
 import { FloatingChat } from "@/components/floating-chat";
 import { NotificationsBell } from "@/components/notifications-bell";
 
@@ -185,10 +184,6 @@ const navItems = [
 
 export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const pathname = usePathname();
-  const [lookupInput, setLookupInput] = useState("");
-  const [lookupBusy, setLookupBusy] = useState(false);
-  const [lookupError, setLookupError] = useState<string | null>(null);
-  const [lookupResult, setLookupResult] = useState<LandlordLookupResponse | null>(null);
 
   const initials = user.name
     ? user.name
@@ -207,31 +202,6 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
   const activeItem = navItems.find((item) =>
     item.exact ? pathname === item.href : pathname?.startsWith(item.href),
   );
-
-  async function onLookupSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const query = lookupInput.trim();
-    if (!query) {
-      setLookupResult(null);
-      setLookupError("Enter landlord phone number first.");
-      return;
-    }
-
-    setLookupBusy(true);
-    setLookupError(null);
-
-    const result = await checkLandlordNumber(query);
-    setLookupBusy(false);
-
-    if (!result.ok) {
-      setLookupResult(null);
-      setLookupError(result.message ?? "Unable to check landlord details right now.");
-      return;
-    }
-
-    setLookupResult(result.data);
-  }
 
   return (
     <div className="agent-shell">
@@ -293,67 +263,6 @@ export function AgentShell({ user, userId, chatContacts, children }: Props) {
             <NotificationsBell />
             <span className="agent-topbar-meta">{user.name || user.email}</span>
           </div>
-        </div>
-
-        <div className="agent-lookup-strip">
-          <form className="agent-lookup-form" onSubmit={onLookupSubmit}>
-            <span className="agent-lookup-label">Check landlord before calling</span>
-            <input
-              className="input agent-lookup-input"
-              value={lookupInput}
-              onChange={(event) => setLookupInput(event.target.value)}
-              placeholder="Enter phone number"
-              aria-label="Landlord phone lookup"
-            />
-            <button className="btn btn-secondary btn-sm agent-lookup-submit" type="submit" disabled={lookupBusy}>
-              {lookupBusy ? "Checking..." : "Check"}
-            </button>
-          </form>
-
-          {lookupError ? <p className="agent-lookup-error">{lookupError}</p> : null}
-
-          {lookupResult ? (
-            lookupResult.landlordExists && lookupResult.landlord ? (
-              <div
-                className={`agent-lookup-result ${
-                  lookupResult.canCreateProperty ? "agent-lookup-result-owned" : "agent-lookup-result-blocked"
-                }`}
-              >
-                <div className="agent-lookup-copy">
-                  <p className="agent-lookup-title">
-                    {lookupResult.landlord.landlordName} ({lookupResult.landlord.phoneLast10})
-                  </p>
-                  <p className="agent-lookup-meta">
-                    Owner Agent: {lookupResult.landlord.ownerAgent.agentDisplayName} | Properties:{" "}
-                    {lookupResult.landlord._count.properties}
-                  </p>
-                  <p className="agent-lookup-status">
-                    {lookupResult.canCreateProperty
-                      ? "This is your landlord. You can add more properties."
-                      : "This landlord is assigned to another agent. You cannot add properties."}
-                  </p>
-                </div>
-
-                {lookupResult.canCreateProperty ? (
-                  <Link className="btn btn-primary btn-sm" href={`/landlords/${lookupResult.landlord.id}/properties`}>
-                    Add Property
-                  </Link>
-                ) : null}
-              </div>
-            ) : (
-              <div className="agent-lookup-result agent-lookup-result-new">
-                <div className="agent-lookup-copy">
-                  <p className="agent-lookup-title">No landlord found for this number</p>
-                  <p className="agent-lookup-meta">
-                    You can create a new landlord and property entry from the intake form.
-                  </p>
-                </div>
-                <Link className="btn btn-primary btn-sm" href="/landlords/new">
-                  Add New Landlord
-                </Link>
-              </div>
-            )
-          ) : null}
         </div>
 
         <div className="agent-page">{children}</div>

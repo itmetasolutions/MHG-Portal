@@ -9,6 +9,7 @@ import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { formatDate } from "@/lib/format";
 import { fetchLandlords, type LandlordRow, type SessionRole } from "@/lib/portal-api";
+import { PhoneLookupModal } from "@/components/phone-lookup-modal";
 
 type Props = {
   currentUserId: string;
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
+  const [showLookup, setShowLookup] = useState(false);
   const [search, setSearch] = useState("");
   const [agent, setAgent] = useState("");
   const [phoneLast10, setPhoneLast10] = useState("");
@@ -70,11 +72,12 @@ export function LandlordsRegistryClient({ currentUserId, currentRole }: Props) {
       <header className="page-header">
         <div>
           <h1 className="page-title">Landlords</h1>
-          <p className="page-subtitle">Manage your landlord records.</p>
+          <p className="page-subtitle">Landlords are added automatically via the phone lookup workflow.</p>
         </div>
-        <Link className="btn btn-primary" href="/landlords/new">
-          + Add New Landlord
-        </Link>
+        <button className="btn btn-primary" onClick={() => setShowLookup(true)}>
+          Start a Call
+        </button>
+        <PhoneLookupModal open={showLookup} onClose={() => setShowLookup(false)} />
       </header>
 
       <UICard>

@@ -10,6 +10,7 @@ import { PaginationControls } from "@/components/ui/pagination-controls";
 import { closePropertySale, closePropertyRoomSale, fetchProperties, togglePropertyWebsitePublish } from "@/lib/portal-api";
 import { formatDate } from "@/lib/format";
 import { PropertyStatusDropdown } from "@/components/property-status-dropdown";
+import { PhoneLookupModal } from "@/components/phone-lookup-modal";
 
 type RoomRow = {
   id: string;
@@ -70,6 +71,7 @@ function money(val: string | number | null | undefined) {
 }
 
 export default function PropertiesPage() {
+  const [showLookup, setShowLookup] = useState(false);
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -186,9 +188,15 @@ export default function PropertiesPage() {
           <h1 className="page-title">Properties</h1>
           <p className="page-subtitle">{total} property {total === 1 ? "record" : "records"}.</p>
         </div>
-        <Link className="btn btn-primary" href="/properties/new">
-          + Add Property
-        </Link>
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button className="btn btn-secondary" onClick={() => setShowLookup(true)}>
+            Start a Call
+          </button>
+          <Link className="btn btn-primary" href="/properties/add">
+            Add a Property
+          </Link>
+        </div>
+        <PhoneLookupModal open={showLookup} onClose={() => setShowLookup(false)} />
       </header>
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}

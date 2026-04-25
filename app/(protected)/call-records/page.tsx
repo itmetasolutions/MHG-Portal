@@ -100,12 +100,6 @@ export default function CallRecordsPage() {
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [addPhone, setAddPhone] = useState("");
-  const [addStatus, setAddStatus] = useState("CONNECTED");
-  const [addNotes, setAddNotes] = useState("");
-  const [addBusy, setAddBusy] = useState(false);
-
   const [editStatusId, setEditStatusId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState("");
   const [editBusy, setEditBusy] = useState(false);
@@ -185,19 +179,6 @@ export default function CallRecordsPage() {
   }, []);
 
   // ── Call Records Actions ──
-
-  async function handleAdd() {
-    if (!addPhone.trim()) { setMessage({ type: "error", text: "Phone number is required." }); return; }
-    setAddBusy(true); setMessage(null);
-    const result = await apiPost<object, { record: CallRecord }>("/api/call-records", {
-      phoneNumber: addPhone.trim(), status: addStatus, notes: addNotes.trim() || null,
-    });
-    setAddBusy(false);
-    if (!result.ok) { setMessage({ type: "error", text: result.message ?? "Failed to add call record." }); return; }
-    setMessage({ type: "success", text: "Call record added." });
-    setShowAdd(false); setAddPhone(""); setAddStatus("CONNECTED"); setAddNotes("");
-    await loadRecords();
-  }
 
   async function saveStatus(id: string) {
     setEditBusy(true);
@@ -347,11 +328,7 @@ export default function CallRecordsPage() {
             )}
           </p>
         </div>
-        {activeTab === "records" ? (
-          <UIButton onClick={() => { setShowAdd((v) => !v); setMessage(null); }}>
-            {showAdd ? "Cancel" : "+ Log a Call"}
-          </UIButton>
-        ) : (
+        {activeTab === "scheduled" && (
           <UIButton onClick={() => { setShowSchedAdd((v) => !v); setSchedMessage(null); }}>
             {showSchedAdd ? "Cancel" : "+ Schedule a Call"}
           </UIButton>
@@ -427,34 +404,6 @@ export default function CallRecordsPage() {
       {activeTab === "records" && (
         <>
           {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
-
-          {showAdd && (
-            <div className="panel" style={{ padding: "1.25rem" }}>
-              <p className="section-label" style={{ marginBottom: "1rem" }}>Log New Call</p>
-              <div className="field-grid">
-                <div className="field-grid-2">
-                  <label className="field">
-                    <span className="label">Phone Number <span style={{ color: "var(--danger)" }}>*</span></span>
-                    <UIInput value={addPhone} onChange={(e) => setAddPhone(e.target.value)} placeholder="07911 122233" disabled={addBusy} />
-                  </label>
-                  <label className="field">
-                    <span className="label">Status</span>
-                    <select className="input" value={addStatus} onChange={(e) => setAddStatus(e.target.value)} disabled={addBusy}>
-                      {ALL_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <label className="field">
-                  <span className="label">Notes (optional)</span>
-                  <UIInput value={addNotes} onChange={(e) => setAddNotes(e.target.value)} placeholder="Any notes about this call..." disabled={addBusy} />
-                </label>
-                <div className="inline-row">
-                  <UIButton onClick={() => void handleAdd()} disabled={addBusy}>{addBusy ? "Saving..." : "Log Call"}</UIButton>
-                  <UIButton variant="secondary" onClick={() => { setShowAdd(false); setAddPhone(""); setAddStatus("CONNECTED"); setAddNotes(""); }}>Cancel</UIButton>
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="panel">
             <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>

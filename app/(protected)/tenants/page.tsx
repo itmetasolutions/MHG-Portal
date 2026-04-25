@@ -6,7 +6,7 @@ import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
-import { createTenant, updateTenant, type TenantRow } from "@/lib/portal-api";
+import { updateTenant, type TenantRow } from "@/lib/portal-api";
 import { apiGet } from "@/lib/api-client";
 
 type TenantWithProperty = TenantRow & {
@@ -22,11 +22,6 @@ type TenantWithProperty = TenantRow & {
   } | null;
 };
 
-const emptyAddForm = {
-  fullName: "", phone: "", email: "", currentAddress: "",
-  moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
-};
-
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<TenantWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,10 +31,6 @@ export default function TenantsPage() {
   const [pageSize, setPageSize] = useState(50);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState(emptyAddForm);
-  const [addBusy, setAddBusy] = useState(false);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
@@ -75,35 +66,6 @@ export default function TenantsPage() {
   }
 
   useEffect(() => { void load(); }, [page, pageSize, search]);
-
-  async function handleAdd() {
-    if (!addForm.fullName.trim() || !addForm.phone.trim()) {
-      setMessage({ type: "error", text: "Full name and phone number are required." });
-      return;
-    }
-    setAddBusy(true);
-    setMessage(null);
-    const result = await createTenant({
-      fullName: addForm.fullName.trim(),
-      phone: addForm.phone.trim(),
-      email: addForm.email.trim() || null,
-      currentAddress: addForm.currentAddress.trim() || null,
-      moveInDate: addForm.moveInDate ? new Date(addForm.moveInDate).toISOString() : null,
-      rentAmount: addForm.rentAmount ? Number(addForm.rentAmount) : null,
-      depositAmount: addForm.depositAmount ? Number(addForm.depositAmount) : null,
-      notes: addForm.notes.trim() || null,
-    });
-    setAddBusy(false);
-    if (!result.ok) {
-      setMessage({ type: "error", text: result.message ?? "Failed to create tenant." });
-      return;
-    }
-    setMessage({ type: "success", text: "Tenant created." });
-    setShowAddForm(false);
-    setAddForm(emptyAddForm);
-    setPage(1);
-    await load();
-  }
 
   function startEdit(tenant: TenantWithProperty) {
     setEditId(tenant.id);
@@ -157,11 +119,8 @@ export default function TenantsPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Tenants</h1>
-          <p className="page-subtitle">{totalRecords} tenant {totalRecords === 1 ? "record" : "records"}.</p>
+          <p className="page-subtitle">{totalRecords} tenant {totalRecords === 1 ? "record" : "records"}. Tenants are added automatically when closing a sale.</p>
         </div>
-        <UIButton onClick={() => { setShowAddForm((v) => !v); setMessage(null); }}>
-          {showAddForm ? "Cancel" : "+ Add New Tenant"}
-        </UIButton>
       </header>
 
       {message && <UIAlert type={message.type}>{message.text}</UIAlert>}
@@ -179,59 +138,6 @@ export default function TenantsPage() {
           />
         </label>
       </div>
-
-      {showAddForm && (
-        <div className="panel" style={{ padding: "1.25rem" }}>
-          <p className="section-label" style={{ marginBottom: "1rem" }}>New Tenant</p>
-          <div className="field-grid">
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Full Name <span style={{ color: "var(--danger)" }}>*</span></span>
-                <UIInput value={addForm.fullName} onChange={(e) => setAddForm((p) => ({ ...p, fullName: e.target.value }))} placeholder="Jane Doe" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Phone <span style={{ color: "var(--danger)" }}>*</span></span>
-                <UIInput value={addForm.phone} onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))} placeholder="07911 122233" disabled={addBusy} />
-                <span className="hint-text">UK number — used as unique identifier, cannot be changed later.</span>
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Email (optional)</span>
-                <UIInput type="email" value={addForm.email} onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))} placeholder="jane@example.com" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Current Address (optional)</span>
-                <UIInput value={addForm.currentAddress} onChange={(e) => setAddForm((p) => ({ ...p, currentAddress: e.target.value }))} placeholder="123 Old Street..." disabled={addBusy} />
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Move-In Date (optional)</span>
-                <UIInput type="date" value={addForm.moveInDate} onChange={(e) => setAddForm((p) => ({ ...p, moveInDate: e.target.value }))} disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Rent/mo (optional)</span>
-                <UIInput type="number" min={0} step="0.01" value={addForm.rentAmount} onChange={(e) => setAddForm((p) => ({ ...p, rentAmount: e.target.value }))} placeholder="e.g. 900" disabled={addBusy} />
-              </label>
-            </div>
-            <div className="field-grid-2">
-              <label className="field">
-                <span className="label">Deposit (optional)</span>
-                <UIInput type="number" min={0} step="0.01" value={addForm.depositAmount} onChange={(e) => setAddForm((p) => ({ ...p, depositAmount: e.target.value }))} placeholder="e.g. 1200" disabled={addBusy} />
-              </label>
-              <label className="field">
-                <span className="label">Notes (optional)</span>
-                <UIInput value={addForm.notes} onChange={(e) => setAddForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Any notes..." disabled={addBusy} />
-              </label>
-            </div>
-            <div className="inline-row">
-              <UIButton onClick={() => void handleAdd()} disabled={addBusy}>{addBusy ? "Creating..." : "Create Tenant"}</UIButton>
-              <UIButton variant="secondary" onClick={() => { setShowAddForm(false); setAddForm(emptyAddForm); }}>Cancel</UIButton>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="panel">
         <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid var(--border)" }}>
