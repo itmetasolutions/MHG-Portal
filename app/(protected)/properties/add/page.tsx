@@ -48,7 +48,7 @@ export default function AddPropertyPage() {
   const workflowFirstName = searchParams.get("firstName") ?? "";
   const workflowLastName = searchParams.get("lastName") ?? "";
   const workflowEmail = searchParams.get("email") ?? "";
-  const isNewLandlordMode = !preselectedLandlordId && !!(workflowPhone && workflowFirstName && workflowLastName);
+  const isNewLandlordMode = !preselectedLandlordId && !!(workflowPhone && workflowFirstName);
 
   /* ── New landlord fields (editable when isNewLandlordMode) ── */
   const [nlFirstName, setNlFirstName] = useState(workflowFirstName);
@@ -165,7 +165,7 @@ export default function AddPropertyPage() {
 
     if (!isNewLandlordMode && !selectedLandlordId) { setError("Please select a landlord."); return; }
     if (isNewLandlordMode) {
-      if (!nlFirstName.trim() || !nlLastName.trim()) { setError("Landlord first and last name are required."); return; }
+      if (!nlFirstName.trim()) { setError("Landlord first name is required."); return; }
       if (!nlPhone.trim()) { setError("Landlord phone number is required."); return; }
     }
     if (!description.trim()) { setError("Description is required."); return; }
@@ -282,7 +282,7 @@ export default function AddPropertyPage() {
                   <input className="input" value={nlFirstName} onChange={(e) => setNlFirstName(e.target.value)} placeholder="Jane" disabled={saving} />
                 </label>
                 <label className="field" style={{ marginBottom: 0 }}>
-                  <span className="label">Last Name <span style={{ color: "var(--danger)" }}>*</span></span>
+                  <span className="label">Last Name</span>
                   <input className="input" value={nlLastName} onChange={(e) => setNlLastName(e.target.value)} placeholder="Smith" disabled={saving} />
                 </label>
               </div>

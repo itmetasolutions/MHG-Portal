@@ -105,7 +105,7 @@ export function PhoneLookupModal({ open, onClose }: Props) {
   }
 
   async function handleFollowUpSubmit() {
-    if (!firstName.trim() || !lastName.trim() || !followUpDate || !followUpTime) return;
+    if (!firstName.trim() || !followUpDate || !followUpTime) return;
     setOutcome("submitting");
 
     const scheduledAt = new Date(`${followUpDate}T${followUpTime}`).toISOString();
@@ -293,21 +293,21 @@ export function PhoneLookupModal({ open, onClose }: Props) {
               <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
                 <button
                   className="btn btn-secondary"
-                  disabled={!firstName.trim() || !lastName.trim() || isSubmitting}
+                  disabled={!firstName.trim() || isSubmitting}
                   onClick={handleNotInterested}
                 >
                   Not Interested
                 </button>
                 <button
                   className="btn btn-secondary"
-                  disabled={!firstName.trim() || !lastName.trim()}
+                  disabled={!firstName.trim()}
                   onClick={() => setOutcome("follow_up")}
                 >
                   Follow Up
                 </button>
                 <button
                   className="btn btn-primary"
-                  disabled={!firstName.trim() || !lastName.trim()}
+                  disabled={!firstName.trim()}
                   onClick={() => {
                     const p = new URLSearchParams({
                       phone: phone.trim(),
