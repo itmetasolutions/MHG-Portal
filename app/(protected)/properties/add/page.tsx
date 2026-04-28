@@ -43,11 +43,24 @@ export default function AddPropertyPage() {
   const searchParams = useSearchParams();
   const preselectedLandlordId = searchParams.get("landlordId") ?? "";
 
+  /* ── Workflow (new landlord) mode — params from phone-lookup-modal ── */
+  const workflowPhone = searchParams.get("phone") ?? "";
+  const workflowFirstName = searchParams.get("firstName") ?? "";
+  const workflowLastName = searchParams.get("lastName") ?? "";
+  const workflowEmail = searchParams.get("email") ?? "";
+  const isNewLandlordMode = !preselectedLandlordId && !!(workflowPhone && workflowFirstName && workflowLastName);
+
+  /* ── New landlord fields (editable when isNewLandlordMode) ── */
+  const [nlFirstName, setNlFirstName] = useState(workflowFirstName);
+  const [nlLastName, setNlLastName] = useState(workflowLastName);
+  const [nlPhone, setNlPhone] = useState(workflowPhone);
+  const [nlEmail, setNlEmail] = useState(workflowEmail);
+
   /* ── Landlord state ── */
   const [landlords, setLandlords] = useState<LandlordRow[]>([]);
   const [landlordSearch, setLandlordSearch] = useState("");
   const [selectedLandlordId, setSelectedLandlordId] = useState(preselectedLandlordId);
-  const [loadingLandlords, setLoadingLandlords] = useState(true);
+  const [loadingLandlords, setLoadingLandlords] = useState(!isNewLandlordMode);
 
   /* ── Property type ── */
   const [propType, setPropType] = useState<"PRIVATE" | "SHARED">("PRIVATE");
@@ -98,13 +111,14 @@ export default function AddPropertyPage() {
 
   const isStudioFlat = propType === "PRIVATE" && buildingCategory === "STUDIO_FLAT";
 
-  /* ── Load landlords ── */
+  /* ── Load landlords (only needed when picking an existing landlord) ── */
   useEffect(() => {
+    if (isNewLandlordMode) return;
     fetch("/api/properties/add-landlords")
       .then((r) => r.json())
       .then((d) => { setLandlords(d.landlords ?? []); setLoadingLandlords(false); })
       .catch(() => setLoadingLandlords(false));
-  }, []);
+  }, [isNewLandlordMode]);
 
   /* ── Load media ── */
   useEffect(() => {
@@ -149,7 +163,11 @@ export default function AddPropertyPage() {
     e.preventDefault();
     setError(null);
 
-    if (!selectedLandlordId) { setError("Please select a landlord."); return; }
+    if (!isNewLandlordMode && !selectedLandlordId) { setError("Please select a landlord."); return; }
+    if (isNewLandlordMode) {
+      if (!nlFirstName.trim() || !nlLastName.trim()) { setError("Landlord first and last name are required."); return; }
+      if (!nlPhone.trim()) { setError("Landlord phone number is required."); return; }
+    }
     if (!description.trim()) { setError("Description is required."); return; }
     if (!addressLine1.trim()) { setError("Address Line 1 is required."); return; }
     if (!postCode.trim()) { setError("Post code is required."); return; }
@@ -187,8 +205,12 @@ export default function AddPropertyPage() {
           }))
         : undefined;
 
+      const landlordPayload = isNewLandlordMode
+        ? { landlord: { firstName: nlFirstName.trim(), lastName: nlLastName.trim(), phone: nlPhone.trim(), email: nlEmail.trim() || null } }
+        : { landlordId: selectedLandlordId };
+
       const payload = {
-        landlordId: selectedLandlordId,
+        ...landlordPayload,
         property: {
           propType,
           buildingCategory: propType === "PRIVATE" ? buildingCategory : undefined,
@@ -244,11 +266,36 @@ export default function AddPropertyPage() {
 
       <form onSubmit={handleSubmit} className="stack">
 
-        {/* ── Step 1: Landlord Selection ── */}
+        {/* ── Step 1: Landlord ── */}
         <div className="panel" style={{ padding: "1.25rem" }}>
-          <p className="section-label" style={{ marginBottom: "0.75rem" }}>Step 1 — Select Landlord</p>
+          <p className="section-label" style={{ marginBottom: "0.75rem" }}>Step 1 — Landlord Details</p>
 
-          {loadingLandlords ? (
+          {isNewLandlordMode ? (
+            /* New landlord from phone-lookup workflow — fields pre-filled and editable */
+            <div className="stack" style={{ gap: "0.6rem" }}>
+              <div style={{ padding: "0.6rem 0.875rem", background: "rgba(74,222,128,0.08)", borderRadius: "0.5rem", border: "1px solid rgba(74,222,128,0.25)", fontSize: "0.82rem", color: "#4ade80", marginBottom: "0.25rem" }}>
+                New landlord — details carried over from your call lookup. Review and confirm below.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                <label className="field" style={{ marginBottom: 0 }}>
+                  <span className="label">First Name <span style={{ color: "var(--danger)" }}>*</span></span>
+                  <input className="input" value={nlFirstName} onChange={(e) => setNlFirstName(e.target.value)} placeholder="Jane" disabled={saving} />
+                </label>
+                <label className="field" style={{ marginBottom: 0 }}>
+                  <span className="label">Last Name <span style={{ color: "var(--danger)" }}>*</span></span>
+                  <input className="input" value={nlLastName} onChange={(e) => setNlLastName(e.target.value)} placeholder="Smith" disabled={saving} />
+                </label>
+              </div>
+              <label className="field" style={{ marginBottom: 0 }}>
+                <span className="label">Phone Number <span style={{ color: "var(--danger)" }}>*</span></span>
+                <input className="input" type="tel" value={nlPhone} onChange={(e) => setNlPhone(e.target.value)} placeholder="+44 7700 900000" disabled={saving} />
+              </label>
+              <label className="field" style={{ marginBottom: 0 }}>
+                <span className="label">Email (optional)</span>
+                <input className="input" type="email" value={nlEmail} onChange={(e) => setNlEmail(e.target.value)} placeholder="jane@example.com" disabled={saving} />
+              </label>
+            </div>
+          ) : loadingLandlords ? (
             <p className="muted">Loading landlords…</p>
           ) : landlords.length === 0 ? (
             <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)" }}>
@@ -282,7 +329,7 @@ export default function AddPropertyPage() {
           )}
         </div>
 
-        {selectedLandlordId && (
+        {(selectedLandlordId || isNewLandlordMode) && (
           <>
             {/* ── Step 2: Property Type ── */}
             <div className="panel" style={{ padding: "1.25rem" }}>
