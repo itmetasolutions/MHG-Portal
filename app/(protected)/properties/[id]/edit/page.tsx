@@ -178,8 +178,20 @@ export default function EditPropertyPage({ params }: Props) {
 
   async function handleSave() {
     if (!canSubmit || !original) return;
-    setSaving(true);
     setMessage(null);
+
+    if (status === "AVAILABLE") {
+      const missing: string[] = [];
+      if (!propertyDescription.trim()) missing.push("description");
+      if (!availabilityDate) missing.push("availability date");
+      if (selectedAssets.length === 0) missing.push("at least one photo");
+      if (missing.length > 0) {
+        setMessage({ type: "error", text: `Cannot set to Available. Missing: ${missing.join(", ")}.` });
+        return;
+      }
+    }
+
+    setSaving(true);
 
     const payload: Record<string, unknown> = {
       landlordId: selectedLandlordId !== original.landlordId ? selectedLandlordId : undefined,

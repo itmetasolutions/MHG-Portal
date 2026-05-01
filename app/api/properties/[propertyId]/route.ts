@@ -381,6 +381,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
+  const targetStatus = payload.status ?? currentProperty.status;
+  if (targetStatus === "AVAILABLE") {
+    const mergedDescription = payload.description !== undefined ? payload.description : currentProperty.description;
+    const mergedAddress1 = payload.addressLine1 !== undefined ? payload.addressLine1 : currentProperty.addressLine1;
+    const mergedPostcode = payload.postcode !== undefined ? payload.postcode : currentProperty.postcode;
+    const mergedCity = payload.city !== undefined ? payload.city : currentProperty.city;
+    const mergedAvailability = payload.availabilityDate !== undefined ? payload.availabilityDate : currentProperty.availabilityDate;
+    const mergedMediaCount = normalizedMediaAssetIds !== undefined ? normalizedMediaAssetIds.length : currentProperty.mediaLinks.length;
+
+    const missing: string[] = [];
+    if (!mergedDescription) missing.push("description");
+    if (!mergedAddress1) missing.push("address");
+    if (!mergedPostcode) missing.push("postcode");
+    if (!mergedCity) missing.push("city");
+    if (!mergedAvailability) missing.push("availability date");
+    if (mergedMediaCount === 0) missing.push("at least one photo");
+
+    if (missing.length > 0) {
+      return NextResponse.json(
+        {
+          error: "INCOMPLETE_FOR_ACTIVE",
+          message: `Cannot set status to AVAILABLE. Missing: ${missing.join(", ")}.`,
+        },
+        { status: 422 },
+      );
+    }
+  }
+
   const updateData: Prisma.PropertyUncheckedUpdateInput = {};
   const proposedChanges: Record<string, unknown> = {};
   const changedFields: string[] = [];

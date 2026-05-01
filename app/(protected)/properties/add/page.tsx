@@ -149,25 +149,28 @@ export default function AddPropertyPage() {
       if (!nlFirstName.trim()) { setError("Landlord first name is required."); return; }
       if (!nlPhone.trim()) { setError("Landlord phone number is required."); return; }
     }
-    if (!description.trim()) { setError("Description is required."); return; }
-    if (!addressLine1.trim()) { setError("Address Line 1 is required."); return; }
-    if (!postCode.trim()) { setError("Post code is required."); return; }
-    if (!city.trim()) { setError("City is required."); return; }
-    if (selectedAssets.length === 0) { setError("At least one photo is required."); return; }
-    if (selectedAssets.some((a) => !a.altText.trim())) { setError("All photos require alt text."); return; }
-    if (!availabilityDate) { setError("Availability date is required."); return; }
 
-    if (propType === "PRIVATE") {
-      if (!rentPerMonth) { setError("Rent per month is required."); return; }
-      if (!depositAmount) { setError("Deposit amount is required."); return; }
-      if (!expectedCommissionAmt) { setError("Expected commission is required."); return; }
-    }
+    if (status === "AVAILABLE") {
+      if (!description.trim()) { setError("Description is required to publish."); return; }
+      if (!addressLine1.trim()) { setError("Address Line 1 is required to publish."); return; }
+      if (!postCode.trim()) { setError("Post code is required to publish."); return; }
+      if (!city.trim()) { setError("City is required to publish."); return; }
+      if (selectedAssets.length === 0) { setError("At least one photo is required to publish."); return; }
+      if (selectedAssets.some((a) => !a.altText.trim())) { setError("All photos require alt text to publish."); return; }
+      if (!availabilityDate) { setError("Availability date is required to publish."); return; }
 
-    if (propType === "SHARED") {
-      if (rooms.length === 0) { setError("At least one room is required for shared properties."); return; }
-      for (const r of rooms) {
-        if (!r.rentPerMonth || !r.depositAmount || !r.expectedCommissionAmt) {
-          setError("All room rows require rent, deposit, and commission."); return;
+      if (propType === "PRIVATE") {
+        if (!rentPerMonth) { setError("Rent per month is required to publish."); return; }
+        if (!depositAmount) { setError("Deposit amount is required to publish."); return; }
+        if (!expectedCommissionAmt) { setError("Expected commission is required to publish."); return; }
+      }
+
+      if (propType === "SHARED") {
+        if (rooms.length === 0) { setError("At least one room is required to publish a shared property."); return; }
+        for (const r of rooms) {
+          if (!r.rentPerMonth || !r.depositAmount || !r.expectedCommissionAmt) {
+            setError("All room rows require rent, deposit, and commission to publish."); return;
+          }
         }
       }
     }

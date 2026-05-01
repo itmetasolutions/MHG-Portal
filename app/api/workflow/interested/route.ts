@@ -21,6 +21,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "POSTCODE_REQUIRED" }, { status: 400 });
   }
 
+  if (property.status === "AVAILABLE") {
+    const missing: string[] = [];
+    if (!property.description?.trim()) missing.push("description");
+    if (!property.addressLine1?.trim()) missing.push("address");
+    if (!property.city?.trim()) missing.push("city");
+    if (!property.availabilityDate) missing.push("availability date");
+    const photos = Array.isArray(property.photos) ? property.photos : [];
+    if (photos.length === 0) missing.push("at least one photo");
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: "INCOMPLETE_FOR_ACTIVE", message: `Cannot publish property. Missing: ${missing.join(", ")}.` },
+        { status: 422 },
+      );
+    }
+  }
+
   try {
     const rooms = Array.isArray(property.rooms) ? property.rooms : [];
     const photos = Array.isArray(property.photos) ? property.photos : [];
