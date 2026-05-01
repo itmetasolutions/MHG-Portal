@@ -255,6 +255,7 @@ export type InterestedPropertyIntakeInput = {
     county?: string | null;
     postcode: string;
     propertyCategory?: "PRIVATE" | "SHARED" | null;
+    buildingCategory?: "HOUSE" | "FLAT" | "STUDIO_FLAT" | null;
     propertyType?: string | null;
     beds?: number | null;
     baths?: number | null;
@@ -383,7 +384,7 @@ export async function createInterestedPropertyIntake(input: InterestedPropertyIn
         baths: input.property.baths ?? null,
         status: "AVAILABLE",
         vacancyType,
-        propertyCategory: input.property.propertyCategory ?? (vacancyType === "MULTIPLE" ? "SHARED" : "PRIVATE"),
+        propertyCategory: (input.property.buildingCategory ?? null) as any,
         rentPerMonth: input.property.rentPerMonth == null ? null : new Prisma.Decimal(input.property.rentPerMonth as any),
         rentPerWeek: rentPerWeek == null ? null : new Prisma.Decimal(rentPerWeek),
         depositAmount: input.property.depositAmount == null ? null : new Prisma.Decimal(input.property.depositAmount as any),

@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
         city: property.city ?? null,
         postcode: normalizePostcode(String(property.postcode)),
         propertyCategory: property.propType === "SHARED" ? "SHARED" : "PRIVATE",
+        buildingCategory: property.propType === "PRIVATE" ? (property.buildingCategory ?? null) : null,
         propertyType: property.buildingCategory ?? property.propertyType ?? null,
         beds: property.noOfRooms != null ? Number(property.noOfRooms) : null,
         rentPerMonth: property.rentPerMonth ?? null,
