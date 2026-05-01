@@ -313,7 +313,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     payload.mediaAssets !== undefined
       ? payload.mediaAssets
       : payload.mediaAssetIds !== undefined
-        ? payload.mediaAssetIds.map((id) => ({ id }))
+        ? payload.mediaAssetIds.map((id) => ({ id, altText: undefined }))
         : undefined;
   const normalizedMediaAssetIds =
     rawMediaAssets !== undefined
