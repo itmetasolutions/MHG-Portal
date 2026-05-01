@@ -2,10 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MediaLibraryPicker, type MediaSelectionValue } from "@/components/media-library-picker";
 
 /* ─── Types ─── */
 type LandlordRow = { id: string; landlordName: string; landlordNumber: string; phoneLast10: string; isPassive: boolean; _count: { properties: number } };
-type MediaAsset = { id: string; name: string; dataUrl: string };
 
 const ROOM_TYPES = ["STUDIO_ROOM", "SINGLE_ROOM", "DOUBLE_ROOM", "ENSUITE_ROOM", "LOFT"] as const;
 const ROOM_TYPE_LABELS: Record<string, string> = {
@@ -102,8 +102,7 @@ export default function AddPropertyPage() {
   const [rooms, setRooms] = useState<RoomRow[]>([{ roomType: "SINGLE_ROOM", rentPerMonth: "", depositAmount: "", expectedCommissionAmt: "" }]);
 
   /* ── Media ── */
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [selectedMedia, setSelectedMedia] = useState<{ id: string; altText: string }[]>([]);
+  const [selectedAssets, setSelectedAssets] = useState<MediaSelectionValue[]>([]);
 
   /* ── UI state ── */
   const [saving, setSaving] = useState(false);
@@ -120,13 +119,6 @@ export default function AddPropertyPage() {
       .catch(() => setLoadingLandlords(false));
   }, [isNewLandlordMode]);
 
-  /* ── Load media ── */
-  useEffect(() => {
-    fetch("/api/media-library")
-      .then((r) => r.json())
-      .then((d) => setMediaAssets(d.assets ?? []))
-      .catch(() => {});
-  }, []);
 
   const filteredLandlords = useMemo(() => {
     const q = landlordSearch.trim().toLowerCase();
@@ -148,17 +140,6 @@ export default function AddPropertyPage() {
     setRooms((prev) => prev.map((r, j) => j === i ? { ...r, [key]: value } : r));
   }
 
-  function toggleMedia(assetId: string) {
-    setSelectedMedia((prev) => {
-      const exists = prev.find((m) => m.id === assetId);
-      if (exists) return prev.filter((m) => m.id !== assetId);
-      return [...prev, { id: assetId, altText: "" }];
-    });
-  }
-  function setAltText(assetId: string, text: string) {
-    setSelectedMedia((prev) => prev.map((m) => m.id === assetId ? { ...m, altText: text } : m));
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -172,8 +153,8 @@ export default function AddPropertyPage() {
     if (!addressLine1.trim()) { setError("Address Line 1 is required."); return; }
     if (!postCode.trim()) { setError("Post code is required."); return; }
     if (!city.trim()) { setError("City is required."); return; }
-    if (selectedMedia.length === 0) { setError("At least one photo is required."); return; }
-    if (selectedMedia.some((m) => !m.altText.trim())) { setError("All photos require alt text."); return; }
+    if (selectedAssets.length === 0) { setError("At least one photo is required."); return; }
+    if (selectedAssets.some((a) => !a.altText.trim())) { setError("All photos require alt text."); return; }
     if (!availabilityDate) { setError("Availability date is required."); return; }
 
     if (propType === "PRIVATE") {
@@ -193,7 +174,7 @@ export default function AddPropertyPage() {
 
     setSaving(true);
     try {
-      const photos = selectedMedia.map((m, i) => ({ mediaAssetId: m.id, altText: m.altText, sortOrder: i }));
+      const photos = selectedAssets.map((a, i) => ({ mediaAssetId: a.mediaAssetId, altText: a.altText, sortOrder: i }));
       const roomRows = propType === "SHARED"
         ? rooms.map((r) => ({
             roomType: r.roomType,
@@ -348,31 +329,12 @@ export default function AddPropertyPage() {
             {/* ── Step 3: Photos ── */}
             <div className="panel" style={{ padding: "1.25rem" }}>
               <p className="section-label" style={{ marginBottom: "0.75rem" }}>Step 3 — Photos <span style={{ color: "var(--danger)" }}>*</span></p>
-              {mediaAssets.length === 0 ? (
-                <p className="muted">No photos in your media library. Upload photos first via the media library.</p>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "0.75rem" }}>
-                  {mediaAssets.map((a) => {
-                    const sel = selectedMedia.find((m) => m.id === a.id);
-                    return (
-                      <div key={a.id} style={{ border: `2px solid ${sel ? "var(--brand-gold)" : "var(--border)"}`, borderRadius: "0.5rem", overflow: "hidden" }}>
-                        <div style={{ position: "relative", cursor: "pointer" }} onClick={() => toggleMedia(a.id)}>
-                          <img src={a.dataUrl} alt={a.name} style={{ width: "100%", height: "90px", objectFit: "cover", display: "block" }} />
-                          {sel && (
-                            <div style={{ position: "absolute", top: 4, right: 4, background: "var(--brand-gold)", color: "#000", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 700 }}>✓</div>
-                          )}
-                        </div>
-                        {sel && (
-                          <div style={{ padding: "0.4rem" }}>
-                            <input className="input" style={{ fontSize: "0.75rem", padding: "0.2rem 0.4rem" }} placeholder="Alt text *" value={sel.altText}
-                              onChange={(e) => setAltText(a.id, e.target.value)} />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <MediaLibraryPicker
+                selectedAssets={selectedAssets}
+                onChange={setSelectedAssets}
+                disabled={saving}
+                label="Property Photos"
+              />
             </div>
 
             {/* ── Step 4: Details ── */}
