@@ -218,9 +218,14 @@ export function PhoneLookupModal({ open, onClose }: Props) {
               </Link>{" "}
               <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>is already registered under your account.</span>
             </p>
-            <Link href={`/landlords/${lookup.landlordId}`} className="btn btn-primary" style={{ fontSize: "0.82rem" }} onClick={handleClose}>
-              Go to Landlord →
-            </Link>
+            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+              <Link href={`/properties/add?landlordId=${lookup.landlordId}`} className="btn btn-primary" style={{ fontSize: "0.82rem" }} onClick={handleClose}>
+                Add Property →
+              </Link>
+              <Link href={`/landlords/${lookup.landlordId}`} className="btn btn-secondary" style={{ fontSize: "0.82rem" }} onClick={handleClose}>
+                Go to Landlord
+              </Link>
+            </div>
           </div>
         )}
 
@@ -249,7 +254,7 @@ export function PhoneLookupModal({ open, onClose }: Props) {
           <div className="lookup-result lookup-result-other">
             <span style={{ fontWeight: 700, color: "#f87171" }}>Number Taken</span>
             <p style={{ margin: "0.25rem 0 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              This number is registered with another agent. The owner has been notified of your search.
+              This number is registered with another agent. The owner has been notified by email and in-app notification.
             </p>
           </div>
         )}

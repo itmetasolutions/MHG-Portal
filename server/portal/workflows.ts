@@ -328,17 +328,26 @@ export async function createInterestedPropertyIntake(input: InterestedPropertyIn
     const lastName = normalizeNamePart(input.landlord.lastName);
     const landlordName = `${firstName} ${lastName}`.trim();
 
-    landlordRecord = await prisma.landlord.create({
-      data: {
-        landlordName,
-        landlordNumber: input.landlord.phoneNo,
-        phoneLast10: normalizedPhone.phoneLast10,
-        email: input.landlord.email ?? null,
-        createdByUserId: input.agentId,
-        updatedByUserId: input.agentId,
-        ownerAgentId: input.agentId,
-      },
+    // Check if a landlord with this phone already exists (phoneLast10 is globally unique)
+    const existingByPhone = await prisma.landlord.findUnique({
+      where: { phoneLast10: normalizedPhone.phoneLast10 },
     });
+
+    if (existingByPhone) {
+      landlordRecord = existingByPhone;
+    } else {
+      landlordRecord = await prisma.landlord.create({
+        data: {
+          landlordName,
+          landlordNumber: input.landlord.phoneNo,
+          phoneLast10: normalizedPhone.phoneLast10,
+          email: input.landlord.email ?? null,
+          createdByUserId: input.agentId,
+          updatedByUserId: input.agentId,
+          ownerAgentId: input.agentId,
+        },
+      });
+    }
   }
 
   if (!landlordRecord) {

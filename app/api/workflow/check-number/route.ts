@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/server/auth/requireUser";
 import { db } from "@/server/db";
 import { normalizePhone } from "@/server/portal/normalize";
+import { sendNumberSearchedEmail } from "@/server/email/service";
 
 type DbClient = typeof db & Record<string, any>;
 const prisma = db as DbClient;
@@ -27,7 +28,12 @@ export async function POST(request: NextRequest) {
   // Check Landlord table first (confirmed landlords)
   const landlord = await db.landlord.findFirst({
     where: { phoneLast10 },
-    select: { id: true, landlordName: true, ownerAgentId: true },
+    select: {
+      id: true,
+      landlordName: true,
+      ownerAgentId: true,
+      ownerAgent: { select: { email: true, agentDisplayName: true } },
+    },
   });
 
   if (landlord) {
@@ -56,7 +62,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // OTHER — notify the owner agent
+    // OTHER — notify the owner agent in-app and by email
     await db.notification.create({
       data: {
         userId: landlord.ownerAgentId,
@@ -66,6 +72,14 @@ export async function POST(request: NextRequest) {
         metadata: { landlordId: landlord.id, searchingAgentId: agentId },
       },
     });
+
+    sendNumberSearchedEmail({
+      to: landlord.ownerAgent.email,
+      ownerAgentName: landlord.ownerAgent.agentDisplayName,
+      searchingAgentName: auth.user.agentDisplayName,
+      landlordName: landlord.landlordName,
+      landlordPhone: rawPhone,
+    }).catch(() => {/* non-fatal */});
 
     return NextResponse.json({ state: "OTHER" });
   }
