@@ -2,23 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/server/auth/requireUser";
 import { createInterestedPropertyIntake } from "@/server/portal/workflows";
 import { normalizePostcode } from "@/server/portal/normalize";
+import { Prisma } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "INVALID_PAYLOAD" }, { status: 400 });
+  if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
 
   const landlord = body.landlord ?? null;
   const landlordId = body.landlordId ?? null;
   const property = body.property ?? {};
 
   if (!landlordId && !landlord) {
-    return NextResponse.json({ error: "LANDLORD_REQUIRED" }, { status: 400 });
+    return NextResponse.json({ error: "Landlord details are required." }, { status: 400 });
   }
   if (!property.postcode) {
-    return NextResponse.json({ error: "POSTCODE_REQUIRED" }, { status: 400 });
+    return NextResponse.json({ error: "Postcode is required." }, { status: 400 });
   }
 
   if (property.status === "AVAILABLE") {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     if (photos.length === 0) missing.push("at least one photo");
     if (missing.length > 0) {
       return NextResponse.json(
-        { error: "INCOMPLETE_FOR_ACTIVE", message: `Cannot publish property. Missing: ${missing.join(", ")}.` },
+        { error: `Cannot publish property. Missing: ${missing.join(", ")}.` },
         { status: 422 },
       );
     }
@@ -75,12 +76,10 @@ export async function POST(request: NextRequest) {
         publishedToWebsite: property.status === "AVAILABLE",
         rooms,
         photos,
-        // V2 extra fields passed through to be stored on property
-        ...(property.extraFields ?? {}),
       },
     });
 
-    // Store V2-specific fields on the property record
+    // Store V2-specific fields that aren't covered by createInterestedPropertyIntake
     const v2Fields: Record<string, unknown> = {};
     const boolFields = ["garden", "parking", "billsIncluded", "balconyRoofTerrace", "disabledAccess",
       "broadbandIncluded", "couplesAllowed"];
@@ -88,7 +87,8 @@ export async function POST(request: NextRequest) {
       if (property[f] !== undefined) v2Fields[f] = property[f];
     }
     if (property.livingRoom !== undefined) v2Fields["livingRoom"] = property.livingRoom;
-    if (property.buildingCategory) v2Fields["buildingCategory"] = property.buildingCategory;
+    // buildingCategory → propertyCategory (PropertyCategory enum: HOUSE | FLAT | STUDIO_FLAT)
+    if (property.buildingCategory) v2Fields["propertyCategory"] = property.buildingCategory;
     if (property.propType) v2Fields["propType"] = property.propType;
     if (property.noOfRooms != null) v2Fields["totalRooms"] = Number(property.noOfRooms);
     if (property.availableRooms != null) v2Fields["availableRooms"] = Number(property.availableRooms);
@@ -105,7 +105,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, landlord: result.landlord, property: result.property });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "WORKFLOW_FAILED";
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2002") {
+        return NextResponse.json({ error: "A property with this reference already exists." }, { status: 409 });
+      }
+      if (err.code === "P2025") {
+        return NextResponse.json({ error: "Landlord not found." }, { status: 404 });
+      }
+      return NextResponse.json({ error: "Failed to save property. Please try again." }, { status: 500 });
+    }
+    const message = err instanceof Error ? err.message : "Failed to create property.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
