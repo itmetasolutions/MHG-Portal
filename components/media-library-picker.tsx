@@ -380,7 +380,7 @@ export function MediaLibraryPicker({
                     fontSize: "0.9rem",
                   }}
                 >
-                  {search ? "No images match your search." : "No photos uploaded yet. Click "Upload Photos" to add some."}
+                  {search ? "No images match your search." : "No photos uploaded yet. Use the Upload Photos button to add images."}
                 </div>
               ) : (
                 <div

@@ -213,7 +213,7 @@ export function MediaLibraryClient({ initialAssets }: Props) {
             color: "var(--text-muted)",
           }}
         >
-          {search ? "No images match your search." : "No images uploaded yet. Click "Upload Photos" to get started."}
+          {search ? "No images match your search." : "No images uploaded yet. Use the Upload Photos button to get started."}
         </div>
       ) : (
         <div
