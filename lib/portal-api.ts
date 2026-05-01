@@ -1094,6 +1094,17 @@ export function uploadMediaAssets(payload: {
   return apiPost("/api/media-library", payload);
 }
 
+export function updateMediaAssetName(
+  assetId: string,
+  name: string,
+): Promise<ApiResult<{ asset: MediaAssetRow }>> {
+  return apiPatch(`/api/media-library/${assetId}`, { name });
+}
+
+export function deleteMediaAsset(assetId: string): Promise<ApiResult<{ ok: boolean }>> {
+  return apiDelete(`/api/media-library/${assetId}`);
+}
+
 export function createTenant(
   payload:
     | {

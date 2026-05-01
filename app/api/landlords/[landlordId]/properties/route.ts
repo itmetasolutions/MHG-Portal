@@ -469,7 +469,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (mediaAssetIds.length > 0) {
       await tx.propertyMedia.createMany({
-        data: buildPropertyMediaRows(created.id, mediaAssetIds),
+        data: buildPropertyMediaRows(created.id, mediaAssetIds.map((id) => ({ id }))),
       });
     }
 

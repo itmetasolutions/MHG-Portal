@@ -49,6 +49,12 @@ const agentUpdateSchema = z
     availabilityDate: z.string().datetime({ offset: true }).nullable().optional(),
     livingLandlord: z.boolean().nullable().optional(),
     mediaAssetIds: z.array(z.string().uuid()).max(50).optional(),
+    mediaAssets: z
+      .array(
+        z.object({ id: z.string().uuid(), altText: z.string().max(500).trim().optional() }),
+      )
+      .max(50)
+      .optional(),
   })
   .strict();
 
@@ -303,9 +309,22 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     auth.user.role === "ADMIN"
       ? payload.ownerAgentId ?? currentProperty.ownerAgentId
       : currentProperty.ownerAgentId;
+  const rawMediaAssets =
+    payload.mediaAssets !== undefined
+      ? payload.mediaAssets
+      : payload.mediaAssetIds !== undefined
+        ? payload.mediaAssetIds.map((id) => ({ id }))
+        : undefined;
   const normalizedMediaAssetIds =
-    payload.mediaAssetIds !== undefined
-      ? normalizeMediaAssetIds(payload.mediaAssetIds)
+    rawMediaAssets !== undefined
+      ? normalizeMediaAssetIds(rawMediaAssets.map((a) => a.id))
+      : undefined;
+  const normalizedMediaAssets =
+    rawMediaAssets !== undefined && normalizedMediaAssetIds !== undefined
+      ? normalizedMediaAssetIds.map((id) => ({
+          id,
+          altText: rawMediaAssets.find((a) => a.id === id)?.altText,
+        }))
       : undefined;
 
   if (
@@ -613,9 +632,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         where: { propertyId: currentProperty.id },
       });
 
-      if (normalizedMediaAssetIds.length > 0) {
+      if (normalizedMediaAssets && normalizedMediaAssets.length > 0) {
         await tx.propertyMedia.createMany({
-          data: buildPropertyMediaRows(currentProperty.id, normalizedMediaAssetIds),
+          data: buildPropertyMediaRows(currentProperty.id, normalizedMediaAssets),
         });
       }
     }

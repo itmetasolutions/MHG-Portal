@@ -117,6 +117,14 @@ function ReportsIcon() {
   );
 }
 
+function MediaLibraryIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.22a.75.75 0 0 0-1.06 0l-1.91 1.91-.48-.48a.75.75 0 0 0-1.06 0L9 12.56 7.28 10.84a.75.75 0 0 0-1.06 0l-3.72 3.72ZM6.5 7.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 function ApprovalsIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -137,8 +145,9 @@ const navItems = [
   { href: "/admin/potential-landlords", label: "Potential Landlords", icon: PotentialLandlordsIcon,  exact: false },
   { href: "/admin/audit",      label: "Audit Logs",  icon: AuditIcon,      exact: false },
   { href: "/admin/commission", label: "Commission",  icon: CommissionIcon, exact: false },
-  { href: "/admin/dialer-domain", label: "Dialer Settings", icon: DialerIcon, exact: false },
-  { href: "/admin/reports",      label: "Reports",         icon: ReportsIcon, exact: false },
+  { href: "/admin/dialer-domain",   label: "Dialer Settings", icon: DialerIcon,        exact: false },
+  { href: "/admin/reports",         label: "Reports",         icon: ReportsIcon,       exact: false },
+  { href: "/admin/media-library",   label: "Media Library",   icon: MediaLibraryIcon,  exact: false },
 ];
 
 export function AdminShell({ user, userId, chatContacts, children }: Props) {

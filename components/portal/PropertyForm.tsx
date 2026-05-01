@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { UISelect } from "@/components/ui/select";
-import { PropertyMediaLibrary, type MediaSelectionValue } from "@/components/property-media-library";
+import { MediaLibraryPicker, type MediaSelectionValue } from "@/components/media-library-picker";
 import { calculateRentPerWeek, normalizePostcode } from "@/lib/normalize";
 import { UppercasePostcodeInput } from "@/components/portal/UppercasePostcodeInput";
 import { PropertyRoomEditor, type PropertyRoomDraft } from "@/components/portal/PropertyRoomEditor";
@@ -529,15 +529,14 @@ export function PropertyForm({
         </label>
       </div>
 
-      <label className="field">
-        <span className="label">Selected Photos</span>
-        <PropertyMediaLibrary
+      <div className="field">
+        <MediaLibraryPicker
           selectedAssets={value.mediaAssets}
           onChange={(mediaAssets) => setValue((current) => ({ ...current, mediaAssets }))}
           disabled={busy || disabled}
-          required
+          label="Property Photos"
         />
-      </label>
+      </div>
 
       <div className="inline-row" style={{ marginTop: "0.25rem" }}>
         <UIButton type="submit" disabled={busy || disabled}>

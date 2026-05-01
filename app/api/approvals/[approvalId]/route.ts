@@ -371,7 +371,7 @@ async function applyPropertyApproval(
 
     if (normalizedMediaAssetIds.length > 0) {
       await tx.propertyMedia.createMany({
-        data: buildPropertyMediaRows(approval.entityId, normalizedMediaAssetIds),
+        data: buildPropertyMediaRows(approval.entityId, normalizedMediaAssetIds.map((id) => ({ id }))),
       });
     }
   }

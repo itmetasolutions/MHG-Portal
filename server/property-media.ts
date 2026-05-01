@@ -32,11 +32,15 @@ export async function assertMediaAssetsExist(
   }
 }
 
-export function buildPropertyMediaRows(propertyId: string, mediaAssetIds: string[]) {
-  return mediaAssetIds.map((mediaAssetId, index) => ({
+export function buildPropertyMediaRows(
+  propertyId: string,
+  mediaAssets: Array<{ id: string; altText?: string | null }>,
+) {
+  return mediaAssets.map(({ id, altText }, index) => ({
     propertyId,
-    mediaAssetId,
+    mediaAssetId: id,
     sortOrder: index,
+    altText: altText?.trim() || null,
   }));
 }
 

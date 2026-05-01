@@ -7,7 +7,7 @@ import { UIButton } from "@/components/ui/button";
 import { UICard, UICardBody } from "@/components/ui/card";
 import { UIInput } from "@/components/ui/input";
 import { UISelect } from "@/components/ui/select";
-import { PropertyMediaLibrary } from "@/components/property-media-library";
+import { MediaLibraryPicker, type MediaSelectionValue } from "@/components/media-library-picker";
 import {
   fetchLandlordsForDropdown,
   updateProperty,
@@ -61,7 +61,7 @@ type PropertyDetail = {
   livingLandlord: boolean | null;
   landlord: { id: string; landlordName: string; phoneLast10: string | null };
   rooms?: RoomRow[];
-  images?: Array<{ id: string }>;
+  images?: Array<{ id: string; name?: string }>;
 };
 
 const ROOM_TYPES = ["Studio Room", "Single Room", "Double Room", "Ensuite Room", "Loft"] as const;
@@ -93,7 +93,7 @@ export default function EditPropertyPage({ params }: Props) {
   const [propertyRef, setPropertyRef] = useState("");
   const [propertyTitle, setPropertyTitle] = useState("");
   const [propertyDescription, setPropertyDescription] = useState("");
-  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
+  const [selectedAssets, setSelectedAssets] = useState<MediaSelectionValue[]>([]);
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [propertyType, setPropertyType] = useState("");
   const [beds, setBeds] = useState("");
@@ -137,7 +137,12 @@ export default function EditPropertyPage({ params }: Props) {
       setPropertyRef(p.propertyRef ?? "");
       setPropertyTitle(p.title ?? "");
       setPropertyDescription(p.description ?? "");
-      setSelectedMediaIds((p.images ?? []).map((image) => image.id));
+      setSelectedAssets(
+        (p.images ?? []).map((img) => ({
+          mediaAssetId: img.id,
+          altText: img.name?.trim() || "Property photo",
+        })),
+      );
       setStatus(p.status === "CLOSED" ? "AVAILABLE" : p.status);
       setPropertyType(p.propertyType ?? "");
       setBeds(p.beds != null ? String(p.beds) : "");
@@ -196,7 +201,7 @@ export default function EditPropertyPage({ params }: Props) {
       childrenAllowed: childrenAllowed === "true",
       availabilityDate: availabilityDate ? new Date(availabilityDate).toISOString() : null,
       livingLandlord: livingLandlord === "true",
-      mediaAssetIds: selectedMediaIds,
+      mediaAssets: selectedAssets.map((a) => ({ id: a.mediaAssetId, altText: a.altText })),
     };
 
     if (!isMultiple) {
@@ -210,7 +215,6 @@ export default function EditPropertyPage({ params }: Props) {
       }
     }
 
-    // Remove undefined values
     const cleanPayload = Object.fromEntries(
       Object.entries(payload).filter(([, v]) => v !== undefined)
     );
@@ -260,12 +264,7 @@ export default function EditPropertyPage({ params }: Props) {
   ) {
     setRooms((prev) =>
       prev.map((room) =>
-        room.id === roomId
-          ? {
-              ...room,
-              [key]: value,
-            }
-          : room,
+        room.id === roomId ? { ...room, [key]: value } : room,
       ),
     );
   }
@@ -308,9 +307,7 @@ export default function EditPropertyPage({ params }: Props) {
   }
 
   async function handleDeleteRoom(room: RoomRow) {
-    if (!window.confirm(`Remove "${room.roomName}" from this property?`)) {
-      return;
-    }
+    if (!window.confirm(`Remove "${room.roomName}" from this property?`)) return;
 
     setDeletingRoomId(room.id);
     setMessage(null);
@@ -444,17 +441,16 @@ export default function EditPropertyPage({ params }: Props) {
               />
             </label>
 
+            {/* Property Images — media library picker */}
             <div className="form-section-divider">
               <span className="form-section-label">Property Images</span>
             </div>
 
-            <PropertyMediaLibrary
-              selectedAssets={selectedMediaIds.map((mediaAssetId) => ({
-                mediaAssetId,
-                altText: "Property photo",
-              }))}
-              onChange={(mediaAssets) => setSelectedMediaIds(mediaAssets.map((asset) => asset.mediaAssetId))}
+            <MediaLibraryPicker
+              selectedAssets={selectedAssets}
+              onChange={setSelectedAssets}
               disabled={saving}
+              label="Property Photos"
             />
 
             {/* Property Details */}
@@ -647,9 +643,6 @@ export default function EditPropertyPage({ params }: Props) {
                                 onChange={(e) => updateRoomField(room.id, "landlordDemand", e.target.value)}
                                 disabled={roomBusy || roomDeleting}
                               />
-                              <span hidden>
-                              {room.landlordDemand != null ? `£${Number(room.landlordDemand).toLocaleString("en-GB")}` : "—"}
-                              </span>
                             </td>
                             <td style={{ minWidth: "145px" }}>
                               <UIInput
@@ -660,9 +653,6 @@ export default function EditPropertyPage({ params }: Props) {
                                 onChange={(e) => updateRoomField(room.id, "expectedCommissionPct", e.target.value)}
                                 disabled={roomBusy || roomDeleting}
                               />
-                              <span hidden>
-                              {room.expectedCommissionPct != null ? `${room.expectedCommissionPct}%` : "—"}
-                              </span>
                             </td>
                             <td>
                               <div className="inline-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
@@ -688,7 +678,6 @@ export default function EditPropertyPage({ params }: Props) {
                           </tr>
                         )})
                       )}
-                      {/* Add room row */}
                       <tr style={{ background: "var(--surface-alt, #1a1a24)" }}>
                         <td>
                           <UISelect value={newRoom.roomName} onChange={(e) => setNewRoom((p) => ({ ...p, roomName: e.target.value }))} disabled={addingRoom}>
