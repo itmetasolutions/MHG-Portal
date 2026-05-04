@@ -4,26 +4,8 @@ import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/server/auth";
 
-const homeImage = (path: string) => encodeURI(`/assets/images/Home/${path}`);
-
-const landingHeroImages = {
-  primary: {
-    src: homeImage("Why MHG/A dependable partner for tenants, landlords, and investors.webp"),
-    alt: "More Homes Group team supporting tenants, landlords, and investors",
-  },
-  secondary: [
-    {
-      label: "Mission",
-      src: homeImage("About/A customer-first property company built to grow the right way Mission.webp"),
-      alt: "More Homes Group mission and customer-first property support",
-    },
-    {
-      label: "Vision",
-      src: homeImage("About/A customer-first property company built to grow the right way Vision.webp"),
-      alt: "More Homes Group vision for property growth and service",
-    },
-  ],
-};
+const homeImage = (path: string) =>
+  encodeURI(`/assets/images/Home/${path}`);
 
 const landingFeatureCards = [
   {
@@ -60,6 +42,13 @@ const landingFeatureCards = [
   },
 ];
 
+const activityItems = [
+  { phone: "+44 791 1122 33", status: "Confirmed", time: "2m", color: "green" },
+  { phone: "+44 771 4455 66", status: "Follow Up", time: "18m", color: "blue" },
+  { phone: "+44 756 8899 00", status: "Not Interested", time: "1h", color: "red" },
+  { phone: "+44 787 2233 44", status: "Sale Closed", time: "3h", color: "gold" },
+];
+
 export default async function HomePage() {
   const session = await getAuthSession();
   if (session) {
@@ -70,98 +59,140 @@ export default async function HomePage() {
     <div className="landing-page">
       <section className="landing-hero">
         <div className="landing-hero-grid">
+          {/* Left: copy */}
           <div className="landing-hero-copy">
-            <img
-              src="/morehomesgroup-logo.png"
-              alt="More Homes Group"
-              className="landing-logo"
-            />
-            <p className="landing-kicker">More Homes Group</p>
+            <div className="landing-portal-badge">
+              <span className="landing-portal-dot" />
+              INTERNAL OPERATIONS PORTAL
+            </div>
             <h1 className="landing-title">
-              Letting Agency <span>Portal</span>
+              Your Team&apos;s Lettings
+              <br />
+              <span>Command Centre</span>
             </h1>
             <p className="landing-subtitle">
-              A single platform for your lettings team to manage landlords,
-              tenancies, properties, and compliance without switching systems.
+              One platform for your entire lettings operation — from first
+              landlord contact to signed tenancy, with full visibility at every
+              step.
             </p>
             <div className="inline-row landing-cta">
               <Link className="btn btn-primary btn-lg" href="/login">
-                Sign In
+                <span className="landing-btn-arrow">→</span> Sign In
               </Link>
               <Link className="btn btn-secondary btn-lg" href="/admin/login">
                 Admin Access
               </Link>
             </div>
-            <div className="landing-metrics">
-              <div className="landing-metric">
-                <p className="landing-metric-label">Portfolio Control</p>
-                <p className="landing-metric-value">Landlords + Tenants + Properties</p>
-              </div>
-              <div className="landing-metric">
-                <p className="landing-metric-label">Daily Operations</p>
-                <p className="landing-metric-value">Sales, status changes, and activity logs</p>
-              </div>
-              <div className="landing-metric">
-                <p className="landing-metric-label">Security</p>
-                <p className="landing-metric-value">Role-based access with OTP verification</p>
-              </div>
+            <div className="landing-tags">
+              <span className="landing-tag" data-color="green">
+                Call Workflow
+              </span>
+              <span className="landing-tag" data-color="gold">
+                Property Tracking
+              </span>
+              <span className="landing-tag" data-color="blue">
+                Commission Reports
+              </span>
+              <span className="landing-tag" data-color="purple">
+                OTP Secured
+              </span>
             </div>
           </div>
 
-          <div className="landing-hero-visuals">
-            <div className="landing-hero-visual-glow" aria-hidden="true" />
-            <div className="landing-hero-visual-grid-accent" aria-hidden="true" />
-
-            <figure className="landing-hero-primary-card">
-              <img
-                src={landingHeroImages.primary.src}
-                alt={landingHeroImages.primary.alt}
-                className="landing-hero-primary-image"
-              />
-              <figcaption className="landing-hero-primary-caption">
-                Trusted support across lettings, management, and agency growth.
-              </figcaption>
-            </figure>
-
-            <div className="landing-hero-secondary-stack">
-              {landingHeroImages.secondary.map((image, index) => (
-                <figure
-                  key={image.label}
-                  className={`landing-hero-secondary-card ${
-                    index === 0
-                      ? "landing-hero-secondary-card-top"
-                      : "landing-hero-secondary-card-bottom"
-                  }`}
-                >
-                  <img
-                    src={image.src}
-                    alt={image.alt}
-                    className="landing-hero-secondary-image"
-                  />
-                  <figcaption className="landing-hero-secondary-label">
-                    {image.label}
-                  </figcaption>
-                </figure>
-              ))}
-
-              <aside className="landing-hero-insight-card">
-                <p className="landing-hero-insight-kicker">Customer-led delivery</p>
-                <p className="landing-hero-insight-title">
-                  Mission-led service with structure for every role.
-                </p>
-                <p className="landing-hero-insight-copy">
-                  From secure sign-in to daily coordination, the platform helps
-                  teams move faster without losing visibility.
-                </p>
-              </aside>
+          {/* Right: dashboard mock */}
+          <div className="landing-hero-dash-wrap">
+            <div className="landing-conv-chip">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              +23% conversions this week
             </div>
 
-            <div className="landing-hero-floating-chip">
-              <span className="landing-hero-floating-label">Agency workflow</span>
-              <strong className="landing-hero-floating-value">
-                Secure, role-ready, and built to scale
-              </strong>
+            <div className="landing-dash-card">
+              <div className="landing-dash-header">
+                <div className="landing-dash-dots">
+                  <span className="dash-dot dash-dot-red" />
+                  <span className="dash-dot dash-dot-yellow" />
+                  <span className="dash-dot dash-dot-green" />
+                </div>
+                <span className="landing-dash-title">Daily Overview</span>
+                <span className="landing-dash-today">Today</span>
+              </div>
+
+              <div className="landing-dash-stats">
+                <div className="landing-dash-stat">
+                  <strong>24</strong>
+                  <span>SEARCHES</span>
+                </div>
+                <div className="landing-dash-stat landing-dash-stat-blue">
+                  <strong>7</strong>
+                  <span>CONFIRMED</span>
+                </div>
+                <div className="landing-dash-stat landing-dash-stat-orange">
+                  <strong>11</strong>
+                  <span>FOLLOW UPS</span>
+                </div>
+                <div className="landing-dash-stat landing-dash-stat-gold">
+                  <strong>3</strong>
+                  <span>SALES</span>
+                </div>
+              </div>
+
+              <div className="landing-dash-divider" />
+
+              <div className="landing-dash-section">
+                <p className="landing-dash-section-label">RECENT ACTIVITY</p>
+                <div className="landing-dash-activities">
+                  {activityItems.map((item) => (
+                    <div key={item.phone} className="landing-dash-activity-row">
+                      <span
+                        className={`landing-dash-activity-dot activity-dot-${item.color}`}
+                      />
+                      <span className="landing-dash-activity-phone">
+                        {item.phone}
+                      </span>
+                      <span
+                        className={`landing-dash-status landing-dash-status-${item.color}`}
+                      >
+                        {item.status}
+                      </span>
+                      <span className="landing-dash-activity-time">
+                        {item.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="landing-dash-divider" />
+
+              <div className="landing-dash-section">
+                <div className="landing-dash-props-row">
+                  <span className="landing-dash-section-label">
+                    ACTIVE PROPERTIES
+                  </span>
+                  <span className="landing-dash-props-count">
+                    9{" "}
+                    <span className="landing-dash-props-total">/ 14</span>
+                  </span>
+                </div>
+                <div className="landing-dash-progress-track">
+                  <div className="landing-dash-progress-fill" />
+                </div>
+              </div>
             </div>
+
+            <div className="landing-sales-chip">☕ 3 sales closed today</div>
           </div>
         </div>
       </section>
