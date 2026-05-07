@@ -131,20 +131,11 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
     orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
     select: {
       sortOrder: true,
+      altText: true,
       mediaAsset: {
         select: {
           id: true,
           name: true,
-          mimeType: true,
-          dataUrl: true,
-          createdAt: true,
-          uploadedBy: {
-            select: {
-              id: true,
-              agentDisplayName: true,
-              email: true,
-            },
-          },
         },
       },
     },

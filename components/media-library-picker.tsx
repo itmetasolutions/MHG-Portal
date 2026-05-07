@@ -99,9 +99,18 @@ export function MediaLibraryPicker({
     setAssets(result.data.assets);
   }, [loaded]);
 
+  // Load on modal open
   useEffect(() => {
     if (isOpen) void loadAssets();
   }, [isOpen, loadAssets]);
+
+  // Background-load when there are pre-selected assets so thumbnails appear immediately
+  useEffect(() => {
+    if (selectedAssets.length > 0 && !loaded && !loading) {
+      void loadAssets();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sortedAssets = useMemo(() => {
     const q = search.trim().toLowerCase();

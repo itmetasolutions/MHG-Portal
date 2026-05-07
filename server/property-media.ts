@@ -45,8 +45,11 @@ export function buildPropertyMediaRows(
 }
 
 type MediaLinkLike = {
-  mediaAsset: unknown;
+  altText?: string | null;
+  mediaAsset: Record<string, unknown>;
 };
+
+type ImageEntry<TMedia> = TMedia & { altText?: string | null };
 
 type MediaAssetFromProperty<T> = T extends {
   mediaLinks?: Array<{ mediaAsset: infer TMedia }>;
@@ -58,15 +61,18 @@ export function serializePropertyImages<
   T extends {
     mediaLinks?: MediaLinkLike[];
   },
->(property: T): Omit<T, "mediaLinks"> & { images: MediaAssetFromProperty<T>[] } {
+>(property: T): Omit<T, "mediaLinks"> & { images: ImageEntry<MediaAssetFromProperty<T>>[] } {
   const { mediaLinks = [], ...rest } = property as T & {
     mediaLinks?: MediaLinkLike[];
   };
 
   return {
     ...rest,
-    images: mediaLinks.map((link) => link.mediaAsset),
-  } as Omit<T, "mediaLinks"> & { images: MediaAssetFromProperty<T>[] };
+    images: mediaLinks.map((link) => ({
+      ...link.mediaAsset,
+      altText: link.altText ?? null,
+    })),
+  } as Omit<T, "mediaLinks"> & { images: ImageEntry<MediaAssetFromProperty<T>>[] };
 }
 
 export function serializePropertyImageList<

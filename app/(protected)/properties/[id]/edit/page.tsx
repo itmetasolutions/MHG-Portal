@@ -61,7 +61,7 @@ type PropertyDetail = {
   livingLandlord: boolean | null;
   landlord: { id: string; landlordName: string; phoneLast10: string | null };
   rooms?: RoomRow[];
-  images?: Array<{ id: string; name?: string }>;
+  images?: Array<{ id: string; name?: string; altText?: string | null }>;
 };
 
 const ROOM_TYPES = ["Studio Room", "Single Room", "Double Room", "Ensuite Room", "Loft"] as const;
@@ -140,7 +140,7 @@ export default function EditPropertyPage({ params }: Props) {
       setSelectedAssets(
         (p.images ?? []).map((img) => ({
           mediaAssetId: img.id,
-          altText: img.name?.trim() || "Property photo",
+          altText: img.altText?.trim() || img.name?.trim() || "Property photo",
         })),
       );
       setStatus(p.status === "CLOSED" ? "AVAILABLE" : p.status);
