@@ -41,7 +41,7 @@ type PropertyRow = {
   status: "DRAFT" | "AVAILABLE" | "CLOSED";
   vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: string;
-  images?: Array<{ id: string; name: string; dataUrl: string }>;
+  images?: Array<{ id: string; name: string; imageUrl?: string; dataUrl?: string }>;
   landlord: { id: string; landlordName: string };
   publishedToWebsite?: boolean;
   rooms?: RoomRow[];

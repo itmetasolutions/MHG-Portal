@@ -24,9 +24,9 @@ type PropertyRow = {
   status: PropertyStatus;
   vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: Date;
-  images?: Array<{ id: string; name: string; dataUrl: string }>;
+  images?: Array<{ id: string; name: string; imageUrl?: string; dataUrl?: string }>;
   landlord: { id: string; landlordName: string };
-  ownerAgent: { id: string; agentDisplayName: string };
+  ownerAgent: { id: string; agentDisplayName: string | null } | null;
 };
 
 type Props = {
@@ -49,7 +49,7 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
       property.postcode,
       property.propertyType,
       property.landlord.landlordName,
-      property.ownerAgent.agentDisplayName,
+      property.ownerAgent?.agentDisplayName,
     ]
       .filter(Boolean)
       .join(" ")
@@ -94,11 +94,11 @@ export function AdminPropertiesClient({ properties: initial }: Props) {
                   name: prop.landlord.landlordName,
                   href: `/landlords/${prop.landlord.id}`,
                 }}
-                agent={{
+                agent={prop.ownerAgent ? {
                   label: "Agent",
-                  name: prop.ownerAgent.agentDisplayName,
+                  name: prop.ownerAgent.agentDisplayName ?? "—",
                   href: `/admin/agents/${prop.ownerAgent.id}`,
-                }}
+                } : undefined}
                 footer={(
                   <div className="property-preview-footer-stack">
                     <div className="property-card-footer-note">

@@ -37,7 +37,7 @@ type PropertyRow = {
   status: "AVAILABLE" | "DRAFT" | "CLOSED";
   vacancyType: "SINGLE" | "MULTIPLE";
   createdAt: Date;
-  images?: Array<{ id: string; name: string; dataUrl: string }>;
+  images?: Array<{ id: string; name: string; imageUrl?: string; dataUrl?: string }>;
   landlord: { id: string; landlordName: string };
 };
 

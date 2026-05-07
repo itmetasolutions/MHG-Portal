@@ -70,9 +70,10 @@ export function serializePropertyImages<
     ...rest,
     images: mediaLinks.map((link) => ({
       ...link.mediaAsset,
+      imageUrl: `/api/media-library/${(link.mediaAsset as { id: string }).id}/image`,
       altText: link.altText ?? null,
     })),
-  } as Omit<T, "mediaLinks"> & { images: ImageEntry<MediaAssetFromProperty<T>>[] };
+  } as unknown as Omit<T, "mediaLinks"> & { images: ImageEntry<MediaAssetFromProperty<T>>[] };
 }
 
 export function serializePropertyImageList<

@@ -273,9 +273,6 @@ async function applyPropertyApproval(
             select: {
               id: true,
               name: true,
-              mimeType: true,
-              dataUrl: true,
-              createdAt: true,
             },
           },
         },
@@ -423,9 +420,6 @@ async function applyPropertyApproval(
             select: {
               id: true,
               name: true,
-              mimeType: true,
-              dataUrl: true,
-              createdAt: true,
             },
           },
         },

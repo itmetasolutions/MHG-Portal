@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 type PropertyImage = {
   id: string;
   name?: string | null;
-  dataUrl: string;
+  dataUrl?: string;
+  imageUrl?: string;
 };
 
 type PropertyPreviewData = {
@@ -89,7 +90,7 @@ export function PropertyPreviewCard({ href, property, landlord, agent, extra, fo
       <Link href={href} className="property-preview-media" aria-label={`Open ${title}`}>
         {previewImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewImage.dataUrl} alt={previewImage.name || title} />
+          <img src={previewImage.imageUrl ?? previewImage.dataUrl} alt={previewImage.name || title} />
         ) : (
           <div className="property-preview-placeholder">
             <span>No featured image</span>

@@ -87,7 +87,6 @@ export default async function AdminAgentDetailPage({ params, searchParams }: Pro
                   select: {
                     id: true,
                     name: true,
-                    dataUrl: true,
                   },
                 },
               },

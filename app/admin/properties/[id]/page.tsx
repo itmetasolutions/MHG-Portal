@@ -88,7 +88,6 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
             select: {
               id: true,
               name: true,
-              dataUrl: true,
             },
           },
         },
@@ -335,7 +334,7 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
             <div className="property-detail-gallery">
               <figure className="property-detail-hero">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={featuredImage.dataUrl} alt={featuredImage.name} />
+                <img src={`/api/media-library/${featuredImage.id}/image`} alt={featuredImage.name} />
                 <figcaption>{featuredImage.name}</figcaption>
               </figure>
 
@@ -344,7 +343,7 @@ export default async function AdminPropertyDetailPage({ params }: Props) {
                   {galleryImages.map((image) => (
                     <figure key={image.id} className="property-detail-thumb">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image.dataUrl} alt={image.name} />
+                      <img src={`/api/media-library/${image.id}/image`} alt={image.name} />
                       <figcaption>{image.name}</figcaption>
                     </figure>
                   ))}

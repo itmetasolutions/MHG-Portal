@@ -321,7 +321,7 @@ export function MediaLibraryPicker({
 
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={asset.dataUrl}
+                    src={asset.dataUrl ?? asset.imageUrl}
                     alt={sel.altText || asset.name}
                     style={{
                       width: 88,
@@ -516,7 +516,7 @@ export function MediaLibraryPicker({
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={asset.dataUrl}
+                            src={asset.dataUrl ?? asset.imageUrl}
                             alt={asset.name}
                             style={{
                               width: "100%",
@@ -623,7 +623,7 @@ export function MediaLibraryPicker({
                     </span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={asset.dataUrl}
+                      src={asset.dataUrl ?? asset.imageUrl}
                       alt={sel.altText || asset.name}
                       style={{
                         width: 56,

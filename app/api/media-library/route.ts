@@ -23,11 +23,10 @@ const uploadMediaSchema = z
   })
   .strict();
 
-const mediaAssetSelect = {
+const mediaAssetMetaSelect = {
   id: true,
   name: true,
   mimeType: true,
-  dataUrl: true,
   createdAt: true,
   uploadedBy: {
     select: {
@@ -36,6 +35,11 @@ const mediaAssetSelect = {
       email: true,
     },
   },
+} as const;
+
+const mediaAssetSelect = {
+  ...mediaAssetMetaSelect,
+  dataUrl: true,
 } as const;
 
 function getMimeTypeFromDataUrl(dataUrl: string): string | null {
@@ -56,10 +60,12 @@ export async function GET(request: NextRequest) {
 
   const assets = await db.mediaAsset.findMany({
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    select: mediaAssetSelect,
+    select: mediaAssetMetaSelect,
   });
 
-  return NextResponse.json({ assets });
+  return NextResponse.json({
+    assets: assets.map((a) => ({ ...a, imageUrl: `/api/media-library/${a.id}/image` })),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -143,5 +149,7 @@ export async function POST(request: NextRequest) {
     });
   });
 
-  return NextResponse.json({ assets }, { status: 201 });
+  return NextResponse.json({
+    assets: assets.map((a) => ({ ...a, imageUrl: `/api/media-library/${a.id}/image` })),
+  }, { status: 201 });
 }

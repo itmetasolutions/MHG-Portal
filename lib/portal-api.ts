@@ -148,7 +148,8 @@ export type MediaAssetRow = {
   id: string;
   name: string;
   mimeType: string;
-  dataUrl: string;
+  dataUrl?: string;   // only present in upload (POST) responses
+  imageUrl: string;   // always present — use for <img src>
   createdAt: string;
   uploadedBy?: {
     id: string;

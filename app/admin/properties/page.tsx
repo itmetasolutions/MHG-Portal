@@ -46,7 +46,6 @@ export default async function AdminPropertiesPage() {
               select: {
                 id: true,
                 name: true,
-                dataUrl: true,
               },
             },
           },

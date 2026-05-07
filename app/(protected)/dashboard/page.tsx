@@ -133,7 +133,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               select: {
                 id: true,
                 name: true,
-                dataUrl: true,
               },
             },
           },

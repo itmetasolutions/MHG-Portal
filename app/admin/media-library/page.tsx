@@ -16,7 +16,6 @@ export default async function MediaLibraryPage() {
       id: true,
       name: true,
       mimeType: true,
-      dataUrl: true,
       createdAt: true,
       uploadedBy: {
         select: { id: true, agentDisplayName: true, email: true },
@@ -26,6 +25,7 @@ export default async function MediaLibraryPage() {
 
   const serialized = assets.map((a) => ({
     ...a,
+    imageUrl: `/api/media-library/${a.id}/image`,
     createdAt: a.createdAt.toISOString(),
     uploadedBy: a.uploadedBy
       ? {

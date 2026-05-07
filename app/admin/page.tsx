@@ -175,7 +175,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
                   select: {
                     id: true,
                     name: true,
-                    dataUrl: true,
                   },
                 },
               },

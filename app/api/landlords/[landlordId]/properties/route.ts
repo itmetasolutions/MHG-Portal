@@ -176,16 +176,6 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
         select: {
           id: true,
           name: true,
-          mimeType: true,
-          dataUrl: true,
-          createdAt: true,
-          uploadedBy: {
-            select: {
-              id: true,
-              agentDisplayName: true,
-              email: true,
-            },
-          },
         },
       },
     },

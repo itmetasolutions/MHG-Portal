@@ -245,7 +245,7 @@ export function MediaLibraryClient({ initialAssets }: Props) {
                 {/* Thumbnail */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={asset.dataUrl}
+                  src={asset.dataUrl ?? asset.imageUrl}
                   alt={asset.name}
                   style={{
                     width: "100%",
