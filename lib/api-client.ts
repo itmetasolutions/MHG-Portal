@@ -11,13 +11,18 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 async function request<T>(input: RequestInfo | URL, init?: RequestInit): Promise<ApiResult<T>> {
-  const response = await fetch(input, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(input, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch {
+    return { ok: false, status: 0, error: "NETWORK_ERROR", message: "Network error. Please check your connection and try again." };
+  }
 
   const json = await readJson(response);
   if (!response.ok) {

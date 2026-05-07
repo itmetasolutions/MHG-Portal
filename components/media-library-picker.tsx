@@ -5,6 +5,7 @@ import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { listMediaLibrary, uploadMediaAssets, type MediaAssetRow } from "@/lib/portal-api";
+import { apiDelete } from "@/lib/api-client";
 
 export type MediaSelectionValue = {
   mediaAssetId: string;
@@ -73,7 +74,12 @@ export function MediaLibraryPicker({
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [search, setSearch] = useState("");
+  const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Drag-and-drop state for the outer selected list
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const selectedAssetIds = useMemo(
     () => new Set(selectedAssets.map((a) => a.mediaAssetId)),
@@ -133,6 +139,50 @@ export function MediaLibraryPicker({
 
   function removeAsset(mediaAssetId: string) {
     onChange(selectedAssets.filter((a) => a.mediaAssetId !== mediaAssetId));
+  }
+
+  // Drag-and-drop handlers for the outer selected list
+  function handleDragStart(index: number) {
+    setDragIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }
+
+  function handleDrop(index: number) {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const next = [...selectedAssets];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(index, 0, moved);
+    onChange(next);
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }
+
+  async function handleDeleteFromLibrary(assetId: string) {
+    if (!window.confirm("Delete this photo from the library? It will be removed from all properties.")) return;
+    setDeletingAssetId(assetId);
+    const result = await apiDelete<{ ok: boolean }>(`/api/media-library/${assetId}`);
+    setDeletingAssetId(null);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.message ?? "Failed to delete photo." });
+      return;
+    }
+    // Remove from assets list and from selection
+    setAssets((prev) => prev.filter((a) => a.id !== assetId));
+    onChange(selectedAssets.filter((a) => a.mediaAssetId !== assetId));
+    setMessage({ type: "success", text: "Photo deleted from library." });
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -204,7 +254,7 @@ export function MediaLibraryPicker({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>{label}</p>
             <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "var(--text-muted)" }}>
-              Open the media library to select or upload photos. Add alt text for each selected photo.
+              Open the media library to select or upload photos. Drag rows to reorder.
             </p>
           </div>
           <UIButton
@@ -218,60 +268,87 @@ export function MediaLibraryPicker({
           </UIButton>
         </div>
 
-        {/* Selected images outside modal with alt text */}
+        {/* Selected images outside modal — draggable to reorder */}
         {selectedRows.length > 0 && (
-          <div className="stack" style={{ gap: "0.6rem" }}>
-            {selectedRows.map(({ asset, sel }) => (
-              <div
-                key={asset.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "88px 1fr auto",
-                  gap: "0.75rem",
-                  alignItems: "start",
-                  border: "1px solid var(--border)",
-                  borderRadius: "0.65rem",
-                  padding: "0.65rem",
-                  background: "var(--surface-alt, #1a1a24)",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={asset.dataUrl}
-                  alt={sel.altText || asset.name}
+          <div className="stack" style={{ gap: "0.5rem" }}>
+            {selectedRows.map(({ asset, sel }, index) => {
+              const isDragging = dragIndex === index;
+              const isOver = dragOverIndex === index && dragIndex !== index;
+              return (
+                <div
+                  key={asset.id}
+                  draggable={!disabled}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={handleDragEnd}
                   style={{
-                    width: 88,
-                    height: 66,
-                    objectFit: "cover",
-                    borderRadius: "0.45rem",
-                    background: "#101016",
+                    display: "grid",
+                    gridTemplateColumns: "24px 88px 1fr auto",
+                    gap: "0.75rem",
+                    alignItems: "start",
+                    border: isOver
+                      ? "2px solid var(--brand-gold)"
+                      : "1px solid var(--border)",
+                    borderRadius: "0.65rem",
+                    padding: "0.65rem",
+                    background: isDragging
+                      ? "rgba(201,168,76,0.08)"
+                      : "var(--surface-alt, #1a1a24)",
+                    opacity: isDragging ? 0.5 : 1,
+                    cursor: disabled ? "default" : "grab",
+                    transition: "border-color 0.1s, background 0.1s",
                   }}
-                />
-                <label className="field" style={{ marginBottom: 0 }}>
-                  <span className="label" style={{ fontSize: "0.76rem" }}>
-                    Alt text
-                  </span>
-                  <UIInput
-                    value={sel.altText}
-                    onChange={(e) => updateAltText(asset.id, e.target.value)}
-                    placeholder="Describe this photo"
-                    disabled={disabled}
-                  />
-                  <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
-                    {asset.name}
-                  </span>
-                </label>
-                <UIButton
-                  type="button"
-                  variant="secondary"
-                  onClick={() => removeAsset(asset.id)}
-                  disabled={disabled}
-                  style={{ marginTop: "1.4rem" }}
                 >
-                  Remove
-                </UIButton>
-              </div>
-            ))}
+                  {/* Drag handle + order number */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.2rem", paddingTop: "0.25rem" }}>
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontWeight: 700, lineHeight: 1 }}>
+                      {index + 1}
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--text-muted)" style={{ flexShrink: 0 }}>
+                      <path d="M7 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM7 10a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM7 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM15 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM15 10a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM15 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+                    </svg>
+                  </div>
+
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={asset.dataUrl}
+                    alt={sel.altText || asset.name}
+                    style={{
+                      width: 88,
+                      height: 66,
+                      objectFit: "cover",
+                      borderRadius: "0.45rem",
+                      background: "#101016",
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <label className="field" style={{ marginBottom: 0 }}>
+                    <span className="label" style={{ fontSize: "0.76rem" }}>
+                      Alt text
+                    </span>
+                    <UIInput
+                      value={sel.altText}
+                      onChange={(e) => updateAltText(asset.id, e.target.value)}
+                      placeholder="Describe this photo"
+                      disabled={disabled}
+                    />
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                      {asset.name}
+                    </span>
+                  </label>
+                  <UIButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => removeAsset(asset.id)}
+                    disabled={disabled}
+                    style={{ marginTop: "1.4rem" }}
+                  >
+                    Remove
+                  </UIButton>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -392,11 +469,10 @@ export function MediaLibraryPicker({
                 >
                   {sortedAssets.map((asset) => {
                     const isSelected = selectedAssetIds.has(asset.id);
+                    const isDeleting = deletingAssetId === asset.id;
                     return (
-                      <button
+                      <div
                         key={asset.id}
-                        type="button"
-                        onClick={() => toggleAsset(asset.id)}
                         style={{
                           position: "relative",
                           border: isSelected
@@ -410,34 +486,72 @@ export function MediaLibraryPicker({
                           display: "flex",
                           flexDirection: "column",
                           gap: "0.4rem",
-                          textAlign: "left",
-                          cursor: "pointer",
+                          opacity: isDeleting ? 0.4 : 1,
                         }}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={asset.dataUrl}
-                          alt={asset.name}
+                        {/* Clickable image area to toggle selection */}
+                        <button
+                          type="button"
+                          onClick={() => toggleAsset(asset.id)}
+                          disabled={isDeleting}
                           style={{
-                            width: "100%",
-                            aspectRatio: "4/3",
-                            objectFit: "cover",
-                            borderRadius: "0.5rem",
-                            background: "#101016",
-                            display: "block",
-                          }}
-                        />
-                        <div
-                          style={{
-                            fontSize: "0.78rem",
-                            color: "var(--text-muted)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.4rem",
+                            textAlign: "left",
                           }}
                         >
-                          {asset.name}
-                        </div>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={asset.dataUrl}
+                            alt={asset.name}
+                            style={{
+                              width: "100%",
+                              aspectRatio: "4/3",
+                              objectFit: "cover",
+                              borderRadius: "0.5rem",
+                              background: "#101016",
+                              display: "block",
+                            }}
+                          />
+                          <div
+                            style={{
+                              fontSize: "0.78rem",
+                              color: "var(--text-muted)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {asset.name}
+                          </div>
+                        </button>
+
+                        {/* Delete from library button */}
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteFromLibrary(asset.id)}
+                          disabled={isDeleting}
+                          title="Delete from library"
+                          style={{
+                            background: "rgba(220,50,50,0.15)",
+                            border: "1px solid rgba(220,50,50,0.3)",
+                            borderRadius: "0.35rem",
+                            color: "#e05555",
+                            cursor: "pointer",
+                            fontSize: "0.72rem",
+                            padding: "0.2rem 0.5rem",
+                            width: "100%",
+                            textAlign: "center",
+                          }}
+                        >
+                          {isDeleting ? "Deleting..." : "Delete from library"}
+                        </button>
+
                         {isSelected && (
                           <div
                             style={{
@@ -453,12 +567,7 @@ export function MediaLibraryPicker({
                               justifyContent: "center",
                             }}
                           >
-                            <svg
-                              width="13"
-                              height="13"
-                              viewBox="0 0 20 20"
-                              fill="#151515"
-                            >
+                            <svg width="13" height="13" viewBox="0 0 20 20" fill="#151515">
                               <path
                                 fillRule="evenodd"
                                 d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
@@ -467,39 +576,42 @@ export function MediaLibraryPicker({
                             </svg>
                           </div>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
               )}
             </div>
 
-            {/* Modal footer — selected with alt text */}
+            {/* Modal footer — selected list (read-only in modal, reorder outside) */}
             {selectedAssets.length > 0 && (
               <div
                 style={{
                   borderTop: "1px solid var(--border)",
-                  maxHeight: "35vh",
+                  maxHeight: "30vh",
                   overflow: "auto",
                   padding: "0.85rem 1.25rem",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.6rem",
+                  gap: "0.5rem",
                 }}
               >
                 <p style={{ margin: 0, fontSize: "0.82rem", fontWeight: 600, color: "var(--text-muted)" }}>
-                  {selectedAssets.length} photo{selectedAssets.length !== 1 ? "s" : ""} selected — add alt text below
+                  {selectedAssets.length} photo{selectedAssets.length !== 1 ? "s" : ""} selected — close to reorder by dragging
                 </p>
-                {selectedRows.map(({ asset, sel }) => (
+                {selectedRows.map(({ asset, sel }, idx) => (
                   <div
                     key={asset.id}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "56px 1fr auto",
+                      gridTemplateColumns: "20px 56px 1fr auto",
                       gap: "0.65rem",
                       alignItems: "center",
                     }}
                   >
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 700, textAlign: "center" }}>
+                      {idx + 1}
+                    </span>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={asset.dataUrl}

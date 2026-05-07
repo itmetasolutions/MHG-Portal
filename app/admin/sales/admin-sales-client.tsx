@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { formatCurrency, formatDate, formatPKR, gbpToPkr } from "@/lib/format";
+import { apiDelete } from "@/lib/api-client";
 
 type SaleRow = {
   id: string;
@@ -30,9 +33,26 @@ type Props = {
 };
 
 export function AdminSalesClient({ sales }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [clearing, setClearing] = useState(false);
+  const [clearMessage, setClearMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  async function handleClearAllSales() {
+    if (!window.confirm(`This will permanently delete ALL ${sales.length} sale record(s) and reset closed properties to Available. This cannot be undone. Continue?`)) return;
+    setClearing(true);
+    setClearMessage(null);
+    const result = await apiDelete<{ ok: boolean; message: string; cleared: number }>("/api/admin/sales");
+    setClearing(false);
+    if (!result.ok) {
+      setClearMessage({ type: "error", text: result.message ?? "Failed to clear sales." });
+      return;
+    }
+    setClearMessage({ type: "success", text: result.data.message });
+    setTimeout(() => router.refresh(), 1000);
+  }
 
   const filteredSales = sales.filter((sale) => {
     const haystack = [
@@ -66,8 +86,8 @@ export function AdminSalesClient({ sales }: Props) {
 
   return (
     <div className="stack">
-      <div style={{ padding: "0 1.25rem 1rem" }}>
-        <label className="field" style={{ marginBottom: 0 }}>
+      <div style={{ padding: "0 1.25rem 1rem", display: "flex", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap" }}>
+        <label className="field" style={{ marginBottom: 0, flex: 1 }}>
           <span className="label">Search</span>
           <UIInput
             value={search}
@@ -78,7 +98,31 @@ export function AdminSalesClient({ sales }: Props) {
             placeholder="Property, postcode, landlord, agent, tenant"
           />
         </label>
+        {sales.length > 0 && (
+          <UIButton
+            variant="danger"
+            onClick={() => void handleClearAllSales()}
+            disabled={clearing}
+          >
+            {clearing ? "Clearing..." : "Clear All Sales"}
+          </UIButton>
+        )}
       </div>
+
+      {clearMessage && (
+        <div style={{ padding: "0 1.25rem" }}>
+          <div style={{
+            padding: "0.75rem 1rem",
+            borderRadius: "0.5rem",
+            background: clearMessage.type === "error" ? "rgba(220,50,50,0.12)" : "rgba(74,222,128,0.12)",
+            border: `1px solid ${clearMessage.type === "error" ? "rgba(220,50,50,0.3)" : "rgba(74,222,128,0.3)"}`,
+            color: clearMessage.type === "error" ? "#e05555" : "#4ade80",
+            fontSize: "0.875rem",
+          }}>
+            {clearMessage.text}
+          </div>
+        </div>
+      )}
 
       <div className="table-wrap" style={{ borderRadius: 0, border: "none" }}>
         <table className="table">

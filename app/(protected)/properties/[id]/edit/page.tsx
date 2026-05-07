@@ -186,7 +186,7 @@ export default function EditPropertyPage({ params }: Props) {
       if (!availabilityDate) missing.push("availability date");
       if (selectedAssets.length === 0) missing.push("at least one photo");
       if (missing.length > 0) {
-        setMessage({ type: "error", text: `Cannot set to Available. Missing: ${missing.join(", ")}.` });
+        setMessage({ type: "error", text: `Cannot publish. Please fill in: ${missing.join(", ")}.` });
         return;
       }
     }
@@ -235,6 +235,11 @@ export default function EditPropertyPage({ params }: Props) {
     setSaving(false);
 
     if (!result.ok) {
+      // If nothing changed and we're saving a draft, treat as success
+      if (result.error === "NO_FIELDS_TO_UPDATE" && status === "DRAFT") {
+        setMessage({ type: "success", text: "Property draft is up to date." });
+        return;
+      }
       setMessage({ type: "error", text: result.message ?? "Failed to save property." });
       return;
     }
