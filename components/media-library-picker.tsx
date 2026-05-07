@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { UIInput } from "@/components/ui/input";
@@ -155,7 +155,7 @@ export function MediaLibraryPicker({
     setDragIndex(index);
   }
 
-  function handleDragOver(e: React.DragEvent, index: number) {
+  function handleDragOver(e: DragEvent<HTMLDivElement>, index: number) {
     e.preventDefault();
     setDragOverIndex(index);
   }
