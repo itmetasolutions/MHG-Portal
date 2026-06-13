@@ -76,13 +76,13 @@ export async function GET(request: NextRequest) {
   if (phoneLast10) {
     where.landlord = {
       is: {
-        phoneLast10: { contains: phoneLast10, mode: "insensitive" },
+        phoneLast10: { contains: phoneLast10, mode: "insensitive" as const },
       },
     };
   }
 
   if (propertyRef) {
-    where.propertyRef = { contains: propertyRef, mode: "insensitive" };
+    where.propertyRef = { contains: propertyRef, mode: "insensitive" as const };
   }
 
   if (status) {
@@ -91,11 +91,11 @@ export async function GET(request: NextRequest) {
   // No default filter — show all statuses including CLOSED
 
   if (city) {
-    where.city = { contains: city, mode: "insensitive" };
+    where.city = { contains: city, mode: "insensitive" as const };
   }
 
   if (postcode) {
-    where.postcode = { contains: postcode, mode: "insensitive" };
+    where.postcode = { contains: postcode, mode: "insensitive" as const };
   }
 
   if (createdAt) {
@@ -116,21 +116,21 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     const searchFilters: Prisma.PropertyWhereInput[] = [
-      { propertyRef: { contains: search, mode: "insensitive" } },
-      { title: { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
-      { addressLine1: { contains: search, mode: "insensitive" } },
-      { addressLine2: { contains: search, mode: "insensitive" } },
-      { city: { contains: search, mode: "insensitive" } },
-      { postcode: { contains: search, mode: "insensitive" } },
-      { propertyType: { contains: search, mode: "insensitive" } },
-      { landlord: { is: { landlordName: { contains: search, mode: "insensitive" } } } },
+      { propertyRef: { contains: search, mode: "insensitive" as const } },
+      { title: { contains: search, mode: "insensitive" as const } },
+      { description: { contains: search, mode: "insensitive" as const } },
+      { addressLine1: { contains: search, mode: "insensitive" as const } },
+      { addressLine2: { contains: search, mode: "insensitive" as const } },
+      { city: { contains: search, mode: "insensitive" as const } },
+      { postcode: { contains: search, mode: "insensitive" as const } },
+      { propertyType: { contains: search, mode: "insensitive" as const } },
+      { landlord: { is: { landlordName: { contains: search, mode: "insensitive" as const } } } },
       {
         ownerAgent: {
           is: {
             OR: [
-              { agentDisplayName: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { agentDisplayName: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
             ],
           },
         },

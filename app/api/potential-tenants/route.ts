@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
       ...(q
         ? {
             OR: [
-              { fullName: { contains: q, mode: "insensitive" } },
-              { phone: { contains: q, mode: "insensitive" } },
-              { email: { contains: q, mode: "insensitive" } },
+              { fullName: { contains: q, mode: "insensitive" as const } },
+              { phone: { contains: q, mode: "insensitive" as const } },
+              { email: { contains: q, mode: "insensitive" as const } },
             ],
           }
         : {}),

@@ -90,10 +90,10 @@ export async function GET(request: NextRequest) {
       ...(search
         ? {
             OR: [
-              { fullName: { contains: search, mode: "insensitive" } },
-              { phoneNumber: { contains: search, mode: "insensitive" } },
-              { extensionNumber: { contains: search, mode: "insensitive" } },
-              { notes: { contains: search, mode: "insensitive" } },
+              { fullName: { contains: search, mode: "insensitive" as const } },
+              { phoneNumber: { contains: search, mode: "insensitive" as const } },
+              { extensionNumber: { contains: search, mode: "insensitive" as const } },
+              { notes: { contains: search, mode: "insensitive" as const } },
             ],
           }
         : {}),

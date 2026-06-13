@@ -90,8 +90,8 @@ export async function GET(request: NextRequest) {
     where.property = {
       is: {
         ...(status ? { status } : {}),
-        ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
-        ...(postcode ? { postcode: { contains: postcode, mode: "insensitive" } } : {}),
+        ...(city ? { city: { contains: city, mode: "insensitive" as const } } : {}),
+        ...(postcode ? { postcode: { contains: postcode, mode: "insensitive" as const } } : {}),
       },
     };
   }
@@ -111,8 +111,8 @@ export async function GET(request: NextRequest) {
           is: {
             OR: [
               { id: agent },
-              { email: { contains: agent, mode: "insensitive" } },
-              { agentDisplayName: { contains: agent, mode: "insensitive" } },
+              { email: { contains: agent, mode: "insensitive" as const } },
+              { agentDisplayName: { contains: agent, mode: "insensitive" as const } },
             ],
           },
         },

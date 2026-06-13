@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
   const where: Prisma.AuditLogWhereInput = {};
 
   if (entityType) {
-    where.entityType = { contains: entityType, mode: "insensitive" };
+    where.entityType = { contains: entityType, mode: "insensitive" as const };
   }
 
   if (action) {
-    where.action = { contains: action, mode: "insensitive" };
+    where.action = { contains: action, mode: "insensitive" as const };
   }
 
   if (user) {
@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
       is: {
         OR: [
           { id: { equals: user } },
-          { email: { contains: user, mode: "insensitive" } },
-          { agentDisplayName: { contains: user, mode: "insensitive" } },
+          { email: { contains: user, mode: "insensitive" as const } },
+          { agentDisplayName: { contains: user, mode: "insensitive" as const } },
         ],
       },
     };

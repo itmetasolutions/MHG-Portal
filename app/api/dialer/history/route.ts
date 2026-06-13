@@ -151,11 +151,11 @@ export async function GET(request: NextRequest) {
       ...(search
         ? {
             OR: [
-              { peerName: { contains: search, mode: "insensitive" } },
-              { peerNumber: { contains: search, mode: "insensitive" } },
-              { peerExtension: { contains: search, mode: "insensitive" } },
-              { notes: { contains: search, mode: "insensitive" } },
-              { contact: { fullName: { contains: search, mode: "insensitive" } } },
+              { peerName: { contains: search, mode: "insensitive" as const } },
+              { peerNumber: { contains: search, mode: "insensitive" as const } },
+              { peerExtension: { contains: search, mode: "insensitive" as const } },
+              { notes: { contains: search, mode: "insensitive" as const } },
+              { contact: { fullName: { contains: search, mode: "insensitive" as const } } },
             ],
           }
         : {}),

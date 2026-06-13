@@ -64,21 +64,21 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     const searchFilters: Prisma.TenantWhereInput[] = [
-      { fullName: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
-      { phoneLast10: { contains: search, mode: "insensitive" } },
-      { notes: { contains: search, mode: "insensitive" } },
+      { fullName: { contains: search, mode: "insensitive" as const } },
+      { email: { contains: search, mode: "insensitive" as const } },
+      { phone: { contains: search, mode: "insensitive" as const } },
+      { phoneLast10: { contains: search, mode: "insensitive" as const } },
+      { notes: { contains: search, mode: "insensitive" as const } },
       {
         sale: {
           is: {
             property: {
               OR: [
-                { propertyRef: { contains: search, mode: "insensitive" } },
-                { addressLine1: { contains: search, mode: "insensitive" } },
-                { postcode: { contains: search, mode: "insensitive" } },
-                { landlord: { landlordName: { contains: search, mode: "insensitive" } } },
-                { ownerAgent: { agentDisplayName: { contains: search, mode: "insensitive" } } },
+                { propertyRef: { contains: search, mode: "insensitive" as const } },
+                { addressLine1: { contains: search, mode: "insensitive" as const } },
+                { postcode: { contains: search, mode: "insensitive" as const } },
+                { landlord: { landlordName: { contains: search, mode: "insensitive" as const } } },
+                { ownerAgent: { agentDisplayName: { contains: search, mode: "insensitive" as const } } },
               ],
             },
           },
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
         addedByAgent: {
           is: {
             OR: [
-              { agentDisplayName: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { agentDisplayName: { contains: search, mode: "insensitive" as const } },
+              { email: { contains: search, mode: "insensitive" as const } },
             ],
           },
         },
