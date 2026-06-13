@@ -194,7 +194,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       ? db.property.findMany({
           where: {
             ...propertyWhere,
-            postcode: { contains: postcode, mode: "insensitive" },
+            postcode: { contains: postcode },
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 50,

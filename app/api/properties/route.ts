@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (propertyRef) {
-    where.propertyRef = { contains: propertyRef, mode: "insensitive" };
+    where.propertyRef = { contains: propertyRef };
   }
 
   if (status) {
@@ -91,11 +91,11 @@ export async function GET(request: NextRequest) {
   // No default filter — show all statuses including CLOSED
 
   if (city) {
-    where.city = { contains: city, mode: "insensitive" };
+    where.city = { contains: city };
   }
 
   if (postcode) {
-    where.postcode = { contains: postcode, mode: "insensitive" };
+    where.postcode = { contains: postcode };
   }
 
   if (createdAt) {
@@ -116,21 +116,21 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     const searchFilters: Prisma.PropertyWhereInput[] = [
-      { propertyRef: { contains: search, mode: "insensitive" } },
-      { title: { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
-      { addressLine1: { contains: search, mode: "insensitive" } },
-      { addressLine2: { contains: search, mode: "insensitive" } },
-      { city: { contains: search, mode: "insensitive" } },
-      { postcode: { contains: search, mode: "insensitive" } },
-      { propertyType: { contains: search, mode: "insensitive" } },
-      { landlord: { is: { landlordName: { contains: search, mode: "insensitive" } } } },
+      { propertyRef: { contains: search } },
+      { title: { contains: search } },
+      { description: { contains: search } },
+      { addressLine1: { contains: search } },
+      { addressLine2: { contains: search } },
+      { city: { contains: search } },
+      { postcode: { contains: search } },
+      { propertyType: { contains: search } },
+      { landlord: { is: { landlordName: { contains: search } } } },
       {
         ownerAgent: {
           is: {
             OR: [
-              { agentDisplayName: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { agentDisplayName: { contains: search } },
+              { email: { contains: search } },
             ],
           },
         },

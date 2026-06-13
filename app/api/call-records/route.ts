@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const records = await prisma.callRecord.findMany({
     where: {
       agentId: auth.user.id,
-      ...(phone ? { phoneNumber: { contains: phone, mode: "insensitive" } } : {}),
+      ...(phone ? { phoneNumber: { contains: phone } } : {}),
       ...(outcome && ALLOWED_OUTCOMES.has(outcome) ? { outcome } : {}),
     },
     orderBy: {

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       where: {
         publishedToWebsite: true,
         status: { not: "CLOSED" },
-        ...(city ? { city: { contains: city, mode: "insensitive" } } : {}),
+        ...(city ? { city: { contains: city } } : {}),
       },
       take: parsedLimit,
       orderBy: { createdAt: "desc" },

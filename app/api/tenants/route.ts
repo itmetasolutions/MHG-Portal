@@ -64,21 +64,21 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     const searchFilters: Prisma.TenantWhereInput[] = [
-      { fullName: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
+      { fullName: { contains: search } },
+      { email: { contains: search } },
+      { phone: { contains: search } },
       { phoneLast10: { contains: search } },
-      { notes: { contains: search, mode: "insensitive" } },
+      { notes: { contains: search } },
       {
         sale: {
           is: {
             property: {
               OR: [
-                { propertyRef: { contains: search, mode: "insensitive" } },
-                { addressLine1: { contains: search, mode: "insensitive" } },
-                { postcode: { contains: search, mode: "insensitive" } },
-                { landlord: { landlordName: { contains: search, mode: "insensitive" } } },
-                { ownerAgent: { agentDisplayName: { contains: search, mode: "insensitive" } } },
+                { propertyRef: { contains: search } },
+                { addressLine1: { contains: search } },
+                { postcode: { contains: search } },
+                { landlord: { landlordName: { contains: search } } },
+                { ownerAgent: { agentDisplayName: { contains: search } } },
               ],
             },
           },
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
         addedByAgent: {
           is: {
             OR: [
-              { agentDisplayName: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+              { agentDisplayName: { contains: search } },
+              { email: { contains: search } },
             ],
           },
         },

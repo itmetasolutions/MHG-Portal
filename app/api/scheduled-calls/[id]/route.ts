@@ -1,88 +1,250 @@
+import { Prisma, PropertyStatus, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { UserRole } from "@prisma/client";
 
-const idSchema = z.string().uuid();
-
-const patchSchema = z
+const listSalesQuerySchema = z
   .object({
-    contactName: z.string().trim().min(1).optional().nullable(),
-    scheduledAt: z.string().datetime().optional(),
-    notes: z.string().trim().max(2000).optional().nullable(),
-    status: z.enum(["PENDING", "DONE", "CANCELLED", "MISSED"]).optional(),
+    dateFrom: z.coerce.date().optional(),
+    dateTo: z.coerce.date().optional(),
+    agent: z.string().trim().min(1).optional(),
+    status: z.nativeEnum(PropertyStatus).optional(),
+    city: z.string().trim().min(1).optional(),
+    postcode: z.string().trim().min(1).optional(),
+    format: z.enum(["json", "csv"]).default("json"),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(200).default(50),
   })
-  .strict();
+  .superRefine((value, ctx) => {
+    if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "dateFrom must be before or equal to dateTo",
+      });
+    }
+  });
 
-type Params = { params: { id: string } };
+function decimalToNumber(value: Prisma.Decimal | null): number | null {
+  return value === null ? null : Number(value);
+}
 
-export async function PATCH(request: NextRequest, { params }: Params) {
+function escapeCsv(value: string | number | null): string {
+  if (value === null) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+    return `"${str.replace(/"/g, "\"\"")}"`;
+  }
+  return str;
+}
+
+export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT, UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  const idParse = idSchema.safeParse(params.id);
-  if (!idParse.success) {
-    return NextResponse.json({ error: "INVALID_ID", message: "Invalid scheduled call id." }, { status: 400 });
+  if (!auth.ok) {
+    return auth.response;
   }
 
-  let payload: z.infer<typeof patchSchema>;
-  try {
-    payload = patchSchema.parse(await request.json());
-  } catch (error) {
+  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
+  if (!roleCheck.ok) {
+    return roleCheck.response;
+  }
+
+  const queryParse = listSalesQuerySchema.safeParse({
+    dateFrom: request.nextUrl.searchParams.get("dateFrom") ?? undefined,
+    dateTo: request.nextUrl.searchParams.get("dateTo") ?? undefined,
+    agent: request.nextUrl.searchParams.get("agent") ?? undefined,
+    status: request.nextUrl.searchParams.get("status") ?? undefined,
+    city: request.nextUrl.searchParams.get("city") ?? undefined,
+    postcode: request.nextUrl.searchParams.get("postcode") ?? undefined,
+    format: request.nextUrl.searchParams.get("format") ?? "json",
+    page: request.nextUrl.searchParams.get("page") ?? undefined,
+    pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
+  });
+
+  if (!queryParse.success) {
     return NextResponse.json(
-      { error: "INVALID_REQUEST", message: "Invalid payload.", details: error instanceof z.ZodError ? error.flatten() : undefined },
+      {
+        error: "INVALID_QUERY",
+        message: "Invalid query parameters.",
+        details: queryParse.error.flatten(),
+      },
       { status: 400 },
     );
   }
 
-  const existing = await db.scheduledCall.findUnique({ where: { id: idParse.data } });
-  if (!existing) {
-    return NextResponse.json({ error: "NOT_FOUND", message: "Scheduled call not found." }, { status: 404 });
+  const { dateFrom, dateTo, agent, status, city, postcode, format, page, pageSize } = queryParse.data;
+  const where: Prisma.SaleWhereInput = {};
+
+  if (dateFrom || dateTo) {
+    const closedAt: Prisma.DateTimeFilter = {};
+    if (dateFrom) closedAt.gte = dateFrom;
+    if (dateTo) {
+      const inclusiveDateTo = new Date(dateTo);
+      inclusiveDateTo.setHours(23, 59, 59, 999);
+      closedAt.lte = inclusiveDateTo;
+    }
+    where.closedAt = closedAt;
   }
 
-  if (existing.agentId !== auth.user.id && auth.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "FORBIDDEN", message: "Access denied." }, { status: 403 });
+  if (status || city || postcode) {
+    where.property = {
+      is: {
+        ...(status ? { status } : {}),
+        ...(city ? { city: { contains: city } } : {}),
+        ...(postcode ? { postcode: { contains: postcode } } : {}),
+      },
+    };
   }
 
-  const updated = await db.scheduledCall.update({
-    where: { id: idParse.data },
-    data: {
-      ...(payload.contactName !== undefined ? { contactName: payload.contactName } : {}),
-      ...(payload.scheduledAt !== undefined ? { scheduledAt: new Date(payload.scheduledAt) } : {}),
-      ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
-      ...(payload.status !== undefined ? { status: payload.status } : {}),
+  if (auth.user.role === "AGENT") {
+    where.property = {
+      is: {
+        ownerAgentId: auth.user.id,
+        ...(where.property?.is ?? {}),
+      },
+    };
+  } else if (agent) {
+    where.property = {
+      is: {
+        ...(where.property?.is ?? {}),
+        ownerAgent: {
+          is: {
+            OR: [
+              { id: agent },
+              { email: { contains: agent } },
+              { agentDisplayName: { contains: agent } },
+            ],
+          },
+        },
+      },
+    };
+  }
+
+  const select = {
+    id: true,
+    propertyId: true,
+    closedByUserId: true,
+    finalAmount: true,
+    commissionPct: true,
+    commissionAmount: true,
+    otherCosts: true,
+    profit: true,
+    closedAt: true,
+    property: {
+      select: {
+        id: true,
+        propertyRef: true,
+        status: true,
+        city: true,
+        postcode: true,
+        ownerAgentId: true,
+        ownerAgent: {
+          select: {
+            id: true,
+            agentDisplayName: true,
+            email: true,
+          },
+        },
+        landlord: {
+          select: {
+            id: true,
+            landlordName: true,
+            phoneLast10: true,
+          },
+        },
+      },
+    },
+  } satisfies Prisma.SaleSelect;
+
+  if (format === "csv") {
+    const sales = await db.sale.findMany({
+      where,
+      orderBy: [{ closedAt: "desc" }, { id: "desc" }],
+      take: 10000,
+      select,
+    });
+
+    const header = [
+      "saleId",
+      "closedAt",
+      "finalAmount",
+      "commissionPct",
+      "commissionAmount",
+      "otherCosts",
+      "profit",
+      "propertyRef",
+      "propertyStatus",
+      "city",
+      "postcode",
+      "landlordName",
+      "landlordPhoneLast10",
+      "ownerAgentName",
+      "ownerAgentEmail",
+    ];
+    const rows = sales.map((sale) =>
+      [
+        sale.id,
+        sale.closedAt.toISOString(),
+        decimalToNumber(sale.finalAmount),
+        decimalToNumber(sale.commissionPct),
+        decimalToNumber(sale.commissionAmount),
+        decimalToNumber(sale.otherCosts),
+        decimalToNumber(sale.profit),
+        sale.property.propertyRef,
+        sale.property.status,
+        sale.property.city,
+        sale.property.postcode,
+        sale.property.landlord.landlordName,
+        sale.property.landlord.phoneLast10,
+        sale.property.ownerAgent.agentDisplayName,
+        sale.property.ownerAgent.email,
+      ]
+        .map(escapeCsv)
+        .join(","),
+    );
+
+    const csv = [header.join(","), ...rows].join("\n");
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="sales-export-${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  }
+
+  const skip = (page - 1) * pageSize;
+  const [total, sales, totals] = await db.$transaction([
+    db.sale.count({ where }),
+    db.sale.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: [{ closedAt: "desc" }, { id: "desc" }],
+      select,
+    }),
+    db.sale.aggregate({
+      where,
+      _sum: {
+        finalAmount: true,
+        commissionAmount: true,
+        profit: true,
+      },
+    }),
+  ]);
+
+  return NextResponse.json({
+    sales,
+    totals: {
+      finalAmount: decimalToNumber(totals._sum.finalAmount),
+      commissionAmount: decimalToNumber(totals._sum.commissionAmount),
+      profit: decimalToNumber(totals._sum.profit),
+    },
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / pageSize),
     },
   });
-
-  return NextResponse.json({ call: updated });
-}
-
-export async function DELETE(request: NextRequest, { params }: Params) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.AGENT, UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  const idParse = idSchema.safeParse(params.id);
-  if (!idParse.success) {
-    return NextResponse.json({ error: "INVALID_ID", message: "Invalid scheduled call id." }, { status: 400 });
-  }
-
-  const existing = await db.scheduledCall.findUnique({ where: { id: idParse.data } });
-  if (!existing) {
-    return NextResponse.json({ error: "NOT_FOUND", message: "Scheduled call not found." }, { status: 404 });
-  }
-
-  if (existing.agentId !== auth.user.id && auth.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "FORBIDDEN", message: "Access denied." }, { status: 403 });
-  }
-
-  await db.scheduledCall.delete({ where: { id: idParse.data } });
-
-  return NextResponse.json({ ok: true });
 }

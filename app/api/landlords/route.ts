@@ -40,9 +40,9 @@ export async function GET(request: NextRequest) {
       ...(q
         ? {
             OR: [
-              { landlordName: { contains: q, mode: "insensitive" } },
-              { landlordNumber: { contains: q, mode: "insensitive" } },
-              { email: { contains: q, mode: "insensitive" } },
+              { landlordName: { contains: q } },
+              { landlordNumber: { contains: q } },
+              { email: { contains: q } },
             ],
           }
         : {}),

@@ -1,856 +1,209 @@
-import {
-  ApprovalEntityType,
-  ApprovalStatus,
-  Prisma,
-  UserRole,
-} from "@prisma/client";
+import { randomBytes } from "node:crypto";
+import { Prisma, UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
+import { hashPassword, requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { notifyApprovalDecision } from "@/server/edit-approvals";
-import {
-  assertMediaAssetsExist,
-  buildPropertyMediaRows,
-  normalizeMediaAssetIds,
-} from "@/server/property-media";
-import { syncPropertyRoomCounts } from "@/server/property-rooms";
 
-const approvalIdSchema = z.string().uuid("approval id must be a valid UUID");
-
-const decisionSchema = z
+const createAgentSchema = z
   .object({
-    decision: z.enum(["APPROVE", "REJECT"]),
-    reviewerNotes: z.string().trim().max(5000).nullable().optional(),
+    email: z.string().email("email must be a valid email address"),
+    agentDisplayName: z.string().trim().min(2, "agentDisplayName is required").max(120),
+    mode: z.enum(["TEMP_PASSWORD", "AUTO_GENERATE"]).default("TEMP_PASSWORD"),
+    tempPassword: z.string().min(8, "tempPassword must be at least 8 characters").max(128).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.mode === "TEMP_PASSWORD" && !value.tempPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "tempPassword is required when mode is TEMP_PASSWORD",
+        path: ["tempPassword"],
+      });
+    }
+
+    if (value.mode === "AUTO_GENERATE" && value.tempPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "tempPassword must not be provided when mode is AUTO_GENERATE",
+        path: ["tempPassword"],
+      });
+    }
+  });
+
+const listAgentsQuerySchema = z
+  .object({
+    search: z.string().trim().min(1).optional(),
+    includeDisabled: z.coerce.boolean().default(true),
   })
   .strict();
 
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-  return value as Record<string, unknown>;
+function generateTempPassword(): string {
+  const randomPart = randomBytes(8).toString("base64url");
+  return `Tmp-${randomPart}9!`;
 }
 
-function jsonValue(value: unknown) {
-  return value as Prisma.InputJsonValue;
-}
-
-type PropertyRoomAction = {
-  type: "UPDATE" | "DELETE";
-  roomId: string;
-  updates?: Record<string, unknown>;
-};
-
-function parsePropertyRoomActions(proposed: Record<string, unknown>): PropertyRoomAction[] {
-  const roomActions = proposed.roomActions;
-  if (!Array.isArray(roomActions)) {
-    return [];
-  }
-
-  return roomActions.flatMap((action) => {
-    if (!action || typeof action !== "object" || Array.isArray(action)) {
-      return [];
-    }
-
-    const record = action as Record<string, unknown>;
-    if ((record.type !== "UPDATE" && record.type !== "DELETE") || typeof record.roomId !== "string") {
-      return [];
-    }
-
-    return [
-      {
-        type: record.type,
-        roomId: record.roomId,
-        updates: asRecord(record.updates),
-      },
-    ];
-  });
-}
-
-async function applyPropertyRoomActions(
-  tx: Prisma.TransactionClient,
-  propertyId: string,
-  roomActions: PropertyRoomAction[],
-) {
-  if (roomActions.length === 0) {
-    return;
-  }
-
-  for (const action of roomActions) {
-    const currentRoom = await tx.propertyRoom.findUnique({
-      where: { id: action.roomId },
-      select: {
-        id: true,
-        propertyId: true,
-        roomName: true,
-        landlordDemand: true,
-        expectedCommissionPct: true,
-        status: true,
-        sale: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
-
-    if (!currentRoom || currentRoom.propertyId !== propertyId) {
-      throw new Error("ROOM_NOT_FOUND");
-    }
-
-    if (action.type === "DELETE") {
-      if (currentRoom.sale) {
-        throw new Error("ROOM_HAS_SALE");
-      }
-
-      await tx.propertyRoom.delete({
-        where: { id: currentRoom.id },
-      });
-      continue;
-    }
-
-    const updates = action.updates ?? {};
-    const roomUpdateData: Prisma.PropertyRoomUncheckedUpdateInput = {};
-
-    if (Object.prototype.hasOwnProperty.call(updates, "roomName") && typeof updates.roomName === "string") {
-      roomUpdateData.roomName = updates.roomName;
-    }
-    if (Object.prototype.hasOwnProperty.call(updates, "landlordDemand")) {
-      roomUpdateData.landlordDemand = updates.landlordDemand as number | null;
-    }
-    if (Object.prototype.hasOwnProperty.call(updates, "expectedCommissionPct")) {
-      roomUpdateData.expectedCommissionPct = updates.expectedCommissionPct as number | null;
-    }
-
-    if (Object.keys(roomUpdateData).length > 0) {
-      await tx.propertyRoom.update({
-        where: { id: currentRoom.id },
-        data: roomUpdateData,
-        select: { id: true },
-      });
-    }
-  }
-
-  await syncPropertyRoomCounts(tx, propertyId);
-}
-
-async function applyLandlordApproval(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  const proposed = asRecord(approval.proposedJson);
-  const current = await tx.landlord.findUnique({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      landlordName: true,
-      landlordNumber: true,
-      phoneE164: true,
-      phoneLast10: true,
-      email: true,
-      notes: true,
-      isPassive: true,
-      passiveMarkedAt: true,
-      createdAt: true,
-      updatedAt: true,
-      createdByUserId: true,
-      updatedByUserId: true,
-      ownerAgentId: true,
-      ownerAgent: { select: { id: true, agentDisplayName: true } },
-      _count: { select: { properties: true } },
-    },
-  });
-
-  if (!current) {
-    throw new Error("LANDLORD_NOT_FOUND");
-  }
-
-  const updated = await tx.landlord.update({
-    where: { id: approval.entityId },
-    data: {
-      landlordName: typeof proposed.fullName === "string" ? proposed.fullName : undefined,
-      email: Object.prototype.hasOwnProperty.call(proposed, "email") ? (proposed.email as string | null) : undefined,
-      notes: Object.prototype.hasOwnProperty.call(proposed, "notes") ? (proposed.notes as string | null) : undefined,
-      isPassive: Object.prototype.hasOwnProperty.call(proposed, "isPassive") ? (proposed.isPassive as boolean) : undefined,
-      passiveMarkedAt: Object.prototype.hasOwnProperty.call(proposed, "isPassive")
-        ? ((proposed.isPassive as boolean) ? new Date() : null)
-        : undefined,
-      updatedByUserId: reviewerId,
-    },
-    select: {
-      id: true,
-      landlordName: true,
-      landlordNumber: true,
-      phoneE164: true,
-      phoneLast10: true,
-      email: true,
-      notes: true,
-      isPassive: true,
-      passiveMarkedAt: true,
-      createdAt: true,
-      updatedAt: true,
-      createdByUserId: true,
-      updatedByUserId: true,
-      ownerAgentId: true,
-      ownerAgent: { select: { id: true, agentDisplayName: true } },
-      _count: { select: { properties: true } },
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      userId: reviewerId,
-      entityType: "LANDLORD",
-      entityId: approval.entityId,
-      action: "APPROVE_LANDLORD_UPDATE",
-      metadata: {
-        sourceApprovalId: approval.id,
-      },
-      beforeJson: jsonValue(current),
-      afterJson: jsonValue(updated),
-    },
-  });
-}
-
-async function applyPropertyApproval(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  const proposed = asRecord(approval.proposedJson);
-  const current = await tx.property.findUnique({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      title: true,
-      description: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      county: true,
-      postcode: true,
-      propertyType: true,
-      beds: true,
-      baths: true,
-      status: true,
-      vacancyType: true,
-      landlordDemand: true,
-      expectedCommissionPct: true,
-      expectedCommissionAmt: true,
-      totalRooms: true,
-      availableRooms: true,
-      rentPerMonth: true,
-      depositAmount: true,
-      isFurnished: true,
-      personsAllowed: true,
-      petsAllowed: true,
-      dssAllowed: true,
-      childrenAllowed: true,
-      availabilityDate: true,
-      livingLandlord: true,
-      createdAt: true,
-      updatedAt: true,
-      landlord: { select: { id: true, landlordName: true } },
-      ownerAgent: { select: { id: true, agentDisplayName: true } },
-      mediaLinks: {
-        orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
-        select: {
-          sortOrder: true,
-          mediaAsset: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-      rooms: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          propertyId: true,
-          roomName: true,
-          landlordDemand: true,
-          expectedCommissionPct: true,
-          status: true,
-          createdAt: true,
-          sale: {
-            select: {
-              id: true,
-              finalAmount: true,
-              commissionAmount: true,
-              profit: true,
-              closedAt: true,
-              tenant: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!current) {
-    throw new Error("PROPERTY_NOT_FOUND");
-  }
-
-  const updateData: Prisma.PropertyUncheckedUpdateInput = {
-    landlordId: typeof proposed.landlordId === "string" ? proposed.landlordId : undefined,
-    propertyRef: typeof proposed.propertyRef === "string" ? proposed.propertyRef : undefined,
-    title: Object.prototype.hasOwnProperty.call(proposed, "title") ? (proposed.title as string | null) : undefined,
-    description: Object.prototype.hasOwnProperty.call(proposed, "description") ? (proposed.description as string | null) : undefined,
-    addressLine1: Object.prototype.hasOwnProperty.call(proposed, "addressLine1") ? (proposed.addressLine1 as string | null) : undefined,
-    addressLine2: Object.prototype.hasOwnProperty.call(proposed, "addressLine2") ? (proposed.addressLine2 as string | null) : undefined,
-    city: Object.prototype.hasOwnProperty.call(proposed, "city") ? (proposed.city as string | null) : undefined,
-    county: Object.prototype.hasOwnProperty.call(proposed, "county") ? (proposed.county as string | null) : undefined,
-    postcode: Object.prototype.hasOwnProperty.call(proposed, "postcode") ? (proposed.postcode as string | null) : undefined,
-    propertyType: Object.prototype.hasOwnProperty.call(proposed, "propertyType") ? (proposed.propertyType as string | null) : undefined,
-    beds: Object.prototype.hasOwnProperty.call(proposed, "beds") ? (proposed.beds as number | null) : undefined,
-    baths: Object.prototype.hasOwnProperty.call(proposed, "baths") ? (proposed.baths as number | null) : undefined,
-    status: Object.prototype.hasOwnProperty.call(proposed, "status") ? (proposed.status as never) : undefined,
-    landlordDemand: Object.prototype.hasOwnProperty.call(proposed, "landlordDemand") ? (proposed.landlordDemand as number | null) : undefined,
-    expectedCommissionPct: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionPct") ? (proposed.expectedCommissionPct as number | null) : undefined,
-    expectedCommissionAmt: Object.prototype.hasOwnProperty.call(proposed, "expectedCommissionAmt") ? (proposed.expectedCommissionAmt as number | null) : undefined,
-    totalRooms: Object.prototype.hasOwnProperty.call(proposed, "totalRooms") ? (proposed.totalRooms as number | null) : undefined,
-    availableRooms: Object.prototype.hasOwnProperty.call(proposed, "availableRooms") ? (proposed.availableRooms as number | null) : undefined,
-    rentPerMonth: Object.prototype.hasOwnProperty.call(proposed, "rentPerMonth") ? (proposed.rentPerMonth as number | null) : undefined,
-    depositAmount: Object.prototype.hasOwnProperty.call(proposed, "depositAmount") ? (proposed.depositAmount as number | null) : undefined,
-    isFurnished: Object.prototype.hasOwnProperty.call(proposed, "isFurnished") ? (proposed.isFurnished as boolean | null) : undefined,
-    personsAllowed: Object.prototype.hasOwnProperty.call(proposed, "personsAllowed") ? (proposed.personsAllowed as number | null) : undefined,
-    petsAllowed: Object.prototype.hasOwnProperty.call(proposed, "petsAllowed") ? (proposed.petsAllowed as boolean | null) : undefined,
-    dssAllowed: Object.prototype.hasOwnProperty.call(proposed, "dssAllowed") ? (proposed.dssAllowed as boolean | null) : undefined,
-    childrenAllowed: Object.prototype.hasOwnProperty.call(proposed, "childrenAllowed") ? (proposed.childrenAllowed as boolean | null) : undefined,
-    availabilityDate: Object.prototype.hasOwnProperty.call(proposed, "availabilityDate")
-      ? (proposed.availabilityDate ? new Date(String(proposed.availabilityDate)) : null)
-      : undefined,
-    livingLandlord: Object.prototype.hasOwnProperty.call(proposed, "livingLandlord") ? (proposed.livingLandlord as boolean | null) : undefined,
-  };
-  const normalizedMediaAssetIds = Array.isArray(proposed.mediaAssetIds)
-    ? normalizeMediaAssetIds(
-        proposed.mediaAssetIds.filter((value): value is string => typeof value === "string"),
-      )
-    : undefined;
-  const roomActions = parsePropertyRoomActions(proposed);
-
-  if (normalizedMediaAssetIds !== undefined) {
-    await assertMediaAssetsExist(tx, normalizedMediaAssetIds);
-  }
-
-  if (Object.values(updateData).some((value) => value !== undefined)) {
-    await tx.property.update({
-      where: { id: approval.entityId },
-      data: updateData,
-      select: { id: true },
-    });
-  }
-
-  if (normalizedMediaAssetIds !== undefined) {
-    await tx.propertyMedia.deleteMany({
-      where: { propertyId: approval.entityId },
-    });
-
-    if (normalizedMediaAssetIds.length > 0) {
-      await tx.propertyMedia.createMany({
-        data: buildPropertyMediaRows(approval.entityId, normalizedMediaAssetIds.map((id) => ({ id }))),
-      });
-    }
-  }
-
-  await applyPropertyRoomActions(tx, approval.entityId, roomActions);
-
-  const updated = await tx.property.findUniqueOrThrow({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      landlordId: true,
-      ownerAgentId: true,
-      propertyRef: true,
-      title: true,
-      description: true,
-      addressLine1: true,
-      addressLine2: true,
-      city: true,
-      county: true,
-      postcode: true,
-      propertyType: true,
-      beds: true,
-      baths: true,
-      status: true,
-      vacancyType: true,
-      landlordDemand: true,
-      expectedCommissionPct: true,
-      expectedCommissionAmt: true,
-      totalRooms: true,
-      availableRooms: true,
-      rentPerMonth: true,
-      depositAmount: true,
-      isFurnished: true,
-      personsAllowed: true,
-      petsAllowed: true,
-      dssAllowed: true,
-      childrenAllowed: true,
-      availabilityDate: true,
-      livingLandlord: true,
-      createdAt: true,
-      updatedAt: true,
-      landlord: { select: { id: true, landlordName: true } },
-      ownerAgent: { select: { id: true, agentDisplayName: true } },
-      mediaLinks: {
-        orderBy: [{ sortOrder: "asc" }, { mediaAssetId: "asc" }],
-        select: {
-          sortOrder: true,
-          mediaAsset: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-      rooms: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          propertyId: true,
-          roomName: true,
-          landlordDemand: true,
-          expectedCommissionPct: true,
-          status: true,
-          createdAt: true,
-          sale: {
-            select: {
-              id: true,
-              finalAmount: true,
-              commissionAmount: true,
-              profit: true,
-              closedAt: true,
-              tenant: {
-                select: {
-                  id: true,
-                  fullName: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      userId: reviewerId,
-      entityType: "PROPERTY",
-      entityId: approval.entityId,
-      action: "APPROVE_PROPERTY_UPDATE",
-      metadata: {
-        sourceApprovalId: approval.id,
-      },
-      beforeJson: jsonValue(current),
-      afterJson: jsonValue(updated),
-    },
-  });
-}
-
-async function applyTenantApproval(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  const proposed = asRecord(approval.proposedJson);
-  const current = await tx.tenant.findUnique({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      saleId: true,
-      addedByAgentId: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      phoneLast10: true,
-      currentAddress: true,
-      moveInDate: true,
-      rentAmount: true,
-      depositAmount: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  if (!current) {
-    throw new Error("TENANT_NOT_FOUND");
-  }
-
-  const updated = await tx.tenant.update({
-    where: { id: approval.entityId },
-    data: {
-      fullName: typeof proposed.fullName === "string" ? proposed.fullName : undefined,
-      email: Object.prototype.hasOwnProperty.call(proposed, "email") ? (proposed.email as string | null) : undefined,
-      currentAddress: Object.prototype.hasOwnProperty.call(proposed, "currentAddress") ? (proposed.currentAddress as string | null) : undefined,
-      moveInDate: Object.prototype.hasOwnProperty.call(proposed, "moveInDate")
-        ? (proposed.moveInDate ? new Date(String(proposed.moveInDate)) : null)
-        : undefined,
-      rentAmount: Object.prototype.hasOwnProperty.call(proposed, "rentAmount") ? (proposed.rentAmount as number | null) : undefined,
-      depositAmount: Object.prototype.hasOwnProperty.call(proposed, "depositAmount") ? (proposed.depositAmount as number | null) : undefined,
-      notes: Object.prototype.hasOwnProperty.call(proposed, "notes") ? (proposed.notes as string | null) : undefined,
-    },
-    select: {
-      id: true,
-      saleId: true,
-      addedByAgentId: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      phoneLast10: true,
-      currentAddress: true,
-      moveInDate: true,
-      rentAmount: true,
-      depositAmount: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      userId: reviewerId,
-      entityType: "TENANT",
-      entityId: approval.entityId,
-      action: "APPROVE_TENANT_UPDATE",
-      metadata: {
-        sourceApprovalId: approval.id,
-      },
-      beforeJson: jsonValue(current),
-      afterJson: jsonValue(updated),
-    },
-  });
-}
-
-async function applyPotentialTenantApproval(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  const proposed = asRecord(approval.proposedJson);
-  const current = await tx.potentialTenant.findUnique({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      addedByAgentId: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      interestedIn: true,
-      budget: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  if (!current) {
-    throw new Error("POTENTIAL_TENANT_NOT_FOUND");
-  }
-
-  const updated = await tx.potentialTenant.update({
-    where: { id: approval.entityId },
-    data: {
-      fullName: typeof proposed.fullName === "string" ? proposed.fullName : undefined,
-      email: Object.prototype.hasOwnProperty.call(proposed, "email") ? (proposed.email as string | null) : undefined,
-      phone: Object.prototype.hasOwnProperty.call(proposed, "phone") ? (proposed.phone as string | null) : undefined,
-      interestedIn: Object.prototype.hasOwnProperty.call(proposed, "interestedIn") ? (proposed.interestedIn as string | null) : undefined,
-      budget: Object.prototype.hasOwnProperty.call(proposed, "budget") ? (proposed.budget as string | null) : undefined,
-      notes: Object.prototype.hasOwnProperty.call(proposed, "notes") ? (proposed.notes as string | null) : undefined,
-    },
-    select: {
-      id: true,
-      addedByAgentId: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      interestedIn: true,
-      budget: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      userId: reviewerId,
-      entityType: "POTENTIAL_TENANT",
-      entityId: approval.entityId,
-      action: "APPROVE_POTENTIAL_TENANT_UPDATE",
-      metadata: {
-        sourceApprovalId: approval.id,
-      },
-      beforeJson: jsonValue(current),
-      afterJson: jsonValue(updated),
-    },
-  });
-}
-
-async function applyPotentialLandlordApproval(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  const proposed = asRecord(approval.proposedJson);
-  const current = await tx.potentialLandlord.findUnique({
-    where: { id: approval.entityId },
-    select: {
-      id: true,
-      addedByAgentId: true,
-      fullName: true,
-      phone: true,
-      phoneLast10: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  if (!current) {
-    throw new Error("POTENTIAL_LANDLORD_NOT_FOUND");
-  }
-
-  const updated = await tx.potentialLandlord.update({
-    where: { id: approval.entityId },
-    data: {
-      fullName: typeof proposed.fullName === "string" ? proposed.fullName : undefined,
-      phone: typeof proposed.phone === "string" ? proposed.phone : undefined,
-      phoneLast10: typeof proposed.phoneLast10 === "string" ? proposed.phoneLast10 : undefined,
-    },
-    select: {
-      id: true,
-      addedByAgentId: true,
-      fullName: true,
-      phone: true,
-      phoneLast10: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  await tx.auditLog.create({
-    data: {
-      userId: reviewerId,
-      entityType: "POTENTIAL_LANDLORD",
-      entityId: approval.entityId,
-      action: "APPROVE_POTENTIAL_LANDLORD_UPDATE",
-      metadata: {
-        sourceApprovalId: approval.id,
-      },
-      beforeJson: jsonValue(current),
-      afterJson: jsonValue(updated),
-    },
-  });
-}
-
-async function applyApprovalChange(
-  tx: Prisma.TransactionClient,
-  approval: {
-    id: string;
-    entityType: ApprovalEntityType;
-    entityId: string;
-    proposedJson: unknown;
-  },
-  reviewerId: string,
-) {
-  switch (approval.entityType) {
-    case ApprovalEntityType.LANDLORD:
-      await applyLandlordApproval(tx, approval, reviewerId);
-      return;
-    case ApprovalEntityType.PROPERTY:
-      await applyPropertyApproval(tx, approval, reviewerId);
-      return;
-    case ApprovalEntityType.TENANT:
-      await applyTenantApproval(tx, approval, reviewerId);
-      return;
-    case ApprovalEntityType.POTENTIAL_TENANT:
-      await applyPotentialTenantApproval(tx, approval, reviewerId);
-      return;
-    case ApprovalEntityType.POTENTIAL_LANDLORD:
-      await applyPotentialLandlordApproval(tx, approval, reviewerId);
-      return;
-    default:
-      throw new Error("UNSUPPORTED_APPROVAL_ENTITY");
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { approvalId: string } },
-) {
+export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    return auth.response;
+  }
 
   const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
-  if (!roleCheck.ok) return roleCheck.response;
+  if (!roleCheck.ok) {
+    return roleCheck.response;
+  }
 
-  const idParse = approvalIdSchema.safeParse(params.approvalId);
-  if (!idParse.success) {
+  const queryParse = listAgentsQuerySchema.safeParse({
+    search: request.nextUrl.searchParams.get("search") ?? undefined,
+    includeDisabled: request.nextUrl.searchParams.get("includeDisabled") ?? undefined,
+  });
+
+  if (!queryParse.success) {
     return NextResponse.json(
-      { error: "INVALID_APPROVAL_ID", message: idParse.error.issues[0]?.message ?? "Invalid approval id." },
+      {
+        error: "INVALID_QUERY",
+        message: "Invalid query parameters.",
+        details: queryParse.error.flatten(),
+      },
       { status: 400 },
     );
   }
 
-  let payload: z.infer<typeof decisionSchema>;
+  const { search, includeDisabled } = queryParse.data;
+  const where: Prisma.UserWhereInput = {
+    role: "AGENT",
+  };
+
+  if (!includeDisabled) {
+    where.isActive = true;
+  }
+
+  if (search) {
+    where.OR = [
+      { email: { contains: search } },
+      { agentDisplayName: { contains: search } },
+    ];
+  }
+
+  const agents = await db.user.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+      email: true,
+      agentDisplayName: true,
+      profilePicture: true,
+      isActive: true,
+      createdAt: true,
+      _count: {
+        select: {
+          ownedLandlords: true,
+          ownedProperties: true,
+        },
+      },
+    },
+  });
+
+  return NextResponse.json({
+    agents,
+  });
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const roleCheck = requireRole(auth.user, [UserRole.ADMIN]);
+  if (!roleCheck.ok) {
+    return roleCheck.response;
+  }
+
+  let payload: z.infer<typeof createAgentSchema>;
   try {
-    payload = decisionSchema.parse(await request.json());
+    payload = createAgentSchema.parse(await request.json());
   } catch (error) {
     return NextResponse.json(
       {
         error: "INVALID_REQUEST",
-        message: "Invalid approval decision payload.",
+        message: "Invalid create-agent payload.",
         details: error instanceof z.ZodError ? error.flatten() : undefined,
       },
       { status: 400 },
     );
   }
 
-  const approval = await db.editApproval.findUnique({
-    where: { id: idParse.data },
-    select: {
-      id: true,
-      entityType: true,
-      entityId: true,
-      status: true,
-      summary: true,
-      beforeJson: true,
-      proposedJson: true,
-      requestedById: true,
-    },
+  const email = payload.email.trim().toLowerCase();
+  const existingUser = await db.user.findUnique({
+    where: { email },
+    select: { id: true, role: true },
   });
 
-  if (!approval) {
-    return NextResponse.json({ error: "NOT_FOUND", message: "Approval request not found." }, { status: 404 });
-  }
-
-  if (approval.status !== ApprovalStatus.PENDING) {
+  if (existingUser) {
     return NextResponse.json(
-      { error: "ALREADY_PROCESSED", message: "This approval request has already been processed." },
+      {
+        error: "EMAIL_ALREADY_IN_USE",
+        message: "A user with this email already exists.",
+      },
       { status: 409 },
     );
   }
 
-  const reviewerNotes = payload.reviewerNotes?.trim() || null;
+  const generatedTempPassword = payload.mode === "AUTO_GENERATE" ? generateTempPassword() : undefined;
+  const plainPassword = generatedTempPassword ?? payload.tempPassword!;
+  const passwordHash = await hashPassword(plainPassword);
 
-  try {
-    const updatedApproval = await db.$transaction(async (tx) => {
-      if (payload.decision === "APPROVE") {
-        await applyApprovalChange(tx, approval, auth.user.id);
-      }
-
-      const nextStatus =
-        payload.decision === "APPROVE" ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED;
-
-      const result = await tx.editApproval.update({
-        where: { id: approval.id },
-        data: {
-          status: nextStatus,
-          reviewedById: auth.user.id,
-          reviewedAt: new Date(),
-          reviewerNotes,
-        },
-        select: {
-          id: true,
-          entityType: true,
-          entityId: true,
-          status: true,
-          summary: true,
-          reviewerNotes: true,
-          createdAt: true,
-          reviewedAt: true,
-          requestedBy: {
-            select: { id: true, email: true, agentDisplayName: true },
-          },
-          reviewedBy: {
-            select: { id: true, email: true, agentDisplayName: true },
-          },
-        },
-      });
-
-      await notifyApprovalDecision({
-        tx,
-        requesterId: approval.requestedById,
-        approvalId: approval.id,
-        entityType: approval.entityType,
-        entityId: approval.entityId,
-        approved: payload.decision === "APPROVE",
-        entityLabel: approval.summary ?? `${approval.entityType} ${approval.entityId}`,
-        reviewerNotes,
-      });
-
-      await tx.auditLog.create({
-        data: {
-          userId: auth.user.id,
-          entityType: "EDIT_APPROVAL",
-          entityId: approval.id,
-          action:
-            payload.decision === "APPROVE"
-              ? "APPROVE_EDIT_APPROVAL"
-              : "REJECT_EDIT_APPROVAL",
-          metadata: {
-            approvalId: approval.id,
-            entityType: approval.entityType,
-            entityId: approval.entityId,
-            reviewerNotes,
-          },
-          beforeJson: jsonValue(approval),
-          afterJson: jsonValue(result),
-        },
-      });
-
-      return result;
+  const agent = await db.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email,
+        passwordHash,
+        role: "AGENT",
+        agentDisplayName: payload.agentDisplayName.trim(),
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        agentDisplayName: true,
+        isActive: true,
+        createdAt: true,
+        role: true,
+      },
     });
 
-    return NextResponse.json({
-      approval: updatedApproval,
+    await tx.auditLog.create({
+      data: {
+        userId: auth.user.id,
+        entityType: "USER",
+        entityId: created.id,
+        action: "ADMIN_AGENT_CREATE",
+        beforeJson: Prisma.JsonNull,
+        afterJson: {
+          id: created.id,
+          email: created.email,
+          role: created.role,
+          agentDisplayName: created.agentDisplayName,
+          isActive: created.isActive,
+          createdAt: created.createdAt,
+        },
+      },
+    });
+
+    return created;
+  });
+
+  return NextResponse.json(
+    {
       message:
-        payload.decision === "APPROVE"
-          ? "Changes approved and applied."
-          : "Changes rejected.",
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error && error.message === "ROOM_HAS_SALE"
-        ? "Rooms with an existing sale record cannot be deleted."
-        : error instanceof Error && error.message.endsWith("_NOT_FOUND")
-          ? "The original entry no longer exists."
-          : "Failed to process approval request.";
-    return NextResponse.json({ error: "APPROVAL_PROCESS_FAILED", message }, { status: 400 });
-  }
+        payload.mode === "AUTO_GENERATE"
+          ? "Agent created. Share the generated temporary password securely."
+          : "Agent created successfully.",
+      agent,
+      generatedTempPassword,
+    },
+    { status: 201 },
+  );
 }

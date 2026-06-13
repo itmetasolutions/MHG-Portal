@@ -1,100 +1,133 @@
-import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
+import { requireUser } from "@/server/auth/requireUser";
+import { normalizeNamePart, normalizePhone } from "@/server/portal/normalize";
 
-const assetIdSchema = z.string().uuid("asset id must be a valid UUID");
+const prisma = db as any;
 
-type Params = { params: { assetId: string } };
-
-export async function PATCH(request: NextRequest, { params }: Params) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
-
-  const idParse = assetIdSchema.safeParse(params.assetId);
-  if (!idParse.success) {
-    return NextResponse.json(
-      { error: "INVALID_ASSET_ID", message: "Invalid asset id." },
-      { status: 400 },
-    );
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const name = typeof body.name === "string" ? body.name.trim() : null;
-  if (!name) {
-    return NextResponse.json(
-      { error: "INVALID_NAME", message: "Name is required." },
-      { status: 400 },
-    );
-  }
-
-  const asset = await db.mediaAsset.findUnique({
-    where: { id: idParse.data },
-    select: { id: true, uploadedByUserId: true },
-  });
-
-  if (!asset) {
-    return NextResponse.json(
-      { error: "NOT_FOUND", message: "Photo not found." },
-      { status: 404 },
-    );
-  }
-
-  if (auth.user.role === "AGENT" && asset.uploadedByUserId !== auth.user.id) {
-    return NextResponse.json(
-      { error: "FORBIDDEN", message: "You can only rename photos you uploaded." },
-      { status: 403 },
-    );
-  }
-
-  const updated = await db.mediaAsset.update({
-    where: { id: idParse.data },
-    data: { name },
-    select: { id: true, name: true, mimeType: true, dataUrl: true, createdAt: true, uploadedByUserId: true },
-  });
-
-  return NextResponse.json({ asset: { ...updated, createdAt: updated.createdAt.toISOString() } });
+function mapLandlord(landlord: any) {
+  return {
+    id: landlord.id,
+    landlordName: landlord.landlordName,
+    landlordNumber: landlord.landlordNumber,
+    phoneE164: landlord.phoneE164,
+    phoneLast10: landlord.phoneLast10,
+    email: landlord.email,
+    notes: landlord.notes,
+    ownerAgentId: landlord.ownerAgentId,
+    createdAt: landlord.createdAt,
+    updatedAt: landlord.updatedAt,
+  };
 }
 
-export async function DELETE(request: NextRequest, { params }: Params) {
+export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
-  if (!roleCheck.ok) return roleCheck.response;
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const phone = url.searchParams.get("phone")?.trim() ?? "";
+  const onlyMine = auth.user.role !== "ADMIN";
 
-  const idParse = assetIdSchema.safeParse(params.assetId);
-  if (!idParse.success) {
+  const phoneDigits = phone ? phone.replace(/\D/g, "").slice(-10) : "";
+  const normalizedPhone = phone ? normalizePhone(phone) : null;
+
+  const landlords = await prisma.landlord.findMany({
+    where: {
+      ...(onlyMine ? { ownerAgentId: auth.user.id } : {}),
+      ...(q
+        ? {
+            OR: [
+              { landlordName: { contains: q } },
+              { landlordNumber: { contains: q } },
+              { email: { contains: q } },
+            ],
+          }
+        : {}),
+      ...(normalizedPhone && normalizedPhone.ok ? { phoneLast10: normalizedPhone.phoneLast10 } : {}),
+      ...(!normalizedPhone && phoneDigits ? { phoneLast10: phoneDigits } : {}),
+    },
+    include: {
+      ownerAgent: {
+        select: {
+          id: true,
+          agentDisplayName: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 200,
+  });
+
+  return NextResponse.json({
+    landlords: landlords.map((landlord: any) => ({
+      ...mapLandlord(landlord),
+      ownerAgent: landlord.ownerAgent,
+    })),
+  });
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireUser(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
+  const body = await request.json().catch(() => null);
+  const firstName = String(body?.firstName ?? body?.landlordFirstName ?? "").trim();
+  const lastName = String(body?.lastName ?? body?.landlordLastName ?? "").trim();
+  const phoneInput = String(body?.phoneNo ?? body?.phone ?? body?.landlordNumber ?? "").trim();
+  const email = body?.email ? String(body.email).trim() : null;
+
+  if (!firstName || !lastName || !phoneInput) {
     return NextResponse.json(
-      { error: "INVALID_ASSET_ID", message: "Invalid asset id." },
+      { error: "FIRST_NAME_LAST_NAME_PHONE_REQUIRED" },
       { status: 400 },
     );
   }
 
-  const asset = await db.mediaAsset.findUnique({
-    where: { id: idParse.data },
-    select: { id: true, uploadedByUserId: true },
+  const normalizedPhone = normalizePhone(phoneInput);
+  if (!normalizedPhone.ok) {
+    return NextResponse.json({ error: normalizedPhone.message }, { status: 400 });
+  }
+
+  const landlordName = `${normalizeNamePart(firstName)} ${normalizeNamePart(lastName)}`.trim();
+  const existing = await prisma.landlord.findUnique({
+    where: {
+      phoneLast10: normalizedPhone.phoneLast10,
+    },
   });
 
-  if (!asset) {
-    return NextResponse.json(
-      { error: "NOT_FOUND", message: "Photo not found." },
-      { status: 404 },
-    );
-  }
+  const landlord = existing
+    ? await prisma.landlord.update({
+        where: { id: existing.id },
+        data: {
+          landlordName,
+          landlordNumber: phoneInput,
+          phoneE164: normalizedPhone.phoneE164,
+          email,
+          updatedByUserId: auth.user.id,
+        },
+      })
+    : await prisma.landlord.create({
+        data: {
+          landlordName,
+          landlordNumber: phoneInput,
+          phoneE164: normalizedPhone.phoneE164,
+          phoneLast10: normalizedPhone.phoneLast10,
+          email,
+          createdByUserId: auth.user.id,
+          updatedByUserId: auth.user.id,
+          ownerAgentId: auth.user.id,
+        },
+      });
 
-  if (auth.user.role === "AGENT" && asset.uploadedByUserId !== auth.user.id) {
-    return NextResponse.json(
-      { error: "FORBIDDEN", message: "You can only delete photos you uploaded." },
-      { status: 403 },
-    );
-  }
-
-  await db.mediaAsset.delete({ where: { id: idParse.data } });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    landlord: mapLandlord(landlord),
+  });
 }
