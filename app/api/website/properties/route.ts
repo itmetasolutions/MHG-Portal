@@ -26,26 +26,74 @@ export async function GET(request: Request) {
       },
       take: parsedLimit,
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        propertyRef: true,
+        title: true,
+        description: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        county: true,
+        postcode: true,
+        propertyType: true,
+        propertyCategory: true,
+        propType: true,
+        vacancyType: true,
+        beds: true,
+        baths: true,
+        status: true,
+        rentPerMonth: true,
+        rentPerWeek: true,
+        depositAmount: true,
+        isFurnished: true,
+        personsAllowed: true,
+        petsAllowed: true,
+        dssAllowed: true,
+        childrenAllowed: true,
+        couplesAllowed: true,
+        availabilityDate: true,
+        livingLandlord: true,
+        garden: true,
+        parking: true,
+        billsIncluded: true,
+        balconyRoofTerrace: true,
+        disabledAccess: true,
+        livingRoom: true,
+        broadbandIncluded: true,
+        totalRooms: true,
+        availableRooms: true,
+        createdAt: true,
         ownerAgent: {
           select: {
             agentDisplayName: true,
-            email: true,
             agentPhone: true,
             profilePicture: true,
           }
         },
-        landlord: {
+        rooms: {
+          where: { status: { not: "CLOSED" } },
+          orderBy: { createdAt: "asc" },
           select: {
-            phoneE164: true,
-            phoneLast10: true,
+            id: true,
+            roomName: true,
+            status: true,
+            landlordDemand: true,
           }
         },
         mediaLinks: {
-          include: {
-            mediaAsset: true
-          },
-          orderBy: { sortOrder: "asc" }
+          orderBy: { sortOrder: "asc" },
+          select: {
+            sortOrder: true,
+            mediaAsset: {
+              select: {
+                id: true,
+                name: true,
+                mimeType: true,
+                dataUrl: true,
+              }
+            }
+          }
         }
       }
     });

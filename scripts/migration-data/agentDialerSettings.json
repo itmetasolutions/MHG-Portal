@@ -1,0 +1,24 @@
+[
+  {
+    "id": "401b6607-dac7-4821-9e6e-8b66d901c188",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "extensionNumber": null,
+    "extensionName": "Laiba",
+    "providerUsername": "usereight@infernallltd.co.uk",
+    "providerPassword": "User_Eight8",
+    "autoDetectExtension": true,
+    "createdAt": "2026-03-02T12:08:30.660Z",
+    "updatedAt": "2026-03-02T12:52:20.440Z"
+  },
+  {
+    "id": "62559294-c96d-4b6c-b299-1b2f7c916413",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "extensionNumber": null,
+    "extensionName": null,
+    "providerUsername": null,
+    "providerPassword": null,
+    "autoDetectExtension": true,
+    "createdAt": "2026-03-12T12:44:29.650Z",
+    "updatedAt": "2026-03-12T12:44:29.650Z"
+  }
+]

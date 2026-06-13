@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dcf189f0-3851-4c81-8dad-af1747de007d",
+    "agentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "phone": "07872396179",
+    "outcome": null,
+    "notes": null,
+    "phoneLast10": "7872396179",
+    "landlordFirstName": "Mladen",
+    "landlordLastName": "-",
+    "potentialLandlordId": "aa9927b6-70ec-478d-b30e-a6f4e6593341",
+    "status": null,
+    "followUpScheduledAt": "2026-04-24T16:47:00.000Z",
+    "createdAt": "2026-04-23T16:47:20.353Z"
+  },
+  {
+    "id": "129eaef2-46e2-4c06-b085-093411883e6f",
+    "agentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "phone": "07852149077",
+    "outcome": null,
+    "notes": null,
+    "phoneLast10": "7852149077",
+    "landlordFirstName": "Joshua",
+    "landlordLastName": "-",
+    "potentialLandlordId": "e087736b-95e3-49a7-bb9b-901c0bd05165",
+    "status": null,
+    "followUpScheduledAt": "2026-04-24T17:01:00.000Z",
+    "createdAt": "2026-04-23T17:01:52.363Z"
+  },
+  {
+    "id": "1c25a78d-f029-471e-9244-2d74517cf33b",
+    "agentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "phone": "07577778359",
+    "outcome": null,
+    "notes": null,
+    "phoneLast10": "7577778359",
+    "landlordFirstName": "Rashmi",
+    "landlordLastName": "-",
+    "potentialLandlordId": "55be36dc-f492-4c74-9a84-fbaf2b01662e",
+    "status": null,
+    "followUpScheduledAt": "2026-04-24T17:36:00.000Z",
+    "createdAt": "2026-04-23T17:36:51.647Z"
+  }
+]

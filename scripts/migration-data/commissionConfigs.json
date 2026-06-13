@@ -1,0 +1,11 @@
+[
+  {
+    "id": "singleton",
+    "type": "FIXED",
+    "fixedAmount": "5000",
+    "fixedCurrency": "PKR",
+    "flexibleRanges": null,
+    "updatedAt": "2026-03-02T10:57:05.971Z",
+    "updatedById": null
+  }
+]

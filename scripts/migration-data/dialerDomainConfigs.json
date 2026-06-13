@@ -1,0 +1,15 @@
+[
+  {
+    "id": "singleton",
+    "dialerMode": "LINKUS",
+    "linkusWebClientUrl": null,
+    "pbxPlatform": "Yeastar",
+    "domain": "infernallltd.cloud.ezipbx.biz",
+    "sipPort": 5061,
+    "sipTransport": "TLS",
+    "websocketHost": null,
+    "isEnabled": true,
+    "updatedAt": "2026-03-03T12:21:38.781Z",
+    "updatedById": "13a345b0-0ec5-4eee-b41e-d7a7593992ba"
+  }
+]

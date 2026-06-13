@@ -1,0 +1,14 @@
+[
+  {
+    "id": "68a5e9a4-0cb8-4f9b-ac0f-a13c604ef942",
+    "propertyId": "b2d1584a-2c3d-4f86-b0f9-a4d3c4597f23",
+    "roomId": "aa3769e5-9475-4c68-955a-acb29100398e",
+    "closedByUserId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "finalAmount": "325",
+    "commissionPct": "325",
+    "commissionAmount": "1056.25",
+    "otherCosts": "0",
+    "profit": "1056.25",
+    "closedAt": "2026-04-05T12:06:40.426Z"
+  }
+]

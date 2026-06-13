@@ -1,0 +1,2419 @@
+[
+  {
+    "id": "03aa398e-50a2-4ce8-8b1a-5f635add0ee1",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Faheem\" searched for the number belonging to your landlord Naz (7908595850).",
+    "metadata": {
+      "landlordId": "01bdc093-a8a3-446b-8084-2ff73f7c8a21",
+      "landlordName": "Naz",
+      "landlordPhone": "7908595850",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+      "searchingAgentName": "Faheem"
+    },
+    "isRead": true,
+    "createdAt": "2026-03-19T12:18:58.361Z"
+  },
+  {
+    "id": "53925f26-52c4-4840-b639-50021a5fbef3",
+    "userId": "2feb85ec-284b-47cc-911b-b6132883ae80",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Faheem\" searched for the number belonging to your landlord Paula Ranford (7866258107).",
+    "metadata": {
+      "landlordId": "f1fbd681-61be-4905-bffb-d4a6fe5e3513",
+      "landlordName": "Paula Ranford",
+      "landlordPhone": "7866258107",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+      "searchingAgentName": "Faheem"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T13:02:01.811Z"
+  },
+  {
+    "id": "90c25721-b1a1-4af3-b136-e242e411fa26",
+    "userId": "1ae895c7-7d7d-497c-bb1f-385e8da119b2",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Diley (7412625313).",
+    "metadata": {
+      "landlordId": "50398f58-df8d-4ae5-90f0-f32fa8eac889",
+      "landlordName": "Diley",
+      "landlordPhone": "7412625313",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:51:15.835Z"
+  },
+  {
+    "id": "dcc28069-eacd-4f0e-8e67-ec5c9533fa31",
+    "userId": "1ae895c7-7d7d-497c-bb1f-385e8da119b2",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Arfana (7853151721).",
+    "metadata": {
+      "landlordId": "f7087bca-1686-463b-910c-1c72e27d5645",
+      "landlordName": "Arfana",
+      "landlordPhone": "7853151721",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:51:43.970Z"
+  },
+  {
+    "id": "a7f54ccb-627e-4d59-9e29-659dddb056df",
+    "userId": "1ae895c7-7d7d-497c-bb1f-385e8da119b2",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Dewan (7931827397).",
+    "metadata": {
+      "landlordId": "f27f57cd-3ea8-4b31-97f7-841f0ca6a96d",
+      "landlordName": "Dewan",
+      "landlordPhone": "7931827397",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:53:05.625Z"
+  },
+  {
+    "id": "81abf230-059e-4551-a02a-a7f52d7065b9",
+    "userId": "2feb85ec-284b-47cc-911b-b6132883ae80",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Saihou (7770696444).",
+    "metadata": {
+      "landlordId": "15b59466-cb21-43b8-b0b7-518eec19aed1",
+      "landlordName": "Saihou",
+      "landlordPhone": "7770696444",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:55:54.526Z"
+  },
+  {
+    "id": "83af833d-86b7-431e-b493-67b34beb060c",
+    "userId": "1ae895c7-7d7d-497c-bb1f-385e8da119b2",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Foysal (7849030666).",
+    "metadata": {
+      "landlordId": "15da7992-6ede-4c72-a96f-b07114338a92",
+      "landlordName": "Foysal",
+      "landlordPhone": "7849030666",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:56:04.708Z"
+  },
+  {
+    "id": "db429221-55b8-4780-abb6-15f61ad86300",
+    "userId": "1ae895c7-7d7d-497c-bb1f-385e8da119b2",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Adam (7877125637).",
+    "metadata": {
+      "landlordId": "0521f031-82be-4ffa-b0f4-ae77e4718d71",
+      "landlordName": "Adam",
+      "landlordPhone": "7877125637",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-19T14:58:40.555Z"
+  },
+  {
+    "id": "88d38af7-3faf-485f-91c2-fe48b474301f",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Chalford Court 10 Pershore Close Ilford IG2 6RU has changes waiting for review.",
+    "metadata": {
+      "entityId": "b95ab160-512a-4264-a34a-fc0dea4c01f0",
+      "approvalId": "4f5be1ad-ae38-4f98-a2f0-347e06e0f7c2",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "expected commission %",
+        "expected commission amount",
+        "availability date"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-28T23:56:08.833Z"
+  },
+  {
+    "id": "e6a90cb3-b5e8-41b7-8453-a2b8626f6bc4",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Chalford Court 10 Pershore Close Ilford IG2 6RU has changes waiting for review.",
+    "metadata": {
+      "entityId": "b95ab160-512a-4264-a34a-fc0dea4c01f0",
+      "approvalId": "8f050346-3c57-4d48-bab8-1c8a93217217",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "expected commission %",
+        "expected commission amount",
+        "availability date"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-03-28T23:57:39.740Z"
+  },
+  {
+    "id": "b4dc7865-3754-40f6-a406-9cbe4b2a6bc8",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Nish (7711820589).",
+    "metadata": {
+      "landlordId": "9c7ffff2-285c-4d40-88ea-03e269a0e9a4",
+      "landlordName": "Nish",
+      "landlordPhone": "7711820589",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": true,
+    "createdAt": "2026-03-19T14:51:06.599Z"
+  },
+  {
+    "id": "994f7e01-43ce-4567-a02e-336c3eca73c5",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Amani (7874013336).",
+    "metadata": {
+      "landlordId": "fad72376-36bf-4894-906e-837ca05e2178",
+      "landlordName": "Amani",
+      "landlordPhone": "7874013336",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": true,
+    "createdAt": "2026-03-19T15:36:41.468Z"
+  },
+  {
+    "id": "eef87cfd-6ea7-4d52-8df6-656727306af9",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "90 Harrow road Wembley HA9 6PL has changes waiting for review.",
+    "metadata": {
+      "entityId": "a8a48d7f-1220-4113-8a2f-8674a3ec4fff",
+      "approvalId": "acbe2ea8-91e4-4c87-aa62-344e2fe90afa",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "status"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-04T10:07:00.365Z"
+  },
+  {
+    "id": "a42becb4-0887-4f2d-81b6-641472245091",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "297 Preston Road Harrow HA3 0QQ has changes waiting for review.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "dd35c193-c99c-4791-b571-72617feed2da",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "delete room Studio Room"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-04T10:45:38.213Z"
+  },
+  {
+    "id": "ca434261-d146-42f9-abcb-0806c2b2314c",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "297 Preston Road Harrow HA3 0QQ has changes waiting for review.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "fd0a23f0-e00a-4498-b2f0-ef210c4a1110",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "delete room Studio Room"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-04T10:45:43.832Z"
+  },
+  {
+    "id": "a46ec078-2adc-40bc-ba3d-e138d52c00a1",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "297 Preston Road Harrow HA3 0QQ has changes waiting for review.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "f11d4c87-dc97-4442-b733-5b9c75dd0a14",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "delete room Studio Room"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-04T10:45:53.023Z"
+  },
+  {
+    "id": "6568a042-0852-439b-9375-07b92e085e6a",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for 297 Preston Road Harrow HA3 0QQ: delete room Studio Room were approved.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "f11d4c87-dc97-4442-b733-5b9c75dd0a14",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-04T10:46:20.185Z"
+  },
+  {
+    "id": "3db73990-74ee-4c3b-b2aa-92c2cb1bb01b",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for 90 Harrow road Wembley HA9 6PL: status were approved.",
+    "metadata": {
+      "entityId": "a8a48d7f-1220-4113-8a2f-8674a3ec4fff",
+      "approvalId": "acbe2ea8-91e4-4c87-aa62-344e2fe90afa",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-04T10:46:40.889Z"
+  },
+  {
+    "id": "2ae782e5-8672-4997-8ac3-940c21b5e51c",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_REJECTED",
+    "title": "Edit rejected",
+    "body": "Your requested changes for Pending property update for Chalford Court 10 Pershore Close Ilford IG2 6RU: expected commission %, expected commission amount, availability date were rejected.",
+    "metadata": {
+      "entityId": "b95ab160-512a-4264-a34a-fc0dea4c01f0",
+      "approvalId": "4f5be1ad-ae38-4f98-a2f0-347e06e0f7c2",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-03-28T23:57:11.519Z"
+  },
+  {
+    "id": "2111a505-d0d2-40bd-ad5b-e37d28fee327",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for Chalford Court 10 Pershore Close Ilford IG2 6RU: expected commission %, expected commission amount, availability date were approved.",
+    "metadata": {
+      "entityId": "b95ab160-512a-4264-a34a-fc0dea4c01f0",
+      "approvalId": "8f050346-3c57-4d48-bab8-1c8a93217217",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-03-28T23:57:50.405Z"
+  },
+  {
+    "id": "4d97f17b-633b-4c86-a8dc-91a8bc39ad99",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_REJECTED",
+    "title": "Edit rejected",
+    "body": "Your requested changes for Pending property update for 297 Preston Road Harrow HA3 0QQ: delete room Studio Room were rejected.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "fd0a23f0-e00a-4498-b2f0-ef210c4a1110",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-04T10:47:29.894Z"
+  },
+  {
+    "id": "b53ec1d2-c48c-407d-8c35-b63ed2c13718",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_REJECTED",
+    "title": "Edit rejected",
+    "body": "Your requested changes for Pending property update for 297 Preston Road Harrow HA3 0QQ: delete room Studio Room were rejected.",
+    "metadata": {
+      "entityId": "2bd2b0e5-3e5e-4804-8f6c-42bb99b9e5f1",
+      "approvalId": "dd35c193-c99c-4791-b571-72617feed2da",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-04T10:47:33.166Z"
+  },
+  {
+    "id": "9f58e1f2-6a57-436e-8ed5-c7f2be2e22d9",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Anna/ Arzoo (7572077484).",
+    "metadata": {
+      "landlordId": "016162bd-732a-4f46-8ada-4d8229ddc936",
+      "landlordName": "Anna/ Arzoo",
+      "landlordPhone": "7572077484",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-05T11:52:54.919Z"
+  },
+  {
+    "id": "3e863478-b0fe-4ac1-8063-f78ab8df5d59",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Anna/ Arzoo (7572077484).",
+    "metadata": {
+      "landlordId": "016162bd-732a-4f46-8ada-4d8229ddc936",
+      "landlordName": "Anna/ Arzoo",
+      "landlordPhone": "7572077484",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-05T11:55:13.797Z"
+  },
+  {
+    "id": "550dd056-3aae-49b4-be62-ac0a8d1f9c1c",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Anna/ Arzoo (7572077484).",
+    "metadata": {
+      "landlordId": "016162bd-732a-4f46-8ada-4d8229ddc936",
+      "landlordName": "Anna/ Arzoo",
+      "landlordPhone": "7572077484",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-05T11:56:25.897Z"
+  },
+  {
+    "id": "1f51880b-4575-41fc-b791-c5da14bd1d14",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Ivan (7946080620).",
+    "metadata": {
+      "landlordId": "0ee9e57e-269e-40f7-8cd9-e5dba0289ab6",
+      "landlordName": "Ivan",
+      "landlordPhone": "7946080620",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-05T12:48:50.171Z"
+  },
+  {
+    "id": "f221c0b8-1778-4ae9-b8cc-8b3839698b8b",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Leim (7440444325).",
+    "metadata": {
+      "landlordId": "5010af25-8be4-420a-baa1-cd679efef633",
+      "landlordName": "Leim",
+      "landlordPhone": "7440444325",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-05T12:53:41.417Z"
+  },
+  {
+    "id": "6b6288c5-a6f0-45b8-820a-1bc740f77ece",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Anna/ Arzoo (7572077484).",
+    "metadata": {
+      "landlordId": "016162bd-732a-4f46-8ada-4d8229ddc936",
+      "landlordName": "Anna/ Arzoo",
+      "landlordPhone": "7572077484",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T09:02:59.198Z"
+  },
+  {
+    "id": "e0909f5f-a5da-4b0c-bc25-849479c68d88",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Majufa (7910181288).",
+    "metadata": {
+      "landlordId": "22b028e9-fdc6-4690-aa3d-5ba9b0fbb708",
+      "landlordName": "Majufa",
+      "landlordPhone": "7910181288",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T09:52:11.155Z"
+  },
+  {
+    "id": "d8d36fa9-d23a-4774-93e7-308f724ea159",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Amit (7448155608).",
+    "metadata": {
+      "landlordId": "a1e6d3a0-9464-4ff1-8f72-a357c84b3329",
+      "landlordName": "Amit",
+      "landlordPhone": "7448155608",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T09:55:55.745Z"
+  },
+  {
+    "id": "3e2859ac-649d-45c1-ad7d-d606f71f0dcd",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Saurabh (7471558839).",
+    "metadata": {
+      "landlordId": "dad86c97-c5f7-46c4-8643-453cbdd079fd",
+      "landlordName": "Saurabh",
+      "landlordPhone": "7471558839",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T10:05:04.779Z"
+  },
+  {
+    "id": "2e9c26d4-3bd6-40ce-acab-0dc74daf5eab",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "ig6 2qs has changes waiting for review.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "6ba6567e-073a-4108-a19b-066229a26dd7",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date",
+        "images"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-09T12:12:47.338Z"
+  },
+  {
+    "id": "7015fe94-59da-41a3-81a0-2366080d2496",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "ig6 2qs has changes waiting for review.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "08b7e162-ce1f-4c60-8210-ed34ebc42e76",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date",
+        "images"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-09T12:12:49.255Z"
+  },
+  {
+    "id": "2f439207-8861-48b7-8433-256c502ad4d3",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "ig6 2qs has changes waiting for review.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "31026b41-5462-4c60-a4f6-4eff6f2b5335",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date",
+        "images"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-09T12:12:52.049Z"
+  },
+  {
+    "id": "3ba69b85-62a1-44af-a21d-4da3266ad000",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "ig6 2qs has changes waiting for review.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "4e25ad79-a0c8-4ef5-b29e-f7a6e8b6d515",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-09T12:13:23.369Z"
+  },
+  {
+    "id": "1c6d19d8-6c44-423b-8064-3628ddd9f6da",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "ig6 2qs has changes waiting for review.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "f35bfbe9-9a13-47fb-9e40-2cad8966c55e",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-09T12:17:12.887Z"
+  },
+  {
+    "id": "745cfd58-df3b-42e8-aaf3-186b35c0597a",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_REJECTED",
+    "title": "Edit rejected",
+    "body": "Your requested changes for Pending property update for ig6 2qs: availability date, images were rejected.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "08b7e162-ce1f-4c60-8210-ed34ebc42e76",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T12:21:26.571Z"
+  },
+  {
+    "id": "fcb1bc1e-14e2-4b44-a73d-e7919185b636",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Shaun (7852301031).",
+    "metadata": {
+      "landlordId": "42844e12-d881-4882-bb04-c3a18a29069f",
+      "landlordName": "Shaun",
+      "landlordPhone": "7852301031",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-08T18:56:00.773Z"
+  },
+  {
+    "id": "3fa1f019-bc23-4d18-bab4-892b9cab1a9c",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "07424072313 has changes waiting for review.",
+    "metadata": {
+      "entityId": "5582c705-649f-448b-875f-adadaf685fcd",
+      "approvalId": "b6ce6eb7-02e2-49ec-93b8-72d5bf0da408",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "full name"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-11T18:03:07.409Z"
+  },
+  {
+    "id": "8e49fe62-2faa-47b1-be01-e0132231ddda",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "07424072313 has changes waiting for review.",
+    "metadata": {
+      "entityId": "5582c705-649f-448b-875f-adadaf685fcd",
+      "approvalId": "bb490d6d-6401-46ed-9d1b-4be206b0cedf",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "full name"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-11T18:24:59.439Z"
+  },
+  {
+    "id": "4c22a0e0-83f9-4665-948e-d7062c8d784c",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord ATS (7463393993).",
+    "metadata": {
+      "landlordId": "dcbcbabc-f78c-4292-bb4e-07c124b617bf",
+      "landlordName": "ATS",
+      "landlordPhone": "7463393993",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T09:59:43.689Z"
+  },
+  {
+    "id": "b47a5111-f032-421b-82fd-18b06f6450c4",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Olly L M6 (7776737586).",
+    "metadata": {
+      "landlordId": "d770d31a-7ac0-475e-b516-d086ef022f44",
+      "landlordName": "Olly L M6",
+      "landlordPhone": "7776737586",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-13T13:24:19.302Z"
+  },
+  {
+    "id": "a623b5e2-f4ab-4091-8968-dfe3b4f5dcee",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Muhammad has changes waiting for review.",
+    "metadata": {
+      "entityId": "947922d4-7928-41cc-b45f-bee074c132bc",
+      "approvalId": "3cadd60f-f786-480e-b811-317238b7d4ed",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "notes"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T13:35:53.288Z"
+  },
+  {
+    "id": "e85cc8cb-66f6-41d3-839b-e415e9747994",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Muhammad has changes waiting for review.",
+    "metadata": {
+      "entityId": "947922d4-7928-41cc-b45f-bee074c132bc",
+      "approvalId": "54b0a92b-93bd-4f45-b8dd-950990cfb111",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "notes"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T13:36:45.519Z"
+  },
+  {
+    "id": "ce22b99d-bc33-40d4-9b9b-d9d20bc48392",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Musa (7944537201).",
+    "metadata": {
+      "landlordId": "8720e051-276f-475a-98e3-aa6691ef7e9f",
+      "landlordName": "Musa",
+      "landlordPhone": "7944537201",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-13T13:54:32.696Z"
+  },
+  {
+    "id": "12446815-f856-46a6-a644-91136cde0c1c",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "acc6e3af-b768-4404-9127-7adbb54d4e0e",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "images"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:17:46.002Z"
+  },
+  {
+    "id": "60f00d3f-0b88-48b9-8aaf-0ee0013495d3",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "cc535840-d90f-4a80-b0ef-e00a3a2399ce",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "images"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:17:50.459Z"
+  },
+  {
+    "id": "098b3358-6ec4-484a-9b5d-66425f6ae465",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "bd5e6313-169a-4bd8-8d6f-1c3b1abcf648",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "total rooms",
+        "available rooms",
+        "rent per month",
+        "deposit amount"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:22:28.174Z"
+  },
+  {
+    "id": "5cfd454f-6c80-458e-80d3-4b885451c179",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "d62dfb4f-3dd6-48c2-9a28-03913c17045b",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "total rooms",
+        "available rooms",
+        "rent per month",
+        "deposit amount"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:22:36.158Z"
+  },
+  {
+    "id": "2e74bf1a-d23c-4023-9fca-526f47c4f733",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "c8d87209-579a-4288-85cc-85d8134e181a",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "images"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:27:06.814Z"
+  },
+  {
+    "id": "e809598d-5693-4ad6-bdb3-68a555cb89f7",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "UB4 8HP has changes waiting for review.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "7cef796d-7334-4362-977b-5a64ee56f9d1",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "images"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-13T14:27:41.343Z"
+  },
+  {
+    "id": "17503b18-ca15-4fbd-b815-5674a226fd54",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Michael (7943521267).",
+    "metadata": {
+      "landlordId": "dbda3fe1-c240-42ed-9580-b49bf4ad0704",
+      "landlordName": "Michael",
+      "landlordPhone": "7943521267",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-15T13:19:51.136Z"
+  },
+  {
+    "id": "93ff9484-7395-4c44-af9b-082875b12b5d",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord Khan (7930992272).",
+    "metadata": {
+      "landlordId": "0adc0b44-7fb3-4f38-94eb-ac7c93c648ba",
+      "landlordName": "Khan",
+      "landlordPhone": "7930992272",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-06T10:16:42.045Z"
+  },
+  {
+    "id": "7d682474-707a-45ce-98b8-37a181a28a87",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Laiba\" searched for the number belonging to your landlord gloria (7884955813).",
+    "metadata": {
+      "landlordId": "9bf4e29e-ce52-42ff-8a4d-6a19070cc96b",
+      "landlordName": "gloria",
+      "landlordPhone": "7884955813",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+      "searchingAgentName": "Laiba"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-08T19:15:52.231Z"
+  },
+  {
+    "id": "866da8df-30d0-43e9-a868-a6e84a27b101",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for ig6 2qs: availability date were approved.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "f35bfbe9-9a13-47fb-9e40-2cad8966c55e",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T12:18:23.396Z"
+  },
+  {
+    "id": "6427f399-cc0b-4e5c-b0e3-2d7f5fc11c78",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for ig6 2qs: availability date, images were approved.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "31026b41-5462-4c60-a4f6-4eff6f2b5335",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T12:18:25.706Z"
+  },
+  {
+    "id": "a8727702-c742-47c1-85c9-8c9f402f8715",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for ig6 2qs: availability date, images were approved.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "6ba6567e-073a-4108-a19b-066229a26dd7",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T12:18:29.270Z"
+  },
+  {
+    "id": "d9b4c97f-824a-4284-976e-52f05251b012",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "EDIT_APPROVAL_REJECTED",
+    "title": "Edit rejected",
+    "body": "Your requested changes for Pending property update for ig6 2qs: availability date were rejected.",
+    "metadata": {
+      "entityId": "4c609d84-3f9a-491d-9156-7fea782c3fe1",
+      "approvalId": "4e25ad79-a0c8-4ef5-b29e-f7a6e8b6d515",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T12:21:24.372Z"
+  },
+  {
+    "id": "49d06041-8646-4876-b1ee-5f5fefa17dfe",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Faheem\" searched for the number belonging to your landlord gloria (7884955813).",
+    "metadata": {
+      "landlordId": "9bf4e29e-ce52-42ff-8a4d-6a19070cc96b",
+      "landlordName": "gloria",
+      "landlordPhone": "7884955813",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+      "searchingAgentName": "Faheem"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-09T16:28:18.175Z"
+  },
+  {
+    "id": "0aa9b8f7-4034-4c75-879d-d7a04ff7c3c7",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: images were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "7cef796d-7334-4362-977b-5a64ee56f9d1",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:27.308Z"
+  },
+  {
+    "id": "412f2621-bc35-4fb9-8683-3a3cb990bca4",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: images were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "c8d87209-579a-4288-85cc-85d8134e181a",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:30.378Z"
+  },
+  {
+    "id": "f88e6a03-9123-4497-9dab-916e8d8ab884",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Khan (7930992272).",
+    "metadata": {
+      "landlordId": "0adc0b44-7fb3-4f38-94eb-ac7c93c648ba",
+      "landlordName": "Khan",
+      "landlordPhone": "7930992272",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-13T13:27:03.837Z"
+  },
+  {
+    "id": "2524512e-ab29-4c6b-882f-fe82e7dcab9a",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "riaz has changes waiting for review.",
+    "metadata": {
+      "entityId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "approvalId": "c8eed138-ba92-4b99-9c41-00b82a0fa105",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "full name"
+      ],
+      "requestedById": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-16T11:43:19.678Z"
+  },
+  {
+    "id": "33a888e9-398d-428e-bf2f-4ddba4771653",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord riaz (7721824635).",
+    "metadata": {
+      "landlordId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "landlordName": "riaz",
+      "landlordPhone": "7721824635",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-16T11:44:11.336Z"
+  },
+  {
+    "id": "14464ac8-74d1-4708-b279-96caa1feacb2",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord riaz (7721824635).",
+    "metadata": {
+      "landlordId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "landlordName": "riaz",
+      "landlordPhone": "7721824635",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-16T11:43:45.429Z"
+  },
+  {
+    "id": "6ebaf5d2-2679-4c3a-9590-7fc9091d5936",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Faheem\" searched for the number belonging to your landlord Imran (7721824635).",
+    "metadata": {
+      "landlordId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "landlordName": "Imran",
+      "landlordPhone": "7721824635",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+      "searchingAgentName": "Faheem"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-16T11:50:40.033Z"
+  },
+  {
+    "id": "2c9b1ef7-ceb6-452d-926e-38a21aee24e4",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Faheem\" searched for the number belonging to your landlord Imran (7721824635).",
+    "metadata": {
+      "landlordId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "landlordName": "Imran",
+      "landlordPhone": "7721824635",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+      "searchingAgentName": "Faheem"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-16T11:50:42.551Z"
+  },
+  {
+    "id": "bb705c59-501e-4bdf-963f-138d551ce56e",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Ivan (7946080620).",
+    "metadata": {
+      "landlordId": "0ee9e57e-269e-40f7-8cd9-e5dba0289ab6",
+      "landlordName": "Ivan",
+      "landlordPhone": "7946080620",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-16T16:17:56.975Z"
+  },
+  {
+    "id": "3bb8d7c6-7f9d-4ae5-8f8c-360017cbfbe6",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Hamza (7865081499).",
+    "metadata": {
+      "landlordId": "0cbc0ba7-5929-42f3-b2c5-89ca38e9be5b",
+      "landlordName": "Hamza",
+      "landlordPhone": "7865081499",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-17T13:22:59.145Z"
+  },
+  {
+    "id": "fd9d8bb7-d1e0-4ba3-b1d0-9156b19b4901",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Eman\" searched for the number belonging to your landlord Hamza (7865081499).",
+    "metadata": {
+      "landlordId": "0cbc0ba7-5929-42f3-b2c5-89ca38e9be5b",
+      "landlordName": "Hamza",
+      "landlordPhone": "7865081499",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309",
+      "searchingAgentName": "Eman"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-17T16:29:33.961Z"
+  },
+  {
+    "id": "cf2f48c1-043e-4873-83d3-1d8fb7a8ac67",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord phenoix (7999525962).",
+    "metadata": {
+      "landlordId": "bc4a154f-2787-4825-ac44-eb7af78e7eb2",
+      "landlordName": "phenoix",
+      "landlordPhone": "7999525962",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T14:35:56.945Z"
+  },
+  {
+    "id": "467312a0-a985-492d-8222-6acf6830d3c0",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Corrina (7523884611).",
+    "metadata": {
+      "landlordId": "7ab18704-f8e6-40cd-9f0d-6d930ae27df2",
+      "landlordName": "Corrina",
+      "landlordPhone": "7523884611",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T15:36:35.783Z"
+  },
+  {
+    "id": "0bec206d-cf75-4176-ae07-16284af295eb",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "John has changes waiting for review.",
+    "metadata": {
+      "entityId": "dff6f58e-539d-4892-9c6a-08deb96cc173",
+      "approvalId": "5b9c110b-e7b3-4bd5-bb9c-76e7bc826ba9",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "full name",
+        "email"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:08:31.179Z"
+  },
+  {
+    "id": "09f6109b-f97b-4b79-95db-222c65119f82",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "John has changes waiting for review.",
+    "metadata": {
+      "entityId": "dff6f58e-539d-4892-9c6a-08deb96cc173",
+      "approvalId": "e99bc719-1588-4388-a20b-90feda14398c",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "full name",
+        "email"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:09:01.303Z"
+  },
+  {
+    "id": "3a2a872c-49d7-4fa3-b970-132e1d6745ef",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for John: full name, email were approved.",
+    "metadata": {
+      "entityId": "dff6f58e-539d-4892-9c6a-08deb96cc173",
+      "approvalId": "e99bc719-1588-4388-a20b-90feda14398c",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:00.111Z"
+  },
+  {
+    "id": "d62f6080-b512-4ae4-b526-4176cbd93308",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for John: full name, email were approved.",
+    "metadata": {
+      "entityId": "dff6f58e-539d-4892-9c6a-08deb96cc173",
+      "approvalId": "5b9c110b-e7b3-4bd5-bb9c-76e7bc826ba9",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:03.669Z"
+  },
+  {
+    "id": "5e33db02-364e-4d69-9366-f6095edc5728",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: total rooms, available rooms, rent per month, deposit amount were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "bd5e6313-169a-4bd8-8d6f-1c3b1abcf648",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:35.607Z"
+  },
+  {
+    "id": "7809e928-9001-46ec-b19f-ba0980354e2f",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: images were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "cc535840-d90f-4a80-b0ef-e00a3a2399ce",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:39.066Z"
+  },
+  {
+    "id": "fe14f02b-8716-41a1-a15e-9ed0f4f93ae0",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for riaz: full name were approved.",
+    "metadata": {
+      "entityId": "76eb2486-e5fc-4c1d-8591-1091e75410d6",
+      "approvalId": "c8eed138-ba92-4b99-9c41-00b82a0fa105",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": true,
+    "createdAt": "2026-04-22T16:37:07.660Z"
+  },
+  {
+    "id": "a618b96b-04e4-4aae-a18a-37afaa5911f3",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: total rooms, available rooms, rent per month, deposit amount were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "d62dfb4f-3dd6-48c2-9a28-03913c17045b",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:32.731Z"
+  },
+  {
+    "id": "46274e7d-751e-430f-9d43-0d1e9259544f",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending property update for UB4 8HP: images were approved.",
+    "metadata": {
+      "entityId": "cc8790d0-3e94-40af-8f1f-1d831803fe8b",
+      "approvalId": "acc6e3af-b768-4404-9127-7adbb54d4e0e",
+      "entityType": "PROPERTY",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:41.651Z"
+  },
+  {
+    "id": "1719aa5b-e40f-4d28-9eba-5e05d7c7d064",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for Muhammad: notes were approved.",
+    "metadata": {
+      "entityId": "947922d4-7928-41cc-b45f-bee074c132bc",
+      "approvalId": "54b0a92b-93bd-4f45-b8dd-950990cfb111",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:43.690Z"
+  },
+  {
+    "id": "ba0dafdd-9922-4662-8890-2512e60774ff",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for Muhammad: notes were approved.",
+    "metadata": {
+      "entityId": "947922d4-7928-41cc-b45f-bee074c132bc",
+      "approvalId": "3cadd60f-f786-480e-b811-317238b7d4ed",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:48.319Z"
+  },
+  {
+    "id": "0838de36-5bbf-4638-b494-7a5a0ae07898",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for 07424072313: full name were approved.",
+    "metadata": {
+      "entityId": "5582c705-649f-448b-875f-adadaf685fcd",
+      "approvalId": "bb490d6d-6401-46ed-9d1b-4be206b0cedf",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:50.644Z"
+  },
+  {
+    "id": "d0d6ca5b-0a58-4b7a-a27f-4b7ee74ff4cb",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "EDIT_APPROVAL_APPROVED",
+    "title": "Edit approved",
+    "body": "Your requested changes for Pending landlord update for 07424072313: full name were approved.",
+    "metadata": {
+      "entityId": "5582c705-649f-448b-875f-adadaf685fcd",
+      "approvalId": "b6ce6eb7-02e2-49ec-93b8-72d5bf0da408",
+      "entityType": "LANDLORD",
+      "reviewerNotes": null
+    },
+    "isRead": false,
+    "createdAt": "2026-04-22T16:37:56.102Z"
+  },
+  {
+    "id": "b3e28fa2-8561-481e-bf2f-3f3be9aabbcf",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Christopher L M24 (7402255392).",
+    "metadata": {
+      "landlordId": "7d9bcb3e-9922-4307-997a-15e812d6e1ae",
+      "landlordName": "Christopher L M24",
+      "landlordPhone": "7402255392",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": true,
+    "createdAt": "2026-04-23T12:49:06.988Z"
+  },
+  {
+    "id": "07b41680-4f63-4883-9c21-9a32b9c4e362",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Bass (7515478142).",
+    "metadata": {
+      "landlordId": "6ef29b9a-7b58-4781-977e-45c612d5cefb",
+      "landlordName": "Bass",
+      "landlordPhone": "7515478142",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T13:39:43.839Z"
+  },
+  {
+    "id": "b351162f-d0ed-4c59-9159-98dc238eb493",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord tharmalingam (7805755735).",
+    "metadata": {
+      "landlordId": "c5c14c1a-15e2-4f4e-b9b0-5ace966cfabf",
+      "landlordName": "tharmalingam",
+      "landlordPhone": "7805755735",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T16:32:46.677Z"
+  },
+  {
+    "id": "f8c90326-3905-4a5c-b17d-ee9897765517",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord Ivanka (7706569244).",
+    "metadata": {
+      "landlordId": "9cce68e0-405f-4bf1-9cce-76d976199f9d",
+      "landlordName": "Ivanka",
+      "landlordPhone": "7706569244",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T17:10:49.349Z"
+  },
+  {
+    "id": "1b5470cc-0a76-4103-bab0-17f562cfcdd9",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord David (7904913443).",
+    "metadata": {
+      "landlordId": "a5f666b0-8481-4ea3-90a3-b6c0121888d4",
+      "landlordName": "David",
+      "landlordPhone": "7904913443",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T17:12:53.726Z"
+  },
+  {
+    "id": "5a68d42a-feac-4a50-a55e-43514a4f4101",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord David (7904913443).",
+    "metadata": {
+      "landlordId": "a5f666b0-8481-4ea3-90a3-b6c0121888d4",
+      "landlordName": "David",
+      "landlordPhone": "7904913443",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T17:12:55.402Z"
+  },
+  {
+    "id": "4d73c7b1-0f14-4d5c-9e86-d1526239b76b",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord David (7904913443).",
+    "metadata": {
+      "landlordId": "a5f666b0-8481-4ea3-90a3-b6c0121888d4",
+      "landlordName": "David",
+      "landlordPhone": "7904913443",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T17:12:56.104Z"
+  },
+  {
+    "id": "5d1070b4-b57d-4740-bbe3-517beb660bbe",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "NUMBER_SEARCHED",
+    "title": "Your landlord number was searched",
+    "body": "Agent \"Hassam\" searched for the number belonging to your landlord David (7904913443).",
+    "metadata": {
+      "landlordId": "a5f666b0-8481-4ea3-90a3-b6c0121888d4",
+      "landlordName": "David",
+      "landlordPhone": "7904913443",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "searchingAgentName": "Hassam"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-23T17:13:06.963Z"
+  },
+  {
+    "id": "e13794f9-5edb-4d10-b60f-6744db2027c1",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Amer -",
+    "body": "A follow-up call is scheduled for +447747807808.",
+    "metadata": {
+      "scheduledAt": "2026-04-25T17:00:00.000Z",
+      "potentialLandlordId": "7e26e660-0f0f-4fff-9373-c6fabd45d092"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-25T14:21:37.895Z"
+  },
+  {
+    "id": "837b8da5-6d98-4a15-b694-d34450de41ac",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for IG6 landlord's number (07442354535).",
+    "metadata": {
+      "landlordId": "9e68babe-cab2-4127-b240-70e5f041872e",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-25T17:21:35.464Z"
+  },
+  {
+    "id": "bcaeef57-cc58-4ff3-8911-8fa4b58fe00a",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Bass's number (07515478142).",
+    "metadata": {
+      "landlordId": "6ef29b9a-7b58-4781-977e-45c612d5cefb",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-28T11:16:09.252Z"
+  },
+  {
+    "id": "1255cd93-f178-4e33-9364-5528ef4127aa",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Y Sky-Line -",
+    "body": "A follow-up call is scheduled for +447400989431.",
+    "metadata": {
+      "scheduledAt": "2026-04-29T12:18:00.000Z",
+      "potentialLandlordId": "42f0d4e5-8ad0-4da6-a54d-e8b29b6a363c"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-28T12:19:24.363Z"
+  },
+  {
+    "id": "cdacf0e2-754c-4727-b873-b93520a3e177",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Umar .",
+    "body": "A follow-up call is scheduled for +447495820660.",
+    "metadata": {
+      "scheduledAt": "2026-04-29T16:19:00.000Z",
+      "potentialLandlordId": "baf775ac-1fab-4c4c-be61-164dbe0048d3"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-28T16:19:18.496Z"
+  },
+  {
+    "id": "b2b93f2a-98ab-48d9-b8d1-68152760cc3e",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Shomsi -",
+    "body": "A follow-up call is scheduled for +447888697033.",
+    "metadata": {
+      "scheduledAt": "2026-05-01T15:59:00.000Z",
+      "potentialLandlordId": "50ec184d-c8f0-43f5-9963-c31ca97a0e09"
+    },
+    "isRead": false,
+    "createdAt": "2026-04-30T11:20:30.334Z"
+  },
+  {
+    "id": "a8c72420-9f19-44ae-ab85-7770ae25ea69",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Mudisser L",
+    "body": "A follow-up call is scheduled for +447497623113.",
+    "metadata": {
+      "scheduledAt": "2026-05-07T20:12:00.000Z",
+      "potentialLandlordId": "45f44c0b-6bbe-40f2-a505-e0da99e1caff"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-04T17:09:19.761Z"
+  },
+  {
+    "id": "cf183fe0-613e-41f6-8f59-28874f48daa3",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Michael has changes waiting for review.",
+    "metadata": {
+      "entityId": "dbda3fe1-c240-42ed-9580-b49bf4ad0704",
+      "approvalId": "8b173d40-5b33-4ec0-930b-d4d8aa503906",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "email"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T12:53:42.906Z"
+  },
+  {
+    "id": "dd2a1e5e-aa04-49e5-a5aa-cb6772af5027",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "68 Millais Road, E11 4HD has changes waiting for review.",
+    "metadata": {
+      "entityId": "2d8bbda4-49e1-4485-b641-49ed8a58acfc",
+      "approvalId": "4a36d5a0-6ea5-420a-a485-44160caf423b",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "description",
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T13:13:57.689Z"
+  },
+  {
+    "id": "59a16f97-09d6-4e1c-9005-9397f787df46",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "68 Millais Road, E11 4HD has changes waiting for review.",
+    "metadata": {
+      "entityId": "2d8bbda4-49e1-4485-b641-49ed8a58acfc",
+      "approvalId": "deb7c6ad-8f0b-4ece-9d3a-ac4f50d2295f",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T13:33:10.180Z"
+  },
+  {
+    "id": "7bb98a3b-39cb-4d30-833e-1498e19a9b8d",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "66 Waterbeach road RM9 4AA  has changes waiting for review.",
+    "metadata": {
+      "entityId": "3e358e82-1065-4874-bb26-5856d0ad74af",
+      "approvalId": "9db64667-6337-48c9-9bcb-e03bd0cd32f1",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T13:33:38.713Z"
+  },
+  {
+    "id": "96550fb9-895c-4866-8c56-1be5895b4d53",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "66 Waterbeach road RM9 4AA  has changes waiting for review.",
+    "metadata": {
+      "entityId": "3e358e82-1065-4874-bb26-5856d0ad74af",
+      "approvalId": "fe87e239-15f6-4a37-a1ca-fc7b2db0836b",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T13:35:04.424Z"
+  },
+  {
+    "id": "4e0498cc-5f3c-459b-9b20-ce41face1217",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "72 Downsell road, E15 2BU has changes waiting for review.",
+    "metadata": {
+      "entityId": "9b9e712d-6dde-483b-8405-782f7c68d0da",
+      "approvalId": "0f428ae2-0e3f-4160-b5f2-0c9b60293d2a",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T14:38:58.804Z"
+  },
+  {
+    "id": "93578c1a-4b10-4262-a306-4737e8e8b4e6",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "Michael has changes waiting for review.",
+    "metadata": {
+      "entityId": "dbda3fe1-c240-42ed-9580-b49bf4ad0704",
+      "approvalId": "52d15ddb-7d5e-49aa-a851-ecf49e29f047",
+      "entityType": "LANDLORD",
+      "changedFields": [
+        "email"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T14:46:03.731Z"
+  },
+  {
+    "id": "2ca2bf17-c960-403f-88c0-6c3fa30cc393",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your follow-up lead",
+    "body": "An agent searched for Mudisser L's number (7497623113).",
+    "metadata": {
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "potentialLandlordId": "45f44c0b-6bbe-40f2-a505-e0da99e1caff"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T18:52:00.954Z"
+  },
+  {
+    "id": "671c4db5-2c8a-4bea-b0f2-4303c7b735d8",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your follow-up lead",
+    "body": "An agent searched for Mudisser L's number (7497623113).",
+    "metadata": {
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "potentialLandlordId": "45f44c0b-6bbe-40f2-a505-e0da99e1caff"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T18:52:12.794Z"
+  },
+  {
+    "id": "8bd1e7d7-5cfc-46b5-96db-641d00824a61",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your follow-up lead",
+    "body": "An agent searched for Mudisser L's number (07497623113).",
+    "metadata": {
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+      "potentialLandlordId": "45f44c0b-6bbe-40f2-a505-e0da99e1caff"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-05T19:16:03.728Z"
+  },
+  {
+    "id": "79cf2afe-01d9-4081-8ae0-87b289c6dcc2",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Neil's number (07595976330).",
+    "metadata": {
+      "landlordId": "6d3f56c4-8555-4e51-892c-3eb3c0faff8c",
+      "searchingAgentId": "5c671ab6-cc68-4748-acaf-238044acc309"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-06T13:50:46.568Z"
+  },
+  {
+    "id": "32fbd158-99a6-4a29-a171-8cea49651fc5",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "108 Cranford Street Smethwick B66 2AZ has changes waiting for review.",
+    "metadata": {
+      "entityId": "db6f8ae9-e099-4113-894d-9fffda966488",
+      "approvalId": "cebd1470-8f75-47e6-bb82-89e876ba4214",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "description",
+        "property type",
+        "beds",
+        "baths",
+        "pets allowed",
+        "children allowed",
+        "availability date",
+        "images"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-06T14:08:09.903Z"
+  },
+  {
+    "id": "01d0108c-be09-45ad-b6f6-1a4b2421fce5",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": " Meadway Birmingham B33 0EB has changes waiting for review.",
+    "metadata": {
+      "entityId": "35eea98c-094d-451f-85d5-4bd337a7ae8e",
+      "approvalId": "ed7c6e90-5cc4-4d1d-a947-a93f31c96a25",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-07T14:13:17.241Z"
+  },
+  {
+    "id": "ba7f5721-b22c-4929-bc6f-9d7aa2cd91f6",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "108 Cranford Street Smethwick B66 2AZ has changes waiting for review.",
+    "metadata": {
+      "entityId": "db6f8ae9-e099-4113-894d-9fffda966488",
+      "approvalId": "9b1d6f12-f957-426b-ae69-ab95b46a4ab2",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "description",
+        "property type",
+        "beds",
+        "baths",
+        "total rooms",
+        "pets allowed",
+        "children allowed",
+        "availability date",
+        "images"
+      ],
+      "requestedById": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-07T14:42:21.412Z"
+  },
+  {
+    "id": "2473fb65-4d30-413d-ba33-a5240a08e9d0",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for George's number (07793754876).",
+    "metadata": {
+      "landlordId": "e2272783-bdc6-430e-99ca-39fe962d9444",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-07T15:02:23.195Z"
+  },
+  {
+    "id": "f7976fb5-3cfa-40d8-91ba-d2026ea06070",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Paul ,",
+    "body": "A follow-up call is scheduled for +447515893831.",
+    "metadata": {
+      "scheduledAt": "2026-05-08T15:00:00.000Z",
+      "potentialLandlordId": "dbc1bb9d-17a4-4195-bdf5-7092e4b5befd"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-07T16:20:11.798Z"
+  },
+  {
+    "id": "1565361a-aa14-4276-9554-f2ee4537ce5d",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Samuell .",
+    "body": "A follow-up call is scheduled for +447544202024.",
+    "metadata": {
+      "scheduledAt": "2026-05-07T18:15:00.000Z",
+      "potentialLandlordId": "bcbbef57-9cd6-4bc4-9413-af8c5823db53"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-07T16:23:15.937Z"
+  },
+  {
+    "id": "f0f7315b-e649-4937-ba35-2a4bd3d73a57",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Popy Property Repairing",
+    "body": "A follow-up call is scheduled for +447883081627.",
+    "metadata": {
+      "scheduledAt": "2026-06-01T12:20:00.000Z",
+      "potentialLandlordId": "167fa317-95f4-42df-b67e-cacdab378560"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-13T12:20:42.387Z"
+  },
+  {
+    "id": "d2974be6-d5f3-4392-829a-be3a259098b0",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Salman's number (07500543070).",
+    "metadata": {
+      "landlordId": "e5fc9fe4-09ae-421e-b3ed-960929c5f156",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-21T14:40:45.580Z"
+  },
+  {
+    "id": "f208b452-def2-4ef3-a5a2-79d2e5a61f99",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Piyal's number (07821692761).",
+    "metadata": {
+      "landlordId": "950c03c6-ffe3-4c5f-9f67-fb42db2710b0",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-23T14:59:32.266Z"
+  },
+  {
+    "id": "7807e7f5-a40c-4f72-b61d-1567b97efc09",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Omar's number (07877286295).",
+    "metadata": {
+      "landlordId": "6ebe7014-bc49-4665-8885-8a5d970027da",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T13:32:30.797Z"
+  },
+  {
+    "id": "fee63930-a116-4edb-901c-8bf673684de8",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Omar's number (07877286295).",
+    "metadata": {
+      "landlordId": "6ebe7014-bc49-4665-8885-8a5d970027da",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T13:33:09.839Z"
+  },
+  {
+    "id": "92984430-60d6-406b-84ca-4055546b8fac",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Salman .'s number (07817597748).",
+    "metadata": {
+      "landlordId": "618754db-2bee-443c-9f70-cbccf2a4a69b",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T15:18:55.168Z"
+  },
+  {
+    "id": "9a635c73-17d6-40e5-bfa8-6ea40742e1a6",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Salman .'s number (07817597748).",
+    "metadata": {
+      "landlordId": "618754db-2bee-443c-9f70-cbccf2a4a69b",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T15:19:23.137Z"
+  },
+  {
+    "id": "b45ffd5d-36e7-41a3-bc1e-79230ba4cba8",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for George's number (07793754876).",
+    "metadata": {
+      "landlordId": "e2272783-bdc6-430e-99ca-39fe962d9444",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T16:02:10.554Z"
+  },
+  {
+    "id": "5903d506-5caf-4f80-ab44-6d070081baed",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for George's number (07793754876).",
+    "metadata": {
+      "landlordId": "e2272783-bdc6-430e-99ca-39fe962d9444",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T16:04:42.274Z"
+  },
+  {
+    "id": "3cc443b6-b3f8-491d-8425-cba5dad0ac43",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for uyiosa lucky's number (07940978215).",
+    "metadata": {
+      "landlordId": "751b310c-3d95-497c-98dd-30217f9d5944",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-05-25T17:23:39.472Z"
+  },
+  {
+    "id": "f591c7f7-afcd-47f6-8f9e-fdfc45f70266",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for George's number (07793754876).",
+    "metadata": {
+      "landlordId": "e2272783-bdc6-430e-99ca-39fe962d9444",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-02T17:18:27.896Z"
+  },
+  {
+    "id": "c6841b2d-6445-4051-805c-04c3dd31a98d",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Sujoy's number (07891750878).",
+    "metadata": {
+      "landlordId": "967056fd-370f-4815-9984-37a0f7e13cb8",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-02T18:17:43.460Z"
+  },
+  {
+    "id": "3a4518b2-5520-4005-bbaa-c62ec86a1585",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Julius's number (07983587106).",
+    "metadata": {
+      "landlordId": "36166290-49f5-4a35-873e-e90e2ac443b1",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T11:31:52.428Z"
+  },
+  {
+    "id": "d0d2cf17-a958-487c-af89-1d86eb5e5bac",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Julius's number (07983587106).",
+    "metadata": {
+      "landlordId": "36166290-49f5-4a35-873e-e90e2ac443b1",
+      "searchingAgentId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T11:32:23.282Z"
+  },
+  {
+    "id": "9c976533-55c1-4697-8e61-43330aa55a22",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Cash .'s number (07958058396).",
+    "metadata": {
+      "landlordId": "c16fa2c6-4642-4d67-9855-a94c034851c0",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T12:28:19.549Z"
+  },
+  {
+    "id": "72fcc663-2e30-4bae-8f11-aa03fed92c0b",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Piyal's number (07821692761).",
+    "metadata": {
+      "landlordId": "950c03c6-ffe3-4c5f-9f67-fb42db2710b0",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T12:52:05.090Z"
+  },
+  {
+    "id": "e40abbe8-2f8c-4a4e-b6dd-dacee8fb57bf",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for I Ram .'s number (07903534190).",
+    "metadata": {
+      "landlordId": "caeaa6b7-ecc1-4478-a64d-c43cfe04cd5b",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T12:55:31.244Z"
+  },
+  {
+    "id": "ba1d6d80-649a-4370-8165-bf1f9bbc2b3e",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Mahfuz's number (07415694504).",
+    "metadata": {
+      "landlordId": "240858ff-a207-42a9-a219-abfded0a4643",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T13:17:40.607Z"
+  },
+  {
+    "id": "53b773fd-67b7-41bc-98bc-d24c65b93ebe",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Musa's number (07944537201).",
+    "metadata": {
+      "landlordId": "8720e051-276f-475a-98e3-aa6691ef7e9f",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T13:25:43.981Z"
+  },
+  {
+    "id": "9e0acd0f-a11b-4680-9a96-49d73ab29e44",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for ATS's number (07463393993).",
+    "metadata": {
+      "landlordId": "dcbcbabc-f78c-4292-bb4e-07c124b617bf",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T14:47:18.223Z"
+  },
+  {
+    "id": "b1551a77-6f54-476d-a9fb-ca5a9cfdba21",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Zinab's number (07759503215).",
+    "metadata": {
+      "landlordId": "70c135e8-3beb-4ce0-b15f-2712cbe04b81",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-03T16:01:34.720Z"
+  },
+  {
+    "id": "73a3bc3b-7dd4-4280-a37f-943be865c522",
+    "userId": "13a345b0-0ec5-4eee-b41e-d7a7593992ba",
+    "type": "EDIT_APPROVAL_REQUESTED",
+    "title": "Approval request pending",
+    "body": "142 The Drive Ilford IG1 3PS has changes waiting for review.",
+    "metadata": {
+      "entityId": "cbc4cd55-c24f-4c39-890b-ede5c51aa54f",
+      "approvalId": "f5955cb9-069b-44ed-a715-0c161ee55c99",
+      "entityType": "PROPERTY",
+      "changedFields": [
+        "availability date"
+      ],
+      "requestedById": "285b31e2-e07e-449a-a6e0-b8f843ffacdf"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-04T11:53:46.439Z"
+  },
+  {
+    "id": "0611a84a-386d-4712-845d-f64268208e64",
+    "userId": "285b31e2-e07e-449a-a6e0-b8f843ffacdf",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for John's number (07973823386).",
+    "metadata": {
+      "landlordId": "b0690bdc-3a2c-4aa5-bae8-8ee8ea9b339e",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-04T13:28:52.402Z"
+  },
+  {
+    "id": "0a764a55-d216-476b-b02d-f316734ce90b",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Clara's number (07818568089).",
+    "metadata": {
+      "landlordId": "2f041f93-c4cc-4794-97b5-7f7fa453fda9",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-04T13:55:06.650Z"
+  },
+  {
+    "id": "ea1a9f09-0bea-4755-bc5b-e232192f015a",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Asim's number (07743555150).",
+    "metadata": {
+      "landlordId": "ed430ecf-4b4b-4194-ab43-97dedd6cec38",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-04T15:46:32.885Z"
+  },
+  {
+    "id": "8dcaf5a1-7b20-46b8-9f2c-4166bc9fe1fb",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "FOLLOW_UP_REMINDER",
+    "title": "Follow up due for Unknown .",
+    "body": "A follow-up call is scheduled for +447455743036.",
+    "metadata": {
+      "scheduledAt": "2026-06-12T15:00:00.000Z",
+      "potentialLandlordId": "54c50c6e-10a1-40f0-808c-436e57c7e14b"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-04T17:04:50.504Z"
+  },
+  {
+    "id": "2bdefe75-e0f1-4bb2-8a01-dd960bc731c5",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Piyal's number (07821692761).",
+    "metadata": {
+      "landlordId": "950c03c6-ffe3-4c5f-9f67-fb42db2710b0",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-05T14:38:20.177Z"
+  },
+  {
+    "id": "a648f98c-eb25-474e-92b0-cddb6c731682",
+    "userId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Omar's number (07877286295).",
+    "metadata": {
+      "landlordId": "6ebe7014-bc49-4665-8885-8a5d970027da",
+      "searchingAgentId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-05T14:50:13.161Z"
+  },
+  {
+    "id": "27214ebe-d600-42b2-bac6-4811cc4071ac",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Daud's number (07543807795).",
+    "metadata": {
+      "landlordId": "15da88a7-5ad6-4077-a958-a79dd827acf9",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T13:48:59.658Z"
+  },
+  {
+    "id": "8f8a9c1f-aee9-44e1-a477-633cc45ce775",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Daniel's number (07503192407).",
+    "metadata": {
+      "landlordId": "654296d1-9fb9-4d3e-9f46-8632c68a96c5",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T15:00:29.684Z"
+  },
+  {
+    "id": "c27f8ea8-1b31-4a57-8fa8-3190a83b2456",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Zinab's number (07759503215).",
+    "metadata": {
+      "landlordId": "70c135e8-3beb-4ce0-b15f-2712cbe04b81",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T15:00:48.296Z"
+  },
+  {
+    "id": "2ee94c54-22ad-4035-bc6c-30d8ac3dd508",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Vanessa's number (07956157421).",
+    "metadata": {
+      "landlordId": "2ed3e818-5c9c-41d2-987a-f9c7f2f082b3",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T16:03:49.220Z"
+  },
+  {
+    "id": "27824088-d5c3-49a4-b492-4194260baece",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Michael's number (07943521267).",
+    "metadata": {
+      "landlordId": "dbda3fe1-c240-42ed-9580-b49bf4ad0704",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T16:06:27.967Z"
+  },
+  {
+    "id": "f66ec5e2-fa75-4f28-8227-615a900c1668",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Filipe's number (07852388667).",
+    "metadata": {
+      "landlordId": "41948975-5baf-43de-8ef1-e051e4778ae4",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T17:39:34.728Z"
+  },
+  {
+    "id": "fcc64773-13a9-43f0-8f6b-fb133abe2ec3",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Dinesh's number (07796951000).",
+    "metadata": {
+      "landlordId": "d3bedfad-7849-45c5-97f0-32fdece7724f",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T17:52:31.902Z"
+  },
+  {
+    "id": "2a7c8429-e8b8-4a42-abd4-beb5f37dd50e",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Lenon's number (07927713088).",
+    "metadata": {
+      "landlordId": "bc657aea-4d2c-42b6-900a-6871382ece7b",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-08T18:17:27.983Z"
+  },
+  {
+    "id": "cd4c7e1b-4301-4a8c-b6c6-5de966ee75ec",
+    "userId": "5c671ab6-cc68-4748-acaf-238044acc309",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Esther's number (07958910014).",
+    "metadata": {
+      "landlordId": "c655c789-b228-48b1-bca5-5b30928fac97",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-09T15:32:57.008Z"
+  },
+  {
+    "id": "49701931-57d0-4a65-83aa-4207f8d33adf",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Zinab's number (07759503215).",
+    "metadata": {
+      "landlordId": "70c135e8-3beb-4ce0-b15f-2712cbe04b81",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-10T14:02:47.378Z"
+  },
+  {
+    "id": "cd473cf2-072d-4ae8-ae97-95a129f98512",
+    "userId": "acf197fe-7139-4d2e-bf7c-28d0bfbe36f6",
+    "type": "LANDLORD_LOOKUP",
+    "title": "Another agent looked up your landlord",
+    "body": "An agent searched for Waheed's number (07340769333).",
+    "metadata": {
+      "landlordId": "c66ac4ae-25cf-4f9b-84c3-26353d1b9a26",
+      "searchingAgentId": "1a85c4e7-764c-4186-9734-606b4fb7b1d9"
+    },
+    "isRead": false,
+    "createdAt": "2026-06-10T15:46:29.989Z"
+  }
+]

@@ -17,7 +17,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "node scripts/prisma-migrate-build.mjs",
     "prisma:seed": "prisma db seed",
-    "db:clear-sales": "node --import tsx scripts/clear-sales.ts"
+    "db:clear-sales": "node --import tsx scripts/clear-sales.ts",
+    "db:export-neon": "node --import tsx scripts/export-neon-data.ts",
+    "db:import-mysql": "node --import tsx scripts/import-mysql-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
