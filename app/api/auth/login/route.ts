@@ -19,11 +19,17 @@ export async function POST(request: Request) {
   }
 
   const expectedRole = payload.portal === "admin" ? UserRole.ADMIN : UserRole.AGENT;
-  const result = await loginWithPassword({
-    email: payload.email,
-    password: payload.password,
-    expectedRole,
-  });
+  let result: Awaited<ReturnType<typeof loginWithPassword>>;
+  try {
+    result = await loginWithPassword({
+      email: payload.email,
+      password: payload.password,
+      expectedRole,
+    });
+  } catch (err) {
+    console.error("[login] database error:", err);
+    return NextResponse.json({ error: "DB_ERROR", detail: String(err) }, { status: 500 });
+  }
 
   if (!result.ok) {
     if (result.code === "ROLE_MISMATCH") {
