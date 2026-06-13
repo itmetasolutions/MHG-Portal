@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = { ownerAgentId: auth.user.id };
   if (search) {
     where.OR = [
-      { landlordName: { contains: search } },
-      { phoneLast10: { contains: search } },
-      { landlordNumber: { contains: search } },
+      { landlordName: { contains: search, mode: "insensitive" } },
+      { phoneLast10: { contains: search, mode: "insensitive" } },
+      { landlordNumber: { contains: search, mode: "insensitive" } },
     ];
   }
 

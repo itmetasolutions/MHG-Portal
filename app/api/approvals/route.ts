@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
     ...(search
       ? {
           OR: [
-            { summary: { contains: search } },
-            { requestedBy: { email: { contains: search } } },
-            { requestedBy: { agentDisplayName: { contains: search } } },
+            { summary: { contains: search, mode: "insensitive" } },
+            { requestedBy: { email: { contains: search, mode: "insensitive" } } },
+            { requestedBy: { agentDisplayName: { contains: search, mode: "insensitive" } } },
           ],
         }
       : {}),

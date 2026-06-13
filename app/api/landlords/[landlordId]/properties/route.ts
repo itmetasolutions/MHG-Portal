@@ -284,16 +284,16 @@ export async function GET(request: NextRequest, { params }: Params) {
   };
 
   if (queryParse.data.propertyRef) {
-    where.propertyRef = { contains: queryParse.data.propertyRef };
+    where.propertyRef = { contains: queryParse.data.propertyRef, mode: "insensitive" };
   }
   if (queryParse.data.status) {
     where.status = queryParse.data.status;
   }
   if (queryParse.data.city) {
-    where.city = { contains: queryParse.data.city };
+    where.city = { contains: queryParse.data.city, mode: "insensitive" };
   }
   if (queryParse.data.postcode) {
-    where.postcode = { contains: queryParse.data.postcode };
+    where.postcode = { contains: queryParse.data.postcode, mode: "insensitive" };
   }
 
   if (queryParse.data.createdAt) {

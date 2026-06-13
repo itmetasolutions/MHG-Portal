@@ -149,7 +149,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
     postcode
       ? db.property.findMany({
           where: {
-            postcode: { contains: postcode },
+            postcode: { contains: postcode, mode: "insensitive" },
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 50,

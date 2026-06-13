@@ -76,13 +76,13 @@ export async function GET(request: NextRequest) {
   if (phoneLast10) {
     where.landlord = {
       is: {
-        phoneLast10: { contains: phoneLast10 },
+        phoneLast10: { contains: phoneLast10, mode: "insensitive" },
       },
     };
   }
 
   if (propertyRef) {
-    where.propertyRef = { contains: propertyRef };
+    where.propertyRef = { contains: propertyRef, mode: "insensitive" };
   }
 
   if (status) {
@@ -91,11 +91,11 @@ export async function GET(request: NextRequest) {
   // No default filter — show all statuses including CLOSED
 
   if (city) {
-    where.city = { contains: city };
+    where.city = { contains: city, mode: "insensitive" };
   }
 
   if (postcode) {
-    where.postcode = { contains: postcode };
+    where.postcode = { contains: postcode, mode: "insensitive" };
   }
 
   if (createdAt) {
@@ -116,21 +116,21 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     const searchFilters: Prisma.PropertyWhereInput[] = [
-      { propertyRef: { contains: search } },
-      { title: { contains: search } },
-      { description: { contains: search } },
-      { addressLine1: { contains: search } },
-      { addressLine2: { contains: search } },
-      { city: { contains: search } },
-      { postcode: { contains: search } },
-      { propertyType: { contains: search } },
-      { landlord: { is: { landlordName: { contains: search } } } },
+      { propertyRef: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
+      { addressLine1: { contains: search, mode: "insensitive" } },
+      { addressLine2: { contains: search, mode: "insensitive" } },
+      { city: { contains: search, mode: "insensitive" } },
+      { postcode: { contains: search, mode: "insensitive" } },
+      { propertyType: { contains: search, mode: "insensitive" } },
+      { landlord: { is: { landlordName: { contains: search, mode: "insensitive" } } } },
       {
         ownerAgent: {
           is: {
             OR: [
-              { agentDisplayName: { contains: search } },
-              { email: { contains: search } },
+              { agentDisplayName: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
             ],
           },
         },
