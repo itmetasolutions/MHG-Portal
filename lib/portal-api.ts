@@ -99,7 +99,7 @@ export type DailyReportSummaryRow = {
 
 export type TenantRow = {
   id: string;
-  saleId: string;
+  saleId: string | null;
   fullName: string;
   email: string | null;
   phone: string | null;
@@ -1542,4 +1542,103 @@ export function deleteDialerCallHistory(
   callId: string,
 ): Promise<ApiResult<{ message: string }>> {
   return apiDelete(`/api/dialer/history/${callId}`);
+}
+
+// ── Viewings ──────────────────────────────────────────────────────────────────
+
+export type ViewingStatus = "SCHEDULED" | "SUCCESSFUL" | "UNSUCCESSFUL";
+export type ViewingType = "INITIAL" | "VERIFICATION";
+
+export type ViewingRow = {
+  id: string;
+  propertyId: string;
+  roomId: string | null;
+  tenantId: string | null;
+  viewingType: ViewingType;
+  scheduledAt: string;
+  status: ViewingStatus;
+  unsuccessfulReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  scheduledByAgent: { id: string; agentDisplayName: string };
+  property: {
+    id: string;
+    propertyRef: string;
+    addressLine1: string | null;
+    city: string | null;
+    postcode: string | null;
+    landlord?: { id: string; landlordName: string };
+  };
+};
+
+export function scheduleViewing(
+  propertyId: string,
+  scheduledAt: string,
+  roomId?: string,
+): Promise<ApiResult<{ viewing: ViewingRow }>> {
+  return apiPost("/api/viewings", { propertyId, scheduledAt, roomId });
+}
+
+export function recordViewingOutcome(payload: {
+  propertyId: string;
+  tenantId?: string;
+  status: "SUCCESSFUL" | "UNSUCCESSFUL";
+  viewingType: ViewingType;
+  unsuccessfulReason?: string;
+}): Promise<ApiResult<{ viewing: ViewingRow }>> {
+  return apiPost("/api/viewings", {
+    propertyId: payload.propertyId,
+    tenantId: payload.tenantId,
+    scheduledAt: new Date().toISOString(),
+    status: payload.status,
+    viewingType: payload.viewingType,
+    unsuccessfulReason: payload.unsuccessfulReason,
+  });
+}
+
+export function closeSaleForExistingTenant(
+  propertyId: string,
+  payload: {
+    finalAmount: number;
+    commissionPct: number;
+    depositAmount?: number;
+    otherCosts?: number;
+    existingTenantId: string;
+  },
+): Promise<ApiResult<{ sale: SaleRow; tenant: TenantRow }>> {
+  return apiPost(`/api/properties/${propertyId}/close-sale`, payload);
+}
+
+export function fetchViewings(params: {
+  propertyId?: string;
+  status?: ViewingStatus;
+  page?: number;
+  pageSize?: number;
+}): Promise<ApiResult<{ viewings: ViewingRow[]; pagination: { total: number; page: number; pageSize: number; totalPages: number } }>> {
+  const sp = new URLSearchParams();
+  if (params.propertyId) sp.set("propertyId", params.propertyId);
+  if (params.status) sp.set("status", params.status);
+  if (params.page) sp.set("page", String(params.page));
+  if (params.pageSize) sp.set("pageSize", String(params.pageSize));
+  return apiGet(`/api/viewings?${sp.toString()}`);
+}
+
+export function markViewingSuccessful(
+  viewingId: string,
+): Promise<ApiResult<{ viewing: ViewingRow }>> {
+  return apiPatch(`/api/viewings/${viewingId}`, { action: "successful" });
+}
+
+export function markViewingUnsuccessful(
+  viewingId: string,
+  reason: string,
+): Promise<ApiResult<{ viewing: ViewingRow }>> {
+  return apiPatch(`/api/viewings/${viewingId}`, { action: "unsuccessful", reason });
+}
+
+export function rescheduleViewing(
+  viewingId: string,
+  scheduledAt: string,
+): Promise<ApiResult<{ viewing: ViewingRow }>> {
+  return apiPatch(`/api/viewings/${viewingId}`, { action: "reschedule", scheduledAt });
 }

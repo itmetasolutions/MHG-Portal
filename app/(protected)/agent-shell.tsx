@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { NavLogoutButton } from "@/components/nav-logout-button";
 import { FloatingChat } from "@/components/floating-chat";
@@ -163,6 +162,14 @@ function TemplatesIcon() {
   );
 }
 
+function ViewingsIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
@@ -172,6 +179,7 @@ const navItems = [
   { href: "/dialer/contacts", label: "Contacts", icon: ContactsIcon, exact: false },
   { href: "/landlords", label: "Landlords", icon: LandlordsIcon, exact: false },
   { href: "/properties", label: "Properties", icon: PropertiesIcon, exact: false },
+  { href: "/viewings", label: "Viewings", icon: ViewingsIcon, exact: false },
   { href: "/sales", label: "Sales", icon: SalesIcon, exact: false },
   { href: "/tenants", label: "Tenants", icon: TenantsIcon, exact: false },
   { href: "/potential-tenants", label: "Potential Tenants", icon: PotentialTenantsIcon, exact: false },

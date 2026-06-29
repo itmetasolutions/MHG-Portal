@@ -118,6 +118,17 @@ enum ApprovalEntityType {
   POTENTIAL_LANDLORD
 }
 
+enum ViewingStatus {
+  SCHEDULED
+  SUCCESSFUL
+  UNSUCCESSFUL
+}
+
+enum ViewingType {
+  INITIAL
+  VERIFICATION
+}
+
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique
@@ -159,6 +170,7 @@ model User {
   reviewedEditApprovals  EditApproval[]       @relation("ReviewedEditApprovals")
   uploadedMediaAssets    MediaAsset[]         @relation("MediaAssetUploadedBy")
   landlordLookupEvents   LandlordLookupEvent[] @relation("LandlordLookupAgent")
+  scheduledViewings      Viewing[]             @relation("ViewingScheduledBy")
 
   @@index([agentDisplayName])
   @@index([role, isActive])
@@ -250,6 +262,7 @@ model Property {
   sales      Sale[]
   rooms      PropertyRoom[]
   mediaLinks PropertyMedia[]
+  viewings   Viewing[]
 
   @@index([landlordId])
   @@index([ownerAgentId])
@@ -386,6 +399,7 @@ model Tenant {
   sale         Sale?        @relation(fields: [saleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   addedByAgent User?        @relation("TenantAddedBy", fields: [addedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   callRecords  CallRecord[] @relation("CallRecordTenant")
+  viewings     Viewing[]
 
   @@index([saleId])
   @@index([fullName])
@@ -808,6 +822,31 @@ model CommissionConfig {
   updatedById    String?        @db.Uuid
 
   updatedBy User? @relation("CommissionConfigUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+}
+
+model Viewing {
+  id                 String        @id @default(uuid()) @db.Uuid
+  propertyId         String        @db.Uuid
+  roomId             String?       @db.Uuid
+  tenantId           String?       @db.Uuid
+  scheduledByAgentId String        @db.Uuid
+  scheduledAt        DateTime
+  status             ViewingStatus @default(SCHEDULED)
+  viewingType        ViewingType   @default(INITIAL)
+  unsuccessfulReason String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  property          Property @relation(fields: [propertyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  scheduledByAgent  User     @relation("ViewingScheduledBy", fields: [scheduledByAgentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tenant            Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([scheduledByAgentId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([scheduledByAgentId, scheduledAt])
 }
 
 // Legacy tables preserved in DB — kept here to prevent accidental drops
