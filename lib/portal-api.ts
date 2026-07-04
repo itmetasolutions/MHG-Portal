@@ -639,32 +639,24 @@ function normalizeTenantCreatePayload(
   if ("phoneNo" in payload) {
     return {
       fullName: payload.fullName.trim(),
-      phoneNo: normalizePhoneNo(payload.phoneNo),
+      phone: normalizePhoneNo(payload.phoneNo),
       email: payload.email?.trim() || null,
       currentAddress: payload.currentAddress?.trim() || null,
-      currentPostcode: payload.currentPostcode ? normalizePostcode(payload.currentPostcode) : null,
-      preferredPostcode: payload.preferredPostcode ? normalizePostcode(payload.preferredPostcode) : null,
       moveInDate: payload.moveInDate || null,
       rentAmount: payload.rentAmount ?? null,
       depositAmount: payload.depositAmount ?? null,
-      interestedIn: payload.interestedIn?.trim() || null,
-      budget: payload.budget?.trim() || null,
       notes: payload.notes?.trim() || null,
     };
   }
 
   return {
     fullName: payload.fullName.trim(),
-    phoneNo: normalizePhoneNo(payload.phone),
+    phone: normalizePhoneNo(payload.phone),
     email: payload.email?.trim() || null,
     currentAddress: payload.currentAddress?.trim() || null,
-    currentPostcode: null,
-    preferredPostcode: null,
     moveInDate: payload.moveInDate || null,
     rentAmount: payload.rentAmount ?? null,
     depositAmount: payload.depositAmount ?? null,
-    interestedIn: null,
-    budget: null,
     notes: payload.notes?.trim() || null,
   };
 }
