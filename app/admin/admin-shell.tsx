@@ -141,8 +141,17 @@ function ViewingsIcon() {
   );
 }
 
+function CrossSellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M8.5 3.5a4.5 4.5 0 1 0 2.694 8.106l4.1 4.1a1 1 0 0 0 1.414-1.414l-4.1-4.1A4.5 4.5 0 0 0 8.5 3.5ZM6 8a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0Z" />
+    </svg>
+  );
+}
+
 const navItems = [
   { href: "/admin",            label: "Dashboard",   icon: DashboardIcon,  exact: true  },
+  { href: "/admin/search",     label: "Cross-Sell Search", icon: CrossSellIcon, exact: false },
   { href: "/admin/agents",     label: "Agents",      icon: AgentsIcon,     exact: false },
   { href: "/admin/approvals",  label: "Approvals",   icon: ApprovalsIcon,  exact: false },
   { href: "/admin/landlords",  label: "Landlords",   icon: LandlordsIcon,  exact: false },

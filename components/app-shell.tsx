@@ -26,6 +26,7 @@ export function AppShell({ session, children }: Props) {
   // Protected agent routes have their own full layout via AgentShell
   const isProtectedPath =
     pathname === "/dashboard" ||
+    pathname?.startsWith("/search") ||
     pathname?.startsWith("/landlords") ||
     pathname?.startsWith("/properties") ||
     pathname?.startsWith("/sales") ||

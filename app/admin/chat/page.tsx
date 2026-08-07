@@ -6,7 +6,11 @@ import { AdminChatClient } from "./chat-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminChatPage() {
+type Props = {
+  searchParams: { agentId?: string };
+};
+
+export default async function AdminChatPage({ searchParams }: Props) {
   const session = await getAuthSession();
   if (!session) redirect("/admin/login");
 
@@ -26,6 +30,7 @@ export default async function AdminChatPage() {
   return (
     <AdminChatClient
       adminId={session.userId}
+      initialAgentId={typeof searchParams.agentId === "string" ? searchParams.agentId : undefined}
       agents={agents.map((a) => ({
         id: a.id,
         name: a.agentDisplayName,

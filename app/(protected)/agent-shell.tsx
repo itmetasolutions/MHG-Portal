@@ -170,9 +170,18 @@ function ViewingsIcon() {
   );
 }
 
+function CrossSellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M8.5 3.5a4.5 4.5 0 1 0 2.694 8.106l4.1 4.1a1 1 0 0 0 1.414-1.414l-4.1-4.1A4.5 4.5 0 0 0 8.5 3.5ZM6 8a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0Z" />
+    </svg>
+  );
+}
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon, exact: true },
+  { href: "/search", label: "Cross-Sell Search", icon: CrossSellIcon, exact: false },
   { href: "/dialer", label: "Dialpad", icon: DialerIcon, exact: true },
   { href: "/dialer/history", label: "Call History", icon: CallHistoryIcon, exact: false },
   { href: "/dialer/intercalling", label: "Intercalling", icon: IntercallingIcon, exact: false },

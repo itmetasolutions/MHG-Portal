@@ -22,6 +22,7 @@ type ConversationMeta = {
 type Props = {
   adminId: string;
   agents: Agent[];
+  initialAgentId?: string;
 };
 
 function getInitials(name: string | null | undefined): string {
@@ -36,8 +37,10 @@ function getInitials(name: string | null | undefined): string {
   );
 }
 
-export function AdminChatClient({ adminId, agents }: Props) {
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+export function AdminChatClient({ adminId, agents, initialAgentId }: Props) {
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(
+    () => agents.find((a) => a.id === initialAgentId) ?? null,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [messageInput, setMessageInput] = useState("");

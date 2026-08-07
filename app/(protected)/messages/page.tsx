@@ -6,7 +6,11 @@ import { AgentMessagesClient } from "./messages-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function AgentMessagesPage() {
+type Props = {
+  searchParams: { userId?: string };
+};
+
+export default async function AgentMessagesPage({ searchParams }: Props) {
   const session = await getAuthSession();
   if (!session) redirect("/login");
   if (session.role !== UserRole.AGENT) redirect("/admin");
@@ -27,6 +31,7 @@ export default async function AgentMessagesPage() {
   return (
     <AgentMessagesClient
       agentId={session.userId}
+      initialContactId={typeof searchParams.userId === "string" ? searchParams.userId : undefined}
       contacts={contacts.map((c) => ({
         id: c.id,
         name: c.agentDisplayName,

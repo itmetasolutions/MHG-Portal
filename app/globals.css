@@ -1176,6 +1176,34 @@ a {
   font-weight: 700;
 }
 
+/* ─── Search Tabs (Cross-Sell Search) ────────────────────────────────────── */
+.search-tab-group {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-tab {
+  padding: 0.65rem 1.1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+
+.search-tab:hover {
+  color: var(--brand-gold);
+}
+
+.search-tab-active {
+  color: var(--brand-gold);
+  border-bottom-color: var(--brand-gold);
+}
+
 /* ─── Badges ─────────────────────────────────────────────────────────────── */
 .badge {
   display: inline-flex;
