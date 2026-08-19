@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
 import { UIAlert } from "@/components/ui/alert";
 import { UIButton } from "@/components/ui/button";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -21,17 +21,28 @@ type PropertyResult = {
   id: string;
   propertyRef: string;
   title: string | null;
+  description: string | null;
   addressLine1: string | null;
   addressLine2: string | null;
   city: string | null;
+  county: string | null;
   postcode: string | null;
+  area: string | null;
   propertyType: string | null;
+  propertyCategory: string | null;
   beds: number | null;
   baths: number | null;
   status: string;
   vacancyType: string;
+  totalRooms: number | null;
+  availableRooms: number | null;
   rentPerMonth: string | number | null;
   rentPerWeek: string | number | null;
+  depositAmount: string | number | null;
+  isFurnished: boolean | null;
+  petsAllowed: boolean | null;
+  dssAllowed: boolean | null;
+  childrenAllowed: boolean | null;
   ownerAgentId: string;
   ownerAgent: AgentContact;
 };
@@ -39,6 +50,7 @@ type PropertyResult = {
 type TenantResult = {
   id: string;
   fullName: string;
+  currentAddress: string | null;
   postcode: string | null;
   preferredArea: string | null;
   currentLivingPostcode: string | null;
@@ -47,8 +59,17 @@ type TenantResult = {
   budgetMax: string | number | null;
   maximumBudget: string | number | null;
   moveInDate: string | null;
+  moveInFlexible: boolean | null;
   numberOfOccupants: number | null;
   householdSize: number | null;
+  numberOfChildren: number | null;
+  petsAllowed: boolean | null;
+  childrenAllowed: boolean | null;
+  onDSS: boolean | null;
+  currentlyEmployed: boolean | null;
+  workingProfession: string | null;
+  accommodationType: string | null;
+  notes: string | null;
   saleId: string | null;
   owningAgent: AgentContact;
 };
@@ -82,7 +103,9 @@ function statusBadgeClass(status: string) {
 export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
   const [tab, setTab] = useState<SearchTab>("property");
   const [postcodeInput, setPostcodeInput] = useState("");
+  const [areaInput, setAreaInput] = useState("");
   const [appliedPostcode, setAppliedPostcode] = useState("");
+  const [appliedArea, setAppliedArea] = useState("");
   const [statusFilter, setStatusFilter] = useState("AVAILABLE");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -92,14 +115,16 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
   const [properties, setProperties] = useState<PropertyResult[]>([]);
   const [tenants, setTenants] = useState<TenantResult[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 50, total: 0, totalPages: 0 });
+  const [expandedTenantId, setExpandedTenantId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!appliedPostcode.trim()) return;
+    if (!appliedPostcode.trim() && !appliedArea.trim()) return;
     setLoading(true);
     setError(null);
 
     const query = new URLSearchParams();
-    query.set("postcode", appliedPostcode.trim());
+    if (appliedPostcode.trim()) query.set("postcode", appliedPostcode.trim());
+    if (appliedArea.trim()) query.set("area", appliedArea.trim());
     query.set("page", String(page));
     query.set("pageSize", String(pageSize));
     if (tab === "property" && statusFilter) query.set("status", statusFilter);
@@ -125,7 +150,7 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
       setTenants(result.data.tenants ?? []);
     }
     setPagination(result.data.pagination);
-  }, [appliedPostcode, page, pageSize, statusFilter, tab]);
+  }, [appliedPostcode, appliedArea, page, pageSize, statusFilter, tab]);
 
   useEffect(() => {
     void load();
@@ -133,9 +158,10 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
 
   function handleSearch(event: FormEvent) {
     event.preventDefault();
-    if (!postcodeInput.trim()) return;
+    if (!postcodeInput.trim() && !areaInput.trim()) return;
     setPage(1);
     setAppliedPostcode(postcodeInput);
+    setAppliedArea(areaInput);
   }
 
   function switchTab(next: SearchTab) {
@@ -144,6 +170,7 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
     setPage(1);
     setError(null);
     setSearched(false);
+    setExpandedTenantId(null);
   }
 
   function contactHref(agentId: string) {
@@ -156,7 +183,7 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
         <div>
           <h1 className="page-title">Cross-Sell Search</h1>
           <p className="page-subtitle">
-            Search every agent&apos;s live properties and tenant leads by postcode to spot referral opportunities.
+            Search every agent&apos;s live properties and tenant leads by postcode or area to spot referral opportunities.
           </p>
         </div>
       </header>
@@ -188,7 +215,16 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
               placeholder="e.g. E1 or SW1A 1AA"
             />
           </label>
-          <UIButton type="submit" disabled={!postcodeInput.trim() || loading}>
+          <label className="field" style={{ marginBottom: 0, minWidth: "220px" }}>
+            <span className="label">Area</span>
+            <input
+              className="input"
+              value={areaInput}
+              onChange={(e) => setAreaInput(e.target.value)}
+              placeholder="e.g. Canary Wharf"
+            />
+          </label>
+          <UIButton type="submit" disabled={(!postcodeInput.trim() && !areaInput.trim()) || loading}>
             {loading ? "Searching..." : "Search"}
           </UIButton>
 
@@ -216,7 +252,7 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
 
       {!searched && !loading && !error && (
         <div className="panel" style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)" }}>
-          Enter a postcode above to search {tab === "property" ? "properties" : "tenants"} across all agents.
+          Enter a postcode or area above to search {tab === "property" ? "properties" : "tenants"} across all agents.
         </div>
       )}
 
@@ -235,6 +271,8 @@ export function CrossSellSearchClient({ currentUserId, isAdmin }: Props) {
           loading={loading}
           currentUserId={currentUserId}
           contactHref={contactHref}
+          expandedTenantId={expandedTenantId}
+          onToggleExpand={(id) => setExpandedTenantId((prev) => (prev === id ? null : id))}
         />
       )}
 
@@ -280,7 +318,7 @@ function PropertyResults({
   if (properties.length === 0) {
     return (
       <div className="panel" style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-        No properties found for this postcode.
+        No properties found for this search.
       </div>
     );
   }
@@ -289,9 +327,12 @@ function PropertyResults({
     <div className="property-card-grid">
       {properties.map((property) => {
         const isOwn = property.ownerAgentId === currentUserId;
-        const location = [property.addressLine1, property.city, property.postcode].filter(Boolean).join(", ");
+        const location = [property.addressLine1, property.addressLine2, property.city, property.county, property.postcode]
+          .filter(Boolean)
+          .join(", ");
         const rentPerMonth = money(property.rentPerMonth);
         const rentPerWeek = money(property.rentPerWeek);
+        const deposit = money(property.depositAmount);
 
         return (
           <article key={property.id} className="property-preview-card">
@@ -301,7 +342,16 @@ function PropertyResults({
                   {property.title || property.addressLine1 || property.propertyRef}
                 </span>
                 <div className="property-preview-subtitle">{location || property.propertyRef}</div>
+                {property.area && (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>Area: {property.area}</div>
+                )}
               </div>
+
+              {property.description && (
+                <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  {property.description}
+                </p>
+              )}
 
               <div className="property-preview-meta">
                 <span className="property-preview-meta-chip">
@@ -309,6 +359,9 @@ function PropertyResults({
                 </span>
                 {property.propertyType && (
                   <span className="property-preview-meta-chip">{property.propertyType}</span>
+                )}
+                {property.propertyCategory && (
+                  <span className="property-preview-meta-chip">{property.propertyCategory}</span>
                 )}
                 {property.beds != null && (
                   <span className="property-preview-meta-chip">
@@ -320,9 +373,27 @@ function PropertyResults({
                     {property.baths} bath{property.baths === 1 ? "" : "s"}
                   </span>
                 )}
+                {property.totalRooms != null && (
+                  <span className="property-preview-meta-chip">
+                    {property.availableRooms ?? "?"}/{property.totalRooms} rooms available
+                  </span>
+                )}
                 {rentPerMonth && <span className="property-preview-meta-chip">{rentPerMonth}/mo</span>}
                 {!rentPerMonth && rentPerWeek && (
                   <span className="property-preview-meta-chip">{rentPerWeek}/wk</span>
+                )}
+                {deposit && <span className="property-preview-meta-chip">Deposit: {deposit}</span>}
+                {property.isFurnished != null && (
+                  <span className="property-preview-meta-chip">{property.isFurnished ? "Furnished" : "Unfurnished"}</span>
+                )}
+                {property.petsAllowed != null && (
+                  <span className="property-preview-meta-chip">Pets {property.petsAllowed ? "OK" : "not allowed"}</span>
+                )}
+                {property.dssAllowed != null && (
+                  <span className="property-preview-meta-chip">DSS {property.dssAllowed ? "OK" : "not allowed"}</span>
+                )}
+                {property.childrenAllowed != null && (
+                  <span className="property-preview-meta-chip">Children {property.childrenAllowed ? "OK" : "not allowed"}</span>
                 )}
                 <span className={`badge ${statusBadgeClass(property.status)}`}>{property.status}</span>
               </div>
@@ -353,11 +424,15 @@ function TenantResults({
   loading,
   currentUserId,
   contactHref,
+  expandedTenantId,
+  onToggleExpand,
 }: {
   tenants: TenantResult[];
   loading: boolean;
   currentUserId: string;
   contactHref: (agentId: string) => string;
+  expandedTenantId: string | null;
+  onToggleExpand: (id: string) => void;
 }) {
   if (loading) {
     return (
@@ -370,7 +445,7 @@ function TenantResults({
   if (tenants.length === 0) {
     return (
       <div className="panel" style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-        No tenant leads found for this postcode.
+        No tenant leads found for this search.
       </div>
     );
   }
@@ -399,51 +474,105 @@ function TenantResults({
                 [tenant.currentLivingPostcode, tenant.workplacePostcode].filter(Boolean).join(" · ") ||
                 "—";
               const budget = money(tenant.budgetMax) ?? money(tenant.maximumBudget) ?? money(tenant.budgetMin);
+              const expanded = expandedTenantId === tenant.id;
 
               return (
-                <tr key={tenant.id}>
-                  <td style={{ fontWeight: 600 }}>{tenant.fullName}</td>
-                  <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>{area}</td>
-                  <td style={{ fontSize: "0.82rem" }}>{budget ?? "—"}</td>
-                  <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                    {tenant.moveInDate
-                      ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "—"}
-                  </td>
-                  <td style={{ fontSize: "0.82rem" }}>{tenant.numberOfOccupants ?? tenant.householdSize ?? "—"}</td>
-                  <td>
-                    {tenant.saleId ? (
-                      <span className="badge badge-sold" style={{ fontSize: "0.72rem", padding: "0.2rem 0.5rem" }}>
-                        Placed
-                      </span>
-                    ) : (
-                      <span className="badge badge-active" style={{ fontSize: "0.72rem", padding: "0.2rem 0.5rem" }}>
-                        Looking
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ fontSize: "0.82rem" }}>{tenant.owningAgent?.agentDisplayName ?? "Unassigned"}</td>
-                  <td>
-                    {isOwn ? (
-                      <span className="badge badge-admin">Your tenant</span>
-                    ) : tenant.owningAgent ? (
-                      <Link href={contactHref(tenant.owningAgent.id)} className="btn btn-secondary btn-sm">
-                        Contact Agent
-                      </Link>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                </tr>
+                <Fragment key={tenant.id}>
+                  <tr>
+                    <td style={{ fontWeight: 600 }}>
+                      <button
+                        type="button"
+                        onClick={() => onToggleExpand(tenant.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--brand-gold)", fontWeight: 600, padding: 0, textAlign: "left" }}
+                      >
+                        {expanded ? "▾ " : "▸ "}{tenant.fullName}
+                      </button>
+                    </td>
+                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>{area}</td>
+                    <td style={{ fontSize: "0.82rem" }}>{budget ?? "—"}</td>
+                    <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                      {tenant.moveInDate
+                        ? new Date(tenant.moveInDate).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>{tenant.numberOfOccupants ?? tenant.householdSize ?? "—"}</td>
+                    <td>
+                      {tenant.saleId ? (
+                        <span className="badge badge-sold" style={{ fontSize: "0.72rem", padding: "0.2rem 0.5rem" }}>
+                          Placed
+                        </span>
+                      ) : (
+                        <span className="badge badge-active" style={{ fontSize: "0.72rem", padding: "0.2rem 0.5rem" }}>
+                          Looking
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: "0.82rem" }}>{tenant.owningAgent?.agentDisplayName ?? "Unassigned"}</td>
+                    <td>
+                      {isOwn ? (
+                        <span className="badge badge-admin">Your tenant</span>
+                      ) : tenant.owningAgent ? (
+                        <Link href={contactHref(tenant.owningAgent.id)} className="btn btn-secondary btn-sm">
+                          Contact Agent
+                        </Link>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                  {expanded && (
+                    <tr>
+                      <td colSpan={8} style={{ background: "var(--surface-alt, #1a1a24)", padding: "1rem 1.25rem" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", fontSize: "0.82rem" }}>
+                          <DetailField label="Current Address" value={tenant.currentAddress} />
+                          <DetailField label="Budget Range" value={[money(tenant.budgetMin), money(tenant.budgetMax)].filter(Boolean).join(" – ") || null} />
+                          <DetailField label="Move-In Flexible" value={boolLabel(tenant.moveInFlexible)} />
+                          <DetailField label="Household Size" value={tenant.householdSize != null ? String(tenant.householdSize) : null} />
+                          <DetailField label="Children" value={tenant.numberOfChildren != null ? String(tenant.numberOfChildren) : null} />
+                          <DetailField label="Pets Allowed" value={boolLabel(tenant.petsAllowed)} />
+                          <DetailField label="Children Allowed" value={boolLabel(tenant.childrenAllowed)} />
+                          <DetailField label="On DSS" value={boolLabel(tenant.onDSS)} />
+                          <DetailField label="Currently Employed" value={boolLabel(tenant.currentlyEmployed)} />
+                          <DetailField label="Profession" value={tenant.workingProfession} />
+                          <DetailField label="Accommodation Type" value={tenant.accommodationType} />
+                        </div>
+                        <div style={{ marginTop: "0.75rem" }}>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+                            Notes
+                          </span>
+                          <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "var(--text)", whiteSpace: "pre-wrap" }}>
+                            {tenant.notes || "—"}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function boolLabel(value: boolean | null | undefined): string | null {
+  if (value == null) return null;
+  return value ? "Yes" : "No";
+}
+
+function DetailField({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <div style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)" }}>
+        {label}
+      </div>
+      <div style={{ marginTop: "0.15rem", color: "var(--text)" }}>{value || "—"}</div>
     </div>
   );
 }

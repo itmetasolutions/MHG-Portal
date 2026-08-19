@@ -11,6 +11,9 @@ const updateTenantSchema = z
     fullName: z.string().trim().min(1).optional(),
     email: z.string().trim().email().nullable().optional().or(z.literal("").transform(() => null)),
     currentAddress: z.string().trim().min(1).nullable().optional(),
+    postcode: z.string().trim().min(1).nullable().optional(),
+    preferredArea: z.string().trim().min(1).nullable().optional(),
+    budgetMax: z.coerce.number().min(0).nullable().optional(),
     moveInDate: z.string().datetime({ offset: true }).nullable().optional().or(z.string().date().nullable().optional()),
     rentAmount: z.coerce.number().min(0).nullable().optional(),
     depositAmount: z.coerce.number().min(0).nullable().optional(),
@@ -38,6 +41,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       phone: true,
       phoneLast10: true,
       currentAddress: true,
+      postcode: true,
+      preferredArea: true,
+      budgetMax: true,
       moveInDate: true,
       rentAmount: true,
       depositAmount: true,
@@ -104,6 +110,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       phone: true,
       phoneLast10: true,
       currentAddress: true,
+      postcode: true,
+      preferredArea: true,
+      budgetMax: true,
       moveInDate: true,
       rentAmount: true,
       depositAmount: true,
@@ -168,6 +177,21 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     proposedChanges.currentAddress = payload.currentAddress;
     changedFields.push("current address");
   }
+  if (payload.postcode !== undefined && payload.postcode !== tenant.postcode) {
+    updateData.postcode = payload.postcode;
+    proposedChanges.postcode = payload.postcode;
+    changedFields.push("postcode");
+  }
+  if (payload.preferredArea !== undefined && payload.preferredArea !== tenant.preferredArea) {
+    updateData.preferredArea = payload.preferredArea;
+    proposedChanges.preferredArea = payload.preferredArea;
+    changedFields.push("preferred area");
+  }
+  if (payload.budgetMax !== undefined && String(payload.budgetMax) !== String(tenant.budgetMax)) {
+    updateData.budgetMax = payload.budgetMax;
+    proposedChanges.budgetMax = payload.budgetMax;
+    changedFields.push("budget");
+  }
   if (payload.moveInDate !== undefined) {
     const nextMoveInDate = payload.moveInDate ? new Date(payload.moveInDate) : null;
     if (String(nextMoveInDate) !== String(tenant.moveInDate)) {
@@ -230,7 +254,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       data: updateData,
       select: {
         id: true, fullName: true, email: true, phone: true, phoneLast10: true,
-        currentAddress: true, moveInDate: true, rentAmount: true,
+        currentAddress: true, postcode: true, preferredArea: true, budgetMax: true,
+        moveInDate: true, rentAmount: true,
         depositAmount: true, notes: true, createdAt: true, updatedAt: true,
         saleId: true, addedByAgentId: true,
       },

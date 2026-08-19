@@ -94,12 +94,13 @@ export async function POST(request: NextRequest) {
     if (property.availableRooms != null) v2Fields["availableRooms"] = Number(property.availableRooms);
     if (property.expectedCommissionAmt != null) v2Fields["expectedCommissionAmt"] = property.expectedCommissionAmt;
     if (property.status) v2Fields["status"] = property.status;
+    if (property.area !== undefined) v2Fields["area"] = property.area || null;
 
     if (Object.keys(v2Fields).length > 0) {
       const { db } = await import("@/server/db");
-      await (db as any).property.update({
+      await db.property.update({
         where: { id: result.property.id },
-        data: v2Fields,
+        data: v2Fields as Prisma.PropertyUpdateInput,
       });
     }
 

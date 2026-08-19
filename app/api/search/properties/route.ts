@@ -6,12 +6,16 @@ import { db } from "@/server/db";
 
 const querySchema = z
   .object({
-    postcode: z.string().trim().min(2, "Enter at least 2 characters of the postcode."),
+    postcode: z.string().trim().min(2, "Enter at least 2 characters of the postcode.").optional(),
+    area: z.string().trim().min(2, "Enter at least 2 characters of the area.").optional(),
     status: z.nativeEnum(PropertyStatus).optional(),
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(200).default(50),
   })
-  .strict();
+  .strict()
+  .refine((v) => !!(v.postcode || v.area), {
+    message: "Enter a postcode or area to search.",
+  });
 
 // Cross-agent postcode search — deliberately does NOT scope by ownerAgentId,
 // unlike /api/properties, so any agent/admin can find listings from every agent.
@@ -24,6 +28,7 @@ export async function GET(request: NextRequest) {
 
   const parsedQuery = querySchema.safeParse({
     postcode: request.nextUrl.searchParams.get("postcode") ?? undefined,
+    area: request.nextUrl.searchParams.get("area") ?? undefined,
     status: request.nextUrl.searchParams.get("status") ?? undefined,
     page: request.nextUrl.searchParams.get("page") ?? undefined,
     pageSize: request.nextUrl.searchParams.get("pageSize") ?? undefined,
@@ -33,18 +38,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "INVALID_QUERY",
-        message: parsedQuery.error.issues[0]?.message ?? "Enter a postcode to search.",
+        message: parsedQuery.error.issues[0]?.message ?? "Enter a postcode or area to search.",
         details: parsedQuery.error.flatten(),
       },
       { status: 400 },
     );
   }
 
-  const { postcode, status, page, pageSize } = parsedQuery.data;
+  const { postcode, area, status, page, pageSize } = parsedQuery.data;
 
-  const where: Prisma.PropertyWhereInput = {
-    postcode: { contains: postcode, mode: "insensitive" },
-  };
+  const locationFilters: Prisma.PropertyWhereInput[] = [];
+  if (postcode) locationFilters.push({ postcode: { contains: postcode, mode: "insensitive" } });
+  if (area) locationFilters.push({ area: { contains: area, mode: "insensitive" } });
+
+  const where: Prisma.PropertyWhereInput = { OR: locationFilters };
   if (status) {
     where.status = status;
   }
@@ -62,17 +69,28 @@ export async function GET(request: NextRequest) {
         id: true,
         propertyRef: true,
         title: true,
+        description: true,
         addressLine1: true,
         addressLine2: true,
         city: true,
+        county: true,
         postcode: true,
+        area: true,
         propertyType: true,
+        propertyCategory: true,
         beds: true,
         baths: true,
         status: true,
         vacancyType: true,
+        totalRooms: true,
+        availableRooms: true,
         rentPerMonth: true,
         rentPerWeek: true,
+        depositAmount: true,
+        isFurnished: true,
+        petsAllowed: true,
+        dssAllowed: true,
+        childrenAllowed: true,
         availabilityDate: true,
         createdAt: true,
         ownerAgentId: true,

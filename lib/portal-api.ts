@@ -104,6 +104,9 @@ export type TenantRow = {
   email: string | null;
   phone: string | null;
   currentAddress: string | null;
+  postcode: string | null;
+  preferredArea: string | null;
+  budgetMax: string | number | null;
   moveInDate: string | null;
   rentAmount: string | null;
   depositAmount: string | null;
@@ -216,6 +219,7 @@ export type PropertyRow = {
   city: string | null;
   county: string | null;
   postcode: string | null;
+  area: string | null;
   propertyType: string | null;
   beds: number | null;
   baths: number | null;
@@ -510,6 +514,7 @@ export type PropertyDraftPayload = {
   city?: string | null;
   county?: string | null;
   postcode?: string | null;
+  area?: string | null;
   propertyType?: string | null;
   propertyCategory?: "PRIVATE" | "SHARED";
   beds?: number | null;
@@ -630,6 +635,9 @@ function normalizeTenantCreatePayload(
         phone: string;
         email?: string | null;
         currentAddress?: string | null;
+        postcode?: string | null;
+        preferredArea?: string | null;
+        budgetMax?: number | null;
         moveInDate?: string | null;
         rentAmount?: number | null;
         depositAmount?: number | null;
@@ -654,6 +662,9 @@ function normalizeTenantCreatePayload(
     phone: normalizePhoneNo(payload.phone),
     email: payload.email?.trim() || null,
     currentAddress: payload.currentAddress?.trim() || null,
+    postcode: payload.postcode?.trim() || null,
+    preferredArea: payload.preferredArea?.trim() || null,
+    budgetMax: payload.budgetMax ?? null,
     moveInDate: payload.moveInDate || null,
     rentAmount: payload.rentAmount ?? null,
     depositAmount: payload.depositAmount ?? null,
@@ -1119,6 +1130,9 @@ export function createTenant(
         phone: string;
         email?: string | null;
         currentAddress?: string | null;
+        postcode?: string | null;
+        preferredArea?: string | null;
+        budgetMax?: number | null;
         moveInDate?: string | null;
         rentAmount?: number | null;
         depositAmount?: number | null;
@@ -1135,6 +1149,9 @@ export function updateTenant(
     fullName?: string;
     email?: string | null;
     currentAddress?: string | null;
+    postcode?: string | null;
+    preferredArea?: string | null;
+    budgetMax?: number | null;
     moveInDate?: string | null;
     rentAmount?: number | null;
     depositAmount?: number | null;

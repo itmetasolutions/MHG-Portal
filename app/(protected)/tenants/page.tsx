@@ -91,13 +91,17 @@ export default function TenantsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     fullName: "", email: "", currentAddress: "",
+    postcode: "", preferredArea: "", budgetMax: "",
     moveInDate: "", rentAmount: "", depositAmount: "", notes: "",
   });
   const [editBusy, setEditBusy] = useState(false);
 
   // Add Tenant modal
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ fullName: "", phone: "", email: "", currentAddress: "", notes: "" });
+  const [addForm, setAddForm] = useState({
+    fullName: "", phone: "", email: "", currentAddress: "",
+    postcode: "", preferredArea: "", budgetMax: "", notes: "",
+  });
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -149,6 +153,9 @@ export default function TenantsPage() {
       fullName: tenant.fullName,
       email: tenant.email ?? "",
       currentAddress: tenant.currentAddress ?? "",
+      postcode: tenant.postcode ?? "",
+      preferredArea: tenant.preferredArea ?? "",
+      budgetMax: tenant.budgetMax != null ? String(tenant.budgetMax) : "",
       moveInDate: tenant.moveInDate ? new Date(tenant.moveInDate).toISOString().slice(0, 10) : "",
       rentAmount: tenant.rentAmount ?? "",
       depositAmount: tenant.depositAmount ?? "",
@@ -164,6 +171,9 @@ export default function TenantsPage() {
       fullName: editForm.fullName.trim() || undefined,
       email: editForm.email.trim() || null,
       currentAddress: editForm.currentAddress.trim() || null,
+      postcode: editForm.postcode.trim() || null,
+      preferredArea: editForm.preferredArea.trim() || null,
+      budgetMax: editForm.budgetMax.trim() ? Number(editForm.budgetMax) : null,
       moveInDate: editForm.moveInDate ? new Date(editForm.moveInDate).toISOString() : null,
       rentAmount: editForm.rentAmount.trim() ? Number(editForm.rentAmount) : null,
       depositAmount: editForm.depositAmount.trim() ? Number(editForm.depositAmount) : null,
@@ -187,7 +197,10 @@ export default function TenantsPage() {
   // ── Add Tenant handlers ────────────────────────────────────────────────────
 
   function openAdd() {
-    setAddForm({ fullName: "", phone: "", email: "", currentAddress: "", notes: "" });
+    setAddForm({
+      fullName: "", phone: "", email: "", currentAddress: "",
+      postcode: "", preferredArea: "", budgetMax: "", notes: "",
+    });
     setAddError(null);
     setShowAdd(true);
   }
@@ -202,6 +215,9 @@ export default function TenantsPage() {
       phone: addForm.phone.trim(),
       email: addForm.email.trim() || null,
       currentAddress: addForm.currentAddress.trim() || null,
+      postcode: addForm.postcode.trim() || null,
+      preferredArea: addForm.preferredArea.trim() || null,
+      budgetMax: addForm.budgetMax.trim() ? Number(addForm.budgetMax) : null,
       notes: addForm.notes.trim() || null,
     });
     setAddBusy(false);
@@ -460,6 +476,8 @@ export default function TenantsPage() {
                   <th>Tenant</th>
                   <th>Phone</th>
                   <th>Email</th>
+                  <th>Area / Postcode</th>
+                  <th>Budget</th>
                   <th>Property</th>
                   <th>Move-In</th>
                   <th>Rent / Deposit</th>
@@ -500,6 +518,23 @@ export default function TenantsPage() {
                             disabled={editBusy}
                           />
                         ) : (tenant.email ?? "—")}
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        {editing ? (
+                          <div className="stack" style={{ gap: "0.35rem" }}>
+                            <UIInput placeholder="Area" value={editForm.preferredArea} onChange={(e) => setEditForm((p) => ({ ...p, preferredArea: e.target.value }))} disabled={editBusy} />
+                            <UIInput placeholder="Postcode" value={editForm.postcode} onChange={(e) => setEditForm((p) => ({ ...p, postcode: e.target.value.toUpperCase() }))} disabled={editBusy} />
+                          </div>
+                        ) : (
+                          [tenant.preferredArea, tenant.postcode].filter(Boolean).join(" · ") || "—"
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.82rem" }}>
+                        {editing ? (
+                          <UIInput type="number" min={0} step="0.01" placeholder="Budget" value={editForm.budgetMax} onChange={(e) => setEditForm((p) => ({ ...p, budgetMax: e.target.value }))} disabled={editBusy} />
+                        ) : (
+                          tenant.budgetMax ? money(tenant.budgetMax) : "—"
+                        )}
                       </td>
                       <td>
                         {tenant.sale?.property ? (
@@ -656,6 +691,36 @@ export default function TenantsPage() {
                   value={addForm.currentAddress}
                   onChange={(e) => setAddForm((p) => ({ ...p, currentAddress: e.target.value }))}
                   placeholder="123 Old Road, London"
+                  disabled={addBusy}
+                />
+              </label>
+              <div className="field-grid-2">
+                <label className="field">
+                  <span className="label">Area (optional)</span>
+                  <UIInput
+                    value={addForm.preferredArea}
+                    onChange={(e) => setAddForm((p) => ({ ...p, preferredArea: e.target.value }))}
+                    placeholder="e.g. Canary Wharf"
+                    disabled={addBusy}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">Post Code (optional)</span>
+                  <UIInput
+                    value={addForm.postcode}
+                    onChange={(e) => setAddForm((p) => ({ ...p, postcode: e.target.value.toUpperCase() }))}
+                    placeholder="e.g. E14 5AB"
+                    disabled={addBusy}
+                  />
+                </label>
+              </div>
+              <label className="field">
+                <span className="label">Budget (£ per month, optional)</span>
+                <UIInput
+                  type="number" min={0} step="0.01"
+                  value={addForm.budgetMax}
+                  onChange={(e) => setAddForm((p) => ({ ...p, budgetMax: e.target.value }))}
+                  placeholder="e.g. 1200"
                   disabled={addBusy}
                 />
               </label>

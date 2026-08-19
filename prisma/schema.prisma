@@ -219,6 +219,7 @@ model Property {
   county                String?
   postcode              String?
   postcodeCanonical     String?
+  area                  String?
   propertyType          String?
   beds                  Int?
   baths                 Int?

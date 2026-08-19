@@ -30,6 +30,7 @@ const agentUpdateSchema = z
     city: z.string().trim().min(1).nullable().optional(),
     county: z.string().trim().min(1).nullable().optional(),
     postcode: z.string().trim().min(1).nullable().optional(),
+    area: z.string().trim().min(1).nullable().optional(),
     propertyType: z.string().trim().min(1).nullable().optional(),
     beds: z.coerce.number().int().min(0).nullable().optional(),
     baths: z.coerce.number().int().min(0).nullable().optional(),
@@ -82,6 +83,7 @@ const propertySelect = Prisma.validator<Prisma.PropertySelect>()({
   city: true,
   county: true,
   postcode: true,
+  area: true,
   propertyType: true,
   beds: true,
   baths: true,
@@ -465,6 +467,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     updateData.postcode = payload.postcode;
     proposedChanges.postcode = payload.postcode;
     changedFields.push("postcode");
+    hasChanges = true;
+  }
+  if (payload.area !== undefined && payload.area !== currentProperty.area) {
+    updateData.area = payload.area;
+    proposedChanges.area = payload.area;
+    changedFields.push("area");
     hasChanges = true;
   }
   if (payload.propertyType !== undefined && payload.propertyType !== currentProperty.propertyType) {

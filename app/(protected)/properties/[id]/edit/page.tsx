@@ -38,6 +38,7 @@ type PropertyDetail = {
   city: string | null;
   county: string | null;
   postcode: string | null;
+  area: string | null;
   propertyType: string | null;
   beds: number | null;
   baths: number | null;
@@ -96,6 +97,7 @@ export default function EditPropertyPage({ params }: Props) {
   const [selectedAssets, setSelectedAssets] = useState<MediaSelectionValue[]>([]);
   const [status, setStatus] = useState<PropertyStatus>("DRAFT");
   const [propertyType, setPropertyType] = useState("");
+  const [area, setArea] = useState("");
   const [beds, setBeds] = useState("");
   const [baths, setBaths] = useState("");
   const [landlordDemand, setLandlordDemand] = useState("");
@@ -145,6 +147,7 @@ export default function EditPropertyPage({ params }: Props) {
       );
       setStatus(p.status === "CLOSED" ? "AVAILABLE" : p.status);
       setPropertyType(p.propertyType ?? "");
+      setArea(p.area ?? "");
       setBeds(p.beds != null ? String(p.beds) : "");
       setBaths(p.baths != null ? String(p.baths) : "");
       setLandlordDemand(p.landlordDemand != null ? String(p.landlordDemand) : "");
@@ -200,6 +203,7 @@ export default function EditPropertyPage({ params }: Props) {
       description: propertyDescription.trim() || null,
       status,
       propertyType: propertyType.trim() || null,
+      area: area.trim() || null,
       beds: beds !== "" ? Number(beds) : null,
       baths: baths !== "" ? Number(baths) : null,
       totalRooms: totalRooms !== "" ? Number(totalRooms) : null,
@@ -479,6 +483,10 @@ export default function EditPropertyPage({ params }: Props) {
               <label className="field">
                 <span className="label">Property Type</span>
                 <UIInput value={propertyType} onChange={(e) => setPropertyType(e.target.value)} placeholder="e.g. House, Flat" disabled={saving} />
+              </label>
+              <label className="field">
+                <span className="label">Area</span>
+                <UIInput value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Canary Wharf" disabled={saving} />
               </label>
               <div className="field-grid-2">
                 <label className="field">

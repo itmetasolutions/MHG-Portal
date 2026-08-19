@@ -72,6 +72,7 @@ export default function AddPropertyPage() {
   const [addressLine2, setAddressLine2] = useState("");
   const [postCode, setPostCode] = useState("");
   const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
   const [noOfRooms, setNoOfRooms] = useState("");
   const [availableRooms, setAvailableRooms] = useState("");
   const [availabilityDate, setAvailabilityDate] = useState("");
@@ -203,6 +204,7 @@ export default function AddPropertyPage() {
           addressLine2: addressLine2 || undefined,
           postcode: postCode.toUpperCase(),
           city,
+          area: area.trim() || undefined,
           rentPerMonth: propType === "PRIVATE" ? parseFloat(rentPerMonth) : undefined,
           rentPerWeek: propType === "PRIVATE" ? parseFloat(rentPerWeek || "0") : undefined,
           depositAmount: propType === "PRIVATE" ? parseFloat(depositAmount) : undefined,
@@ -451,6 +453,10 @@ export default function AddPropertyPage() {
                   <label className="field">
                     <L text="City" req />
                     <input className="input" value={city} onChange={(e) => setCity(e.target.value)} placeholder="London" disabled={saving} />
+                  </label>
+                  <label className="field">
+                    <span className="label">Area (optional)</span>
+                    <input className="input" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Canary Wharf" disabled={saving} />
                   </label>
                 </div>
 
