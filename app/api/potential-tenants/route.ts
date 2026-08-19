@@ -1,11 +1,10 @@
+import { PotentialTenant } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/auth/requireUser";
 import { normalizeNamePart, normalizePhone, normalizePostcode } from "@/server/portal/normalize";
 
-const prisma = db as any;
-
-function mapPotentialTenant(row: any) {
+function mapPotentialTenant(row: PotentialTenant) {
   return {
     id: row.id,
     fullName: row.fullName,
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
   const q = url.searchParams.get("q")?.trim() ?? "";
   const onlyMine = auth.user.role !== "ADMIN";
 
-  const rows = await prisma.potentialTenant.findMany({
+  const rows = await db.potentialTenant.findMany({
     where: {
       ...(onlyMine ? { addedByAgentId: auth.user.id } : {}),
       ...(q
@@ -86,7 +85,7 @@ export async function POST(request: NextRequest) {
   const currentLivingPostcode = body.currentLivingPostcode ? normalizePostcode(String(body.currentLivingPostcode).trim()) : null;
   const workplacePostcode = body.workplacePostcode ? normalizePostcode(String(body.workplacePostcode).trim()) : null;
 
-  const potentialTenant = await prisma.potentialTenant.create({
+  const potentialTenant = await db.potentialTenant.create({
     data: {
       addedByAgentId: auth.user.id,
       fullName: normalizeNamePart(fullName),

@@ -1,11 +1,10 @@
+import { Landlord } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/auth/requireUser";
 import { normalizeNamePart, normalizePhone } from "@/server/portal/normalize";
 
-const prisma = db as any;
-
-function mapLandlord(landlord: any) {
+function mapLandlord(landlord: Landlord) {
   return {
     id: landlord.id,
     landlordName: landlord.landlordName,
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   const phoneDigits = phone ? phone.replace(/\D/g, "").slice(-10) : "";
   const normalizedPhone = phone ? normalizePhone(phone) : null;
 
-  const landlords = await prisma.landlord.findMany({
+  const landlords = await db.landlord.findMany({
     where: {
       ...(onlyMine ? { ownerAgentId: auth.user.id } : {}),
       ...(q
@@ -65,7 +64,7 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({
-    landlords: landlords.map((landlord: any) => ({
+    landlords: landlords.map((landlord) => ({
       ...mapLandlord(landlord),
       ownerAgent: landlord.ownerAgent,
     })),
@@ -97,14 +96,14 @@ export async function POST(request: NextRequest) {
   }
 
   const landlordName = `${normalizeNamePart(firstName)} ${normalizeNamePart(lastName)}`.trim();
-  const existing = await prisma.landlord.findUnique({
+  const existing = await db.landlord.findUnique({
     where: {
       phoneLast10: normalizedPhone.phoneLast10,
     },
   });
 
   const landlord = existing
-    ? await prisma.landlord.update({
+    ? await db.landlord.update({
         where: { id: existing.id },
         data: {
           landlordName,
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
           updatedByUserId: auth.user.id,
         },
       })
-    : await prisma.landlord.create({
+    : await db.landlord.create({
         data: {
           landlordName,
           landlordNumber: phoneInput,

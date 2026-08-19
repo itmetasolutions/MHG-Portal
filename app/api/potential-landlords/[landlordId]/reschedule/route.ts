@@ -19,7 +19,7 @@ export async function POST(
     return NextResponse.json({ error: "SCHEDULED_AT_MUST_BE_FUTURE" }, { status: 400 });
   }
 
-  const lead = await (db as any).potentialLandlord.findUnique({
+  const lead = await db.potentialLandlord.findUnique({
     where: { id: params.landlordId },
     select: { id: true, addedByAgentId: true },
   });
@@ -31,7 +31,7 @@ export async function POST(
 
   const lockedUntil = new Date(scheduledAt.getTime() + 24 * 60 * 60 * 1000);
 
-  await (db as any).potentialLandlord.update({
+  await db.potentialLandlord.update({
     where: { id: params.landlordId },
     data: {
       followUpScheduledAt: scheduledAt,

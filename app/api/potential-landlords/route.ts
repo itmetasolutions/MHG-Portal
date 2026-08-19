@@ -1,12 +1,22 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/auth/requireUser";
 import { createFollowUpLead, reserveFollowUpLock } from "@/server/portal/workflows";
 import { normalizePhone } from "@/server/portal/normalize";
 
-const prisma = db as any;
+const leadInclude = {
+  addedByAgent: {
+    select: { id: true, agentDisplayName: true, email: true },
+  },
+  followUpContinuedBy: {
+    select: { id: true, agentDisplayName: true, email: true },
+  },
+} satisfies Prisma.PotentialLandlordInclude;
 
-function mapLead(lead: any, currentUserId: string) {
+type LeadWithRelations = Prisma.PotentialLandlordGetPayload<{ include: typeof leadInclude }>;
+
+function mapLead(lead: LeadWithRelations, currentUserId: string) {
   const lockedUntil = lead.followUpLockedUntil ?? null;
   const isLocked =
     Boolean(lockedUntil && new Date(lockedUntil).getTime() > Date.now() && lead.addedByAgentId !== currentUserId);
@@ -44,16 +54,9 @@ export async function GET(request: NextRequest) {
   const onlyMine = auth.user.role !== "ADMIN";
 
   if (id) {
-    const lead = await prisma.potentialLandlord.findUnique({
+    const lead = await db.potentialLandlord.findUnique({
       where: { id },
-      include: {
-        addedByAgent: {
-          select: { id: true, agentDisplayName: true, email: true },
-        },
-        followUpContinuedBy: {
-          select: { id: true, agentDisplayName: true, email: true },
-        },
-      },
+      include: leadInclude,
     });
 
     if (!lead) {
@@ -64,7 +67,7 @@ export async function GET(request: NextRequest) {
   }
 
   const normalizedPhone = phone ? normalizePhone(phone) : null;
-  const leads = await prisma.potentialLandlord.findMany({
+  const leads = await db.potentialLandlord.findMany({
     where: {
       ...(onlyMine ? { addedByAgentId: auth.user.id } : {}),
       ...(phone
@@ -76,14 +79,7 @@ export async function GET(request: NextRequest) {
           }
         : {}),
     },
-    include: {
-      addedByAgent: {
-        select: { id: true, agentDisplayName: true, email: true },
-      },
-      followUpContinuedBy: {
-        select: { id: true, agentDisplayName: true, email: true },
-      },
-    },
+    include: leadInclude,
     orderBy: {
       createdAt: "desc",
     },
@@ -91,7 +87,7 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json({
-    leads: leads.map((lead: any) => mapLead(lead, auth.user.id)),
+    leads: leads.map((lead) => mapLead(lead, auth.user.id)),
   });
 }
 
@@ -109,7 +105,7 @@ export async function POST(request: NextRequest) {
   const leadId = body.leadId ?? body.continueLeadId ?? null;
 
   if (leadId) {
-    const existing = await prisma.potentialLandlord.findUnique({
+    const existing = await db.potentialLandlord.findUnique({
       where: { id: leadId },
     });
 
@@ -118,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { lockedUntil } = reserveFollowUpLock(existing.followUpScheduledAt ?? new Date());
-    const lead = await prisma.potentialLandlord.update({
+    const lead = await db.potentialLandlord.update({
       where: { id: leadId },
       data: {
         followUpContinuedAt: new Date(),

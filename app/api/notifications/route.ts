@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { requireUser } from "@/server/auth/requireUser";
 
-const prisma = db as any;
-
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) {
@@ -13,7 +11,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const unreadOnly = url.searchParams.get("unreadOnly") === "1";
 
-  const notifications = await prisma.notification.findMany({
+  const notifications = await db.notification.findMany({
     where: {
       userId: auth.user.id,
       ...(unreadOnly ? { isRead: false } : {}),
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "TITLE_AND_BODY_REQUIRED" }, { status: 400 });
   }
 
-  const notification = await prisma.notification.create({
+  const notification = await db.notification.create({
     data: {
       userId,
       type,

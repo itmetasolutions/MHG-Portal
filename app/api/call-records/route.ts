@@ -3,8 +3,6 @@ import { db } from "@/server/db";
 import { requireUser } from "@/server/auth/requireUser";
 import { createWorkflowCallLog } from "@/server/portal/workflows";
 
-const prisma = db as any;
-
 const ALLOWED_OUTCOMES = new Set(["CONFIRMED", "FOLLOW_UP", "NOT_INTERESTED"]);
 
 export async function GET(request: NextRequest) {
@@ -18,11 +16,13 @@ export async function GET(request: NextRequest) {
   const outcome = url.searchParams.get("outcome")?.trim() ?? "";
   const take = Math.min(Number(url.searchParams.get("take") ?? 100), 200);
 
-  const records = await prisma.callRecord.findMany({
+  const records = await db.callRecord.findMany({
     where: {
       agentId: auth.user.id,
       ...(phone ? { phoneNumber: { contains: phone, mode: "insensitive" as const } } : {}),
-      ...(outcome && ALLOWED_OUTCOMES.has(outcome) ? { outcome } : {}),
+      ...(outcome && ALLOWED_OUTCOMES.has(outcome)
+        ? { outcome: outcome as "CONFIRMED" | "FOLLOW_UP" | "NOT_INTERESTED" }
+        : {}),
     },
     orderBy: {
       createdAt: "desc",

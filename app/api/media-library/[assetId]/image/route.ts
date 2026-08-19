@@ -1,133 +1,44 @@
+import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole, requireUser } from "@/server/auth";
 import { db } from "@/server/db";
-import { requireUser } from "@/server/auth/requireUser";
-import { normalizeNamePart, normalizePhone } from "@/server/portal/normalize";
 
-const prisma = db as any;
+type Params = { params: { assetId: string } };
 
-function mapLandlord(landlord: any) {
-  return {
-    id: landlord.id,
-    landlordName: landlord.landlordName,
-    landlordNumber: landlord.landlordNumber,
-    phoneE164: landlord.phoneE164,
-    phoneLast10: landlord.phoneLast10,
-    email: landlord.email,
-    notes: landlord.notes,
-    ownerAgentId: landlord.ownerAgentId,
-    createdAt: landlord.createdAt,
-    updatedAt: landlord.updatedAt,
-  };
-}
-
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, { params }: Params) {
   const auth = await requireUser(request);
   if (!auth.ok) {
     return auth.response;
   }
 
-  const url = new URL(request.url);
-  const q = url.searchParams.get("q")?.trim() ?? "";
-  const phone = url.searchParams.get("phone")?.trim() ?? "";
-  const onlyMine = auth.user.role !== "ADMIN";
-
-  const phoneDigits = phone ? phone.replace(/\D/g, "").slice(-10) : "";
-  const normalizedPhone = phone ? normalizePhone(phone) : null;
-
-  const landlords = await prisma.landlord.findMany({
-    where: {
-      ...(onlyMine ? { ownerAgentId: auth.user.id } : {}),
-      ...(q
-        ? {
-            OR: [
-              { landlordName: { contains: q } },
-              { landlordNumber: { contains: q } },
-              { email: { contains: q } },
-            ],
-          }
-        : {}),
-      ...(normalizedPhone && normalizedPhone.ok ? { phoneLast10: normalizedPhone.phoneLast10 } : {}),
-      ...(!normalizedPhone && phoneDigits ? { phoneLast10: phoneDigits } : {}),
-    },
-    include: {
-      ownerAgent: {
-        select: {
-          id: true,
-          agentDisplayName: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 200,
-  });
-
-  return NextResponse.json({
-    landlords: landlords.map((landlord: any) => ({
-      ...mapLandlord(landlord),
-      ownerAgent: landlord.ownerAgent,
-    })),
-  });
-}
-
-export async function POST(request: NextRequest) {
-  const auth = await requireUser(request);
-  if (!auth.ok) {
-    return auth.response;
+  const roleCheck = requireRole(auth.user, [UserRole.ADMIN, UserRole.AGENT]);
+  if (!roleCheck.ok) {
+    return roleCheck.response;
   }
 
-  const body = await request.json().catch(() => null);
-  const firstName = String(body?.firstName ?? body?.landlordFirstName ?? "").trim();
-  const lastName = String(body?.lastName ?? body?.landlordLastName ?? "").trim();
-  const phoneInput = String(body?.phoneNo ?? body?.phone ?? body?.landlordNumber ?? "").trim();
-  const email = body?.email ? String(body.email).trim() : null;
+  const asset = await db.mediaAsset.findUnique({
+    where: { id: params.assetId },
+    select: { mimeType: true, dataUrl: true },
+  });
 
-  if (!firstName || !lastName || !phoneInput) {
+  if (!asset) {
+    return NextResponse.json({ error: "NOT_FOUND", message: "Media asset not found." }, { status: 404 });
+  }
+
+  const match = asset.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
     return NextResponse.json(
-      { error: "FIRST_NAME_LAST_NAME_PHONE_REQUIRED" },
-      { status: 400 },
+      { error: "INVALID_MEDIA", message: "Stored media asset is not a valid image data URL." },
+      { status: 500 },
     );
   }
 
-  const normalizedPhone = normalizePhone(phoneInput);
-  if (!normalizedPhone.ok) {
-    return NextResponse.json({ error: normalizedPhone.message }, { status: 400 });
-  }
+  const buffer = Buffer.from(match[2], "base64");
 
-  const landlordName = `${normalizeNamePart(firstName)} ${normalizeNamePart(lastName)}`.trim();
-  const existing = await prisma.landlord.findUnique({
-    where: {
-      phoneLast10: normalizedPhone.phoneLast10,
+  return new NextResponse(buffer, {
+    headers: {
+      "Content-Type": asset.mimeType || match[1],
+      "Cache-Control": "private, max-age=31536000, immutable",
     },
-  });
-
-  const landlord = existing
-    ? await prisma.landlord.update({
-        where: { id: existing.id },
-        data: {
-          landlordName,
-          landlordNumber: phoneInput,
-          phoneE164: normalizedPhone.phoneE164,
-          email,
-          updatedByUserId: auth.user.id,
-        },
-      })
-    : await prisma.landlord.create({
-        data: {
-          landlordName,
-          landlordNumber: phoneInput,
-          phoneE164: normalizedPhone.phoneE164,
-          phoneLast10: normalizedPhone.phoneLast10,
-          email,
-          createdByUserId: auth.user.id,
-          updatedByUserId: auth.user.id,
-          ownerAgentId: auth.user.id,
-        },
-      });
-
-  return NextResponse.json({
-    landlord: mapLandlord(landlord),
   });
 }

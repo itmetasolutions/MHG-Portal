@@ -250,7 +250,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       },
     });
 
-    const tenant = await (tx as any).tenant.create({
+    const tenant = await tx.tenant.create({
       data: {
         saleId: sale.id,
         addedByAgentId: auth.user.id,
@@ -313,7 +313,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const now2 = new Date();
     const reportDate = new Date(Date.UTC(now2.getUTCFullYear(), now2.getUTCMonth(), now2.getUTCDate()));
-    await (tx as any).dailyReport.upsert({
+    await tx.dailyReport.upsert({
       where: { agentId_reportDate: { agentId: auth.user.id, reportDate } },
       create: { agentId: auth.user.id, reportDate, callsMade: 0, salesClosed: 1 },
       update: { salesClosed: { increment: 1 } },

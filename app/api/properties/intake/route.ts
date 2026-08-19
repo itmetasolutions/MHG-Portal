@@ -6,6 +6,11 @@ import {
   type InterestedPropertyRoomInput,
 } from "@/server/portal/workflows";
 
+function normalizePropertyCategory(value: unknown): "PRIVATE" | "SHARED" | null {
+  const raw = value ? String(value).trim().toUpperCase() : null;
+  return raw === "PRIVATE" || raw === "SHARED" ? raw : null;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) {
@@ -61,11 +66,9 @@ export async function POST(request: NextRequest) {
         city: propertySource.city ?? null,
         county: propertySource.county ?? null,
         postcode: String(propertySource.postcode).trim(),
-        propertyCategory: (propertySource.propertyCategory
-          ? String(propertySource.propertyCategory).trim().toUpperCase()
-          : propertySource.branch
-            ? String(propertySource.branch).trim().toUpperCase()
-            : null) as any,
+        propertyCategory: normalizePropertyCategory(
+          propertySource.propertyCategory ?? propertySource.branch ?? null,
+        ),
         propertyType: propertySource.propertyType ?? null,
         beds: propertySource.beds == null ? null : Number(propertySource.beds),
         baths: propertySource.baths == null ? null : Number(propertySource.baths),

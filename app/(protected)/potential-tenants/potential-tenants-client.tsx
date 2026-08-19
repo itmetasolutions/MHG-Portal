@@ -392,7 +392,7 @@ export function PotentialTenantsClient({ initialTenants }: Props) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <label className="field" style={{ marginBottom: 0 }}>
                   <span className="label">Accommodation Type</span>
-                  <select className="input" value={form.accommodationType} onChange={(e) => setForm((f) => ({ ...f, accommodationType: e.target.value as any }))}>
+                  <select className="input" value={form.accommodationType} onChange={(e) => setForm((f) => ({ ...f, accommodationType: e.target.value as "PRIVATE" | "SHARED" | "" }))}>
                     <option value="">— Select —</option>
                     <option value="PRIVATE">Private</option>
                     <option value="SHARED">Shared</option>

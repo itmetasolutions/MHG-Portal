@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const potentialId = String(body.potentialId ?? "").trim();
   if (!potentialId) return NextResponse.json({ error: "POTENTIAL_ID_REQUIRED" }, { status: 400 });
 
-  const lead = await (db as any).potentialLandlord.findUnique({
+  const lead = await db.potentialLandlord.findUnique({
     where: { id: potentialId },
     select: {
       id: true,

@@ -4,8 +4,6 @@ import { requireUser } from "@/server/auth/requireUser";
 import { createLandlordLookupEvent } from "@/server/portal/workflows";
 import { normalizePhone } from "@/server/portal/normalize";
 
-const prisma = db as any;
-
 export async function GET(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) {
@@ -24,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   const [landlord, activeLead] = await Promise.all([
-    prisma.landlord.findUnique({
+    db.landlord.findUnique({
       where: { phoneLast10: normalizedPhone.phoneLast10 },
       include: {
         ownerAgent: {
@@ -36,7 +34,7 @@ export async function GET(request: NextRequest) {
         },
       },
     }),
-    prisma.potentialLandlord.findFirst({
+    db.potentialLandlord.findFirst({
       where: {
         phoneLast10: normalizedPhone.phoneLast10,
         isFollowUpLocked: true,

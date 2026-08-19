@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       ownerUserId: auth.user.id,
       fullName,
       phoneNumber: phone,
-      sourceType: "NOT_INTERESTED_LANDLORD" as any,
+      sourceType: "NOT_INTERESTED_LANDLORD",
       sourceLandlordId: null,
     }).catch(() => {});
   }

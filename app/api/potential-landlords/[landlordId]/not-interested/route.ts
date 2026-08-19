@@ -12,7 +12,7 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
 
-  const lead = await (db as any).potentialLandlord.findUnique({
+  const lead = await db.potentialLandlord.findUnique({
     where: { id: params.landlordId },
     select: { id: true, addedByAgentId: true, fullName: true, phone: true },
   });
@@ -35,11 +35,11 @@ export async function POST(
     ownerUserId: auth.user.id,
     fullName: lead.fullName,
     phoneNumber: lead.phone,
-    sourceType: "NOT_INTERESTED_LANDLORD" as any,
+    sourceType: "NOT_INTERESTED_LANDLORD",
     sourceLandlordId: null,
   }).catch(() => {});
 
-  await (db as any).potentialLandlord.delete({
+  await db.potentialLandlord.delete({
     where: { id: params.landlordId },
   });
 

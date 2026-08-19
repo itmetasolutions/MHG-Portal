@@ -17,7 +17,7 @@ export default async function PotentialLandlordsPage() {
   if (!user || !user.isActive) redirect("/login");
   if (user.role === UserRole.ADMIN) redirect("/admin/potential-landlords");
 
-  const landlords = await (db as any).potentialLandlord.findMany({
+  const landlords = await db.potentialLandlord.findMany({
     where: { addedByAgentId: session.userId },
     orderBy: { createdAt: "desc" },
     select: {
@@ -36,7 +36,7 @@ export default async function PotentialLandlordsPage() {
     },
   });
 
-  const serialized = landlords.map((l: any) => ({
+  const serialized = landlords.map((l) => ({
     ...l,
     createdAt: l.createdAt.toISOString(),
     followUpScheduledAt: l.followUpScheduledAt ? l.followUpScheduledAt.toISOString() : null,

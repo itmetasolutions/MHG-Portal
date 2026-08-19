@@ -4,9 +4,6 @@ import { db } from "@/server/db";
 import { normalizePhone } from "@/server/portal/normalize";
 import { sendNumberSearchedEmail } from "@/server/email/service";
 
-type DbClient = typeof db & Record<string, any>;
-const prisma = db as DbClient;
-
 export async function POST(request: NextRequest) {
   const auth = await requireUser(request);
   if (!auth.ok) return auth.response;
@@ -40,7 +37,7 @@ export async function POST(request: NextRequest) {
     const isMine = landlord.ownerAgentId === agentId;
 
     // Log the lookup event
-    await prisma.landlordLookupEvent.create({
+    await db.landlordLookupEvent.create({
       data: {
         agentId,
         phoneNo: rawPhone,
@@ -85,7 +82,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Check PotentialLandlord table
-  const potential = await prisma.potentialLandlord.findFirst({
+  const potential = await db.potentialLandlord.findFirst({
     where: { phoneLast10 },
     select: {
       id: true,
@@ -105,7 +102,7 @@ export async function POST(request: NextRequest) {
       potential.followUpLockedUntil &&
       potential.followUpLockedUntil > now;
 
-    await prisma.landlordLookupEvent.create({
+    await db.landlordLookupEvent.create({
       data: {
         agentId,
         phoneNo: rawPhone,
@@ -147,7 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   // FREE — number not in system
-  await prisma.landlordLookupEvent.create({
+  await db.landlordLookupEvent.create({
     data: {
       agentId,
       phoneNo: rawPhone,
@@ -166,7 +163,7 @@ export async function POST(request: NextRequest) {
 async function upsertDailySearchCount(agentId: string) {
   const now = new Date();
   const reportDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  await (db as any).dailyReport.upsert({
+  await db.dailyReport.upsert({
     where: { agentId_reportDate: { agentId, reportDate } },
     create: { agentId, reportDate, callsMade: 0, totalSearched: 1 },
     update: { totalSearched: { increment: 1 } },

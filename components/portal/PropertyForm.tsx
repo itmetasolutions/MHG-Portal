@@ -146,13 +146,6 @@ export function PropertyForm({
 
   const weeklyRent = useMemo(() => calculateRentPerWeek(value.rentPerMonth), [value.rentPerMonth]);
 
-  function updateRoom(index: number, nextRoom: PropertyRoomDraft) {
-    setValue((current) => ({
-      ...current,
-      rooms: current.rooms.map((room, roomIndex) => (roomIndex === index ? nextRoom : room)),
-    }));
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 

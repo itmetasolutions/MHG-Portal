@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
+import { getEmailProvider } from "@/server/email";
+import { env } from "@/lib/env";
 
 // Called by Vercel Cron or external scheduler every minute.
 // Requires CRON_SECRET header to prevent unauthorized access.
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
   const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
   const fiveMinFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-  const leads = await (db as any).potentialLandlord.findMany({
+  const leads = await db.potentialLandlord.findMany({
     where: {
       isFollowUpLocked: true,
       followUpScheduledAt: { not: null },
@@ -38,6 +40,7 @@ export async function GET(request: NextRequest) {
   const results = { sent1h: 0, sent5min: 0, notifs: 0 };
 
   for (const lead of leads) {
+    if (!lead.followUpScheduledAt) continue; // excluded by the query's `not: null` filter
     const scheduledAt = new Date(lead.followUpScheduledAt);
     const msUntil = scheduledAt.getTime() - now.getTime();
     const minutesUntil = msUntil / 1000 / 60;
@@ -52,7 +55,7 @@ export async function GET(request: NextRequest) {
         scheduledAt,
         subject: `Follow-up reminder in 1 hour — ${lead.fullName}`,
       });
-      await (db as any).potentialLandlord.update({
+      await db.potentialLandlord.update({
         where: { id: lead.id },
         data: { email1hSent: true },
       });
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
         results.notifs++;
       }
 
-      await (db as any).potentialLandlord.update({
+      await db.potentialLandlord.update({
         where: { id: lead.id },
         data: { email5minSent: true, notifSent: true },
       });
@@ -107,20 +110,15 @@ async function sendReminderEmail(params: {
     hour: "2-digit", minute: "2-digit",
   });
 
-  // Use the existing email infrastructure if available, otherwise log
   try {
-    const { sendEmail } = await (import("@/server/email") as any).catch(() => ({ sendEmail: null }));
-    if (sendEmail) {
-      await sendEmail({
-        to: params.to,
-        subject: params.subject,
-        text: `Hi ${params.agentName},\n\nReminder: you have a follow-up scheduled with ${params.landlordName} (${params.phone}) at ${timeStr}.\n\nLog in to the MHG Portal to continue.\n`,
-      });
-      return;
-    }
+    const provider = getEmailProvider();
+    await provider.send({
+      to: params.to,
+      from: env.OTP_EMAIL_FROM,
+      subject: params.subject,
+      text: `Hi ${params.agentName},\n\nReminder: you have a follow-up scheduled with ${params.landlordName} (${params.phone}) at ${timeStr}.\n\nLog in to the MHG Portal to continue.\n`,
+    });
   } catch {
-    // email module not available
+    console.log(`[REMINDER EMAIL] To: ${params.to} | Subject: ${params.subject}`);
   }
-
-  console.log(`[REMINDER EMAIL] To: ${params.to} | Subject: ${params.subject}`);
 }

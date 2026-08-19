@@ -30,7 +30,7 @@ function getLockStatus(lead: PotentialLandlord): { locked: boolean; until: Date 
   return { locked: until > new Date(), until };
 }
 
-export function PotentialLandlordsClient({ initialLandlords, currentUserId }: Props) {
+export function PotentialLandlordsClient({ initialLandlords }: Props) {
   const router = useRouter();
   const [leads, setLeads] = useState(initialLandlords);
   const [search, setSearch] = useState("");

@@ -1198,7 +1198,7 @@ export function LandlordPropertiesClient({ landlordId, currentRole }: Props) {
                   <span className="label">Accommodation Type</span>
                   <select className="input"
                     value={closingSale.tenantAccommodationType}
-                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantAccommodationType: e.target.value as any } : p)}
+                    onChange={(e) => setClosingSale((p) => p ? { ...p, tenantAccommodationType: e.target.value as "PRIVATE" | "SHARED" | "" } : p)}
                   >
                     <option value="">— Select —</option>
                     <option value="PRIVATE">Private</option>

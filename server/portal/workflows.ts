@@ -279,7 +279,7 @@ export async function autoAddDialerContact(params: {
   ownerUserId: string;
   fullName: string;
   phoneNumber: string;
-  sourceType: "INTERESTED_LANDLORD" | "FOLLOWUP_LANDLORD";
+  sourceType: "INTERESTED_LANDLORD" | "FOLLOWUP_LANDLORD" | "NOT_INTERESTED_LANDLORD";
   sourceLandlordId?: string | null;
 }) {
   const existing = await prisma.dialerContact.findFirst({
