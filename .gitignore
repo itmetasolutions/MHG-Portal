@@ -11,3 +11,5 @@ coverage
 
 # Separate Website App
 mhg-website/
+.vercel
+.env*
